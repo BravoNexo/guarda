@@ -112,6 +112,14 @@ function montarDadosChamadaApi(nome, argumentos) {
   switch (nome) {
     case 'getListasFormulario':
       return {};
+    case 'getEstadoEquipeServico':
+      return {
+        sessaoGuardaToken: sessaoToken,
+        sessaoComandanteToken: sessaoComandanteToken,
+        sessaoOficialToken: sessaoOficialToken,
+        sessaoToqueToken: sessaoToqueToken,
+        sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
+      };
     case 'getGuardaAtivo':
       return {
         sessaoToken: sessaoToken,
@@ -258,6 +266,36 @@ function montarDadosChamadaApi(nome, argumentos) {
 }
 
 function ajustarRespostaApi(nome, resposta) {
+  if (nome === 'getEstadoEquipeServico') {
+    const estado = resposta || {};
+    const possuiEnvelopes =
+      ('guardaAtivo' in estado || 'guarda' in estado) &&
+      ('comandanteAtivo' in estado || 'comandante' in estado) &&
+      ('oficialDiaAtivo' in estado || 'oficial' in estado) &&
+      ('statusToqueFogo' in estado || 'statusToque' in estado);
+    if (!possuiEnvelopes) throw new Error('Resposta incompleta do estado da equipe de serviço.');
+
+    const blocoGuarda = estado.guardaAtivo || estado.guarda || {};
+    const blocoComandante = estado.comandanteAtivo || estado.comandante || {};
+    const blocoOficial = estado.oficialDiaAtivo || estado.oficial || {};
+    const statusToque = estado.statusToqueFogo || estado.statusToque || {};
+    const guarda = blocoGuarda.guarda || null;
+    const comandante = blocoComandante.comandante || null;
+    const oficial = blocoOficial.oficial || null;
+
+    if (guarda) guarda.Sessao_Valida = blocoGuarda.sessaoValida === true;
+    if (comandante) comandante.Sessao_Valida = blocoComandante.sessaoValida === true;
+    if (oficial) oficial.Sessao_Valida = blocoOficial.sessaoValida === true;
+    if (statusToque.toque) statusToque.toque.Sessao_Valida = statusToque.sessaoValida === true;
+
+    return {
+      guarda: guarda,
+      comandante: comandante,
+      oficial: oficial,
+      statusToque: statusToque
+    };
+  }
+
   if (nome === 'getGuardaAtivo') {
     const guarda = resposta && resposta.guarda ? resposta.guarda : null;
 
@@ -343,6 +381,7 @@ function criarExecutorAppsScript() {
 
   [
     'getListasFormulario',
+    'getEstadoEquipeServico',
     'getGuardaAtivo',
     'getComandanteAtivo',
     'getOficialDiaAtivo',
@@ -440,7 +479,12 @@ let tipoMovimentacaoAtual = 'Entrada';
   let geracaoConsultaToque = 0;
   let geracaoConsultaComandante = 0;
   let geracaoConsultaOficial = 0;
+  let geracaoConsultaEstadoEquipe = 0;
   let geracaoSessaoEquipe = 0;
+  let estadoEquipeServicoEmCarregamento = false;
+  let atualizacaoEstadoEquipeServicoPendente = false;
+  let atualizacaoEstadoEquipeServicoPendenteSilenciosa = true;
+  let usarFallbackEstadoEquipeServico = false;
   let dadosCodigoToqueFogo = null;
   let loginToqueFogoAberto = false;
   let consultaEfetivoAtual = null;
@@ -458,12 +502,6 @@ let tipoMovimentacaoAtual = 'Entrada';
   function aplicarVisibilidadePublicaEquipeLocal() {
     if (aparelhoTemSessaoEquipeLocal()) return;
 
-    geracaoSessaoEquipe += 1;
-    geracaoConsultaGuarda += 1;
-    geracaoConsultaToque += 1;
-    geracaoConsultaComandante += 1;
-    geracaoConsultaOficial += 1;
-
     const toqueAtual = statusToqueFogoAtual && statusToqueFogoAtual.toque;
     const coberturaAtual = statusToqueFogoAtual && statusToqueFogoAtual.cobertura;
     const possuiIdentidadeRestrita = !!(
@@ -475,6 +513,9 @@ let tipoMovimentacaoAtual = 'Entrada';
     );
 
     if (!possuiIdentidadeRestrita) return;
+
+    geracaoSessaoEquipe += 1;
+    invalidarConsultasEquipeServico();
 
     // Invalida respostas autenticadas que ainda estejam em trânsito e remove
     // imediatamente as identidades privadas quando a última sessão sair.
@@ -537,12 +578,136 @@ let tipoMovimentacaoAtual = 'Entrada';
     return geracao === geracaoSessaoEquipe && aparelhoTemSessaoEquipeLocal();
   }
 
-  function carregarIdentidadesEquipeServico(silencioso = false) {
+  function obterAssinaturaSessoesEquipeLocal() {
+    return [
+      obterSessaoTokenLocal(),
+      obterSessaoTokenComandanteLocal(),
+      obterSessaoTokenOficialLocal(),
+      obterSessaoTokenToqueLocal(),
+      obterSessaoTokenConsultaEfetivoLocal()
+    ].join('|');
+  }
+
+  function invalidarConsultasEquipeServico() {
+    geracaoConsultaGuarda += 1;
+    geracaoConsultaComandante += 1;
+    geracaoConsultaOficial += 1;
+    geracaoConsultaToque += 1;
+    geracaoConsultaEstadoEquipe += 1;
+  }
+
+  function iniciarConsultaEquipeServico() {
+    invalidarConsultasEquipeServico();
+    return {
+      guarda: geracaoConsultaGuarda,
+      comandante: geracaoConsultaComandante,
+      oficial: geracaoConsultaOficial,
+      toque: geracaoConsultaToque,
+      estadoEquipe: geracaoConsultaEstadoEquipe
+    };
+  }
+
+  function consultaEquipeServicoAindaAtual(geracoes, assinaturaSessoes) {
+    return !!geracoes &&
+      geracoes.guarda === geracaoConsultaGuarda &&
+      geracoes.comandante === geracaoConsultaComandante &&
+      geracoes.oficial === geracaoConsultaOficial &&
+      geracoes.toque === geracaoConsultaToque &&
+      geracoes.estadoEquipe === geracaoConsultaEstadoEquipe &&
+      assinaturaSessoes === obterAssinaturaSessoesEquipeLocal();
+  }
+
+  function executarConsultaEquipeServico(nomeAcao) {
+    return new Promise((resolver, rejeitar) => {
+      google.script.run
+        .withSuccessHandler(resolver)
+        .withFailureHandler(rejeitar)[nomeAcao]();
+    });
+  }
+
+  function carregarEstadoEquipeServicoLegado() {
+    return Promise.all([
+      executarConsultaEquipeServico('getGuardaAtivo'),
+      executarConsultaEquipeServico('getComandanteAtivo'),
+      executarConsultaEquipeServico('getOficialDiaAtivo'),
+      executarConsultaEquipeServico('getStatusToqueFogo')
+    ]).then(([guarda, comandante, oficial, statusToque]) => ({
+      guarda: guarda,
+      comandante: comandante,
+      oficial: oficial,
+      statusToque: statusToque || {}
+    }));
+  }
+
+  function erroIndicaEstadoEquipeServicoIndisponivel(erro) {
+    const mensagem = String(erro && erro.message ? erro.message : erro || '').toLowerCase();
+    return /a[cç][aã]o/.test(mensagem) &&
+      /(inv[aá]lid|desconhecid|n[aã]o encontr|n[aã]o suport|inexistent|permitid)/.test(mensagem);
+  }
+
+  function aplicarEstadoEquipeServico(estado) {
+    guardaAtual = estado && Object.prototype.hasOwnProperty.call(estado, 'guarda')
+      ? estado.guarda
+      : null;
+    comandanteAtual = estado && Object.prototype.hasOwnProperty.call(estado, 'comandante')
+      ? estado.comandante
+      : null;
+    oficialAtual = estado && Object.prototype.hasOwnProperty.call(estado, 'oficial')
+      ? estado.oficial
+      : null;
+    statusToqueFogoAtual = estado && estado.statusToque ? estado.statusToque : {};
+    estadoToqueFogoCarregado = true;
+
+    // As quatro referências já foram substituídas antes de qualquer renderização.
+    // Guarda atualiza também o Toque; Comandante atualiza também o Oficial.
+    atualizarTelaGuarda();
+    atualizarTelaComandante();
+  }
+
+  function carregarIdentidadesEquipeServico(silencioso = false, invalidarEmAndamento = true) {
     aplicarVisibilidadePublicaEquipeLocal();
-    carregarGuardaAtivo(silencioso);
-    carregarComandanteAtivo(silencioso);
-    carregarOficialDiaAtivo(silencioso);
-    carregarStatusToqueFogo(silencioso);
+
+    if (estadoEquipeServicoEmCarregamento) {
+      atualizacaoEstadoEquipeServicoPendente = true;
+      atualizacaoEstadoEquipeServicoPendenteSilenciosa =
+        atualizacaoEstadoEquipeServicoPendenteSilenciosa && silencioso;
+      if (invalidarEmAndamento) invalidarConsultasEquipeServico();
+      return;
+    }
+
+    estadoEquipeServicoEmCarregamento = true;
+    const geracoes = iniciarConsultaEquipeServico();
+    const assinaturaSessoes = obterAssinaturaSessoesEquipeLocal();
+    const consulta = usarFallbackEstadoEquipeServico
+      ? carregarEstadoEquipeServicoLegado()
+      : executarConsultaEquipeServico('getEstadoEquipeServico').catch((erro) => {
+          if (!erroIndicaEstadoEquipeServicoIndisponivel(erro)) throw erro;
+          usarFallbackEstadoEquipeServico = true;
+          return carregarEstadoEquipeServicoLegado();
+        });
+
+    consulta
+      .then((estado) => {
+        if (!consultaEquipeServicoAindaAtual(geracoes, assinaturaSessoes)) return;
+        aplicarEstadoEquipeServico(estado || {});
+      })
+      .catch((erro) => {
+        if (!silencioso) {
+          mostrarMensagem('Erro ao carregar equipe de serviço: ' + (erro.message || erro), 'erro');
+        }
+      })
+      .finally(() => {
+        estadoEquipeServicoEmCarregamento = false;
+        if (!atualizacaoEstadoEquipeServicoPendente) {
+          atualizacaoEstadoEquipeServicoPendenteSilenciosa = true;
+          return;
+        }
+
+        const proximaSilenciosa = atualizacaoEstadoEquipeServicoPendenteSilenciosa;
+        atualizacaoEstadoEquipeServicoPendente = false;
+        atualizacaoEstadoEquipeServicoPendenteSilenciosa = true;
+        setTimeout(() => carregarIdentidadesEquipeServico(proximaSilenciosa, false), 0);
+      });
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -596,7 +761,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     });
 
     setInterval(() => {
-      carregarIdentidadesEquipeServico(true);
+      carregarIdentidadesEquipeServico(true, false);
 
       if (aparelhoPodeOperarGuardaAtual()) {
         carregarPessoasDentroGuarda(true);
@@ -612,18 +777,17 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        carregarIdentidadesEquipeServico(true);
+        carregarIdentidadesEquipeServico(true, true);
       }
     });
 
-    // Nos celulares que assumiram uma das funções, mantém a troca de operador
-    // visível em poucos segundos. As validações do servidor continuam sendo a
-    // autoridade final para qualquer lançamento.
+    // Nos celulares do guarda e do Toque de Fogo, mantém a troca de operador
+    // visível em poucos segundos. Os demais aparelhos usam a atualização
+    // consolidada de 60 segundos e a atualização imediata ao voltar à aba.
     setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       if (!obterSessaoTokenLocal() && !obterSessaoTokenToqueLocal()) return;
-      carregarGuardaAtivo(true);
-      carregarStatusToqueFogo(true);
+      carregarIdentidadesEquipeServico(true, false);
     }, 8000);
   });
 
@@ -1034,7 +1198,7 @@ let tipoMovimentacaoAtual = 'Entrada';
         carregarPessoasDentroGuarda(true);
         carregarMovimentacoesGuarda(true);
         carregarPainelComandante(true);
-        carregarStatusToqueFogo(true);
+        carregarIdentidadesEquipeServico(true);
         botao.disabled = false;
       })
       .withFailureHandler((erro) => {
@@ -2016,18 +2180,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function carregarGuardaAtivo(silencioso = false) {
-    const geracao = ++geracaoConsultaGuarda;
-    google.script.run
-      .withSuccessHandler((guarda) => {
-        if (geracao !== geracaoConsultaGuarda) return;
-        guardaAtual = guarda;
-        atualizarTelaGuarda();
-      })
-      .withFailureHandler((erro) => {
-        if (geracao !== geracaoConsultaGuarda) return;
-        if (!silencioso) mostrarMensagem('Erro ao carregar guarda: ' + erro.message, 'erro');
-      })
-      .getGuardaAtivo();
+    carregarIdentidadesEquipeServico(silencioso, true);
   }
 
   function atualizarTelaGuarda() {
@@ -2427,18 +2580,7 @@ function aplicarCodigoDoLink() {
 }
 
 function carregarOficialDiaAtivo(silencioso = false) {
-  const geracao = ++geracaoConsultaOficial;
-  google.script.run
-    .withSuccessHandler((oficial) => {
-      if (geracao !== geracaoConsultaOficial) return;
-      oficialAtual = oficial;
-      atualizarTelaOficial();
-    })
-    .withFailureHandler((erro) => {
-      if (geracao !== geracaoConsultaOficial) return;
-      if (!silencioso) mostrarMensagem('Erro ao carregar Oficial de Dia: ' + erro.message, 'erro');
-    })
-    .getOficialDiaAtivo();
+  carregarIdentidadesEquipeServico(silencioso, true);
 }
 
 function atualizarTelaOficial() {
@@ -2862,18 +3004,7 @@ function sairAcessoOficial() {
 }
 
 function carregarComandanteAtivo(silencioso = false) {
-  const geracao = ++geracaoConsultaComandante;
-  google.script.run
-    .withSuccessHandler((comandante) => {
-      if (geracao !== geracaoConsultaComandante) return;
-      comandanteAtual = comandante;
-      atualizarTelaComandante();
-    })
-    .withFailureHandler((erro) => {
-      if (geracao !== geracaoConsultaComandante) return;
-      if (!silencioso) mostrarMensagem('Erro ao carregar comandante: ' + erro.message, 'erro');
-    })
-    .getComandanteAtivo();
+  carregarIdentidadesEquipeServico(silencioso, true);
 }
 
 function atualizarTelaComandante() {
@@ -4157,19 +4288,7 @@ function podeToqueAssumirHoraNesteAparelho() {
 }
 
 function carregarStatusToqueFogo(silencioso = false) {
-  const geracao = ++geracaoConsultaToque;
-  google.script.run
-    .withSuccessHandler((status) => {
-      if (geracao !== geracaoConsultaToque) return;
-      statusToqueFogoAtual = status || {};
-      estadoToqueFogoCarregado = true;
-      atualizarTelaToqueFogo();
-    })
-    .withFailureHandler((erro) => {
-      if (geracao !== geracaoConsultaToque) return;
-      if (!silencioso) mostrarMensagem('Erro ao carregar Toque de Fogo: ' + erro.message, 'erro');
-    })
-    .getStatusToqueFogo();
+  carregarIdentidadesEquipeServico(silencioso, true);
 }
 
 function atualizarVisibilidadeMovimentacoesGuarda() {
@@ -4390,8 +4509,7 @@ function garantirPermissaoOperacionalAtual() {
   if (guardaAtual && aparelhoPodeOperarGuardaAtual()) return true;
 
   atualizarAcoesCoberturaEPermissoes();
-  carregarGuardaAtivo(true);
-  carregarStatusToqueFogo(true);
+  carregarIdentidadesEquipeServico(true);
   mostrarMensagem(
     'Este celular não está autorizado a lançar agora. Atualizamos o estado da Guarda para sua segurança.',
     'erro'
@@ -4431,8 +4549,7 @@ function confirmarRetomadaPosto() {
   const idCobertura = normalizarIdOperacional(cobertura && cobertura.ID_Cobertura);
 
   if (!podeGuardaRetomarNesteAparelho() || !idCobertura) {
-    carregarGuardaAtivo(true);
-    carregarStatusToqueFogo(true);
+    carregarIdentidadesEquipeServico(true);
     mostrarMensagem('A cobertura foi atualizada. Verifique novamente antes de retomar o posto.', 'erro');
     return;
   }
@@ -4457,8 +4574,7 @@ function assumirHoraToqueFogo() {
   const geracaoSessao = geracaoSessaoEquipe;
 
   if (!podeToqueAssumirHoraNesteAparelho()) {
-    carregarGuardaAtivo(true);
-    carregarStatusToqueFogo(true);
+    carregarIdentidadesEquipeServico(true);
     mostrarMensagem('A Guarda foi atualizada e este Toque de Fogo não pode assumir a hora agora.', 'erro');
     return;
   }
@@ -4478,7 +4594,7 @@ function assumirHoraToqueFogo() {
       statusToqueFogoAtual = resposta.statusToque || statusToqueFogoAtual || {};
       estadoToqueFogoCarregado = true;
       atualizarTelaToqueFogo();
-      carregarGuardaAtivo(true);
+      carregarIdentidadesEquipeServico(true);
       mostrarMensagem(resposta.mensagem || 'Hora assumida pelo Toque de Fogo.', 'sucesso');
     })
     .withFailureHandler((erro) => {
@@ -4496,8 +4612,7 @@ function retomarPostoAposSOS(idCobertura) {
   const idCoberturaAtual = normalizarIdOperacional(coberturaAtual && coberturaAtual.ID_Cobertura);
 
   if (!podeGuardaRetomarNesteAparelho() || !idCoberturaAtual || idCoberturaAtual !== idCobertura) {
-    carregarGuardaAtivo(true);
-    carregarStatusToqueFogo(true);
+    carregarIdentidadesEquipeServico(true);
     mostrarMensagem('A cobertura mudou antes da confirmação. Verifique novamente para retomar o posto.', 'erro');
     return;
   }
@@ -4517,14 +4632,13 @@ function retomarPostoAposSOS(idCobertura) {
       statusToqueFogoAtual = resposta.statusToque || statusToqueFogoAtual || {};
       estadoToqueFogoCarregado = true;
       atualizarTelaToqueFogo();
-      carregarGuardaAtivo(true);
+      carregarIdentidadesEquipeServico(true);
       mostrarMensagem(resposta.mensagem || 'Posto retomado pelo guarda.', 'sucesso');
     })
     .withFailureHandler((erro) => {
       botao.disabled = false;
       botao.textContent = 'Retomar Posto';
-      carregarGuardaAtivo(true);
-      carregarStatusToqueFogo(true);
+      carregarIdentidadesEquipeServico(true);
       mostrarMensagem('Erro ao retomar o posto: ' + erro.message, 'erro');
     })
     .retomarPostoAposSOS(idCoberturaAtual);
