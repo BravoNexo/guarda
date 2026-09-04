@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=26.0.0">
+  <link rel="stylesheet" href="style.css?v=26.1.0">
   </head>
 
   <body>
@@ -509,12 +509,26 @@
               <select id="viaturaGuarnicaoServico" onchange="selecionarViaturaGuarnicaoServico()"></select>
             </div>
             <div class="campo">
-              <label>Condutor</label>
-              <select id="condutorGuarnicaoServico"></select>
+              <label for="btnCondutorGuarnicaoServico">Condutor</label>
+              <div class="seletor-militar-guarnicao">
+                <button type="button" id="btnCondutorGuarnicaoServico" class="botao-seletor-militar"
+                  aria-haspopup="dialog" onclick="abrirSeletorMilitarGuarnicaoServico('condutor')">
+                  <span id="textoCondutorGuarnicaoServico">Selecione o condutor</span>
+                  <span class="seta-seletor-militar" aria-hidden="true">⌄</span>
+                </button>
+                <select id="condutorGuarnicaoServico" class="select-dados-guarnicao" tabindex="-1" aria-hidden="true"></select>
+              </div>
             </div>
-            <label>Guarnição (opcional)</label>
+            <label for="btnIntegranteGuarnicaoServico">Guarnição (opcional)</label>
             <div class="linha-adicionar-guarnicao">
-              <select id="integranteGuarnicaoServico"></select>
+              <div class="seletor-militar-guarnicao">
+                <button type="button" id="btnIntegranteGuarnicaoServico" class="botao-seletor-militar"
+                  aria-haspopup="dialog" onclick="abrirSeletorMilitarGuarnicaoServico('integrante')">
+                  <span id="textoIntegranteGuarnicaoServico">Selecione um integrante</span>
+                  <span class="seta-seletor-militar" aria-hidden="true">⌄</span>
+                </button>
+                <select id="integranteGuarnicaoServico" class="select-dados-guarnicao" tabindex="-1" aria-hidden="true"></select>
+              </div>
               <button type="button" onclick="adicionarIntegranteGuarnicaoServico()">Adicionar</button>
             </div>
             <div id="chipsGuarnicaoServico" class="chips-guarnicao"></div>
@@ -719,6 +733,31 @@
       </div>
     </div>
 
-  <script src="app.js?v=26.0.0"></script>
+    <div id="modalSeletorMilitarGuarnicao" class="modal-fundo modal-seletor-fundo oculto"
+      role="dialog" aria-modal="true" aria-labelledby="tituloSeletorMilitarGuarnicao"
+      onclick="if (event.target === this) fecharSeletorMilitarGuarnicaoServico()">
+      <div class="modal-card modal-selecao-militar">
+        <div class="cabecalho-seletor-militar">
+          <div>
+            <h3 id="tituloSeletorMilitarGuarnicao">Selecionar militar</h3>
+            <span>Toque em um nome para selecionar</span>
+          </div>
+          <button type="button" class="fechar-seletor-militar" aria-label="Fechar seleção"
+            onclick="fecharSeletorMilitarGuarnicaoServico()">×</button>
+        </div>
+
+        <div class="busca-seletor-militar">
+          <label for="buscaRgSeletorMilitarGuarnicao">Pesquisar por RG</label>
+          <input type="search" id="buscaRgSeletorMilitarGuarnicao" inputmode="numeric"
+            autocomplete="off" placeholder="Digite parte do RG"
+            oninput="renderizarListaSeletorMilitarGuarnicaoServico()">
+          <span id="resumoSeletorMilitarGuarnicao" aria-live="polite"></span>
+        </div>
+
+        <div id="listaSeletorMilitarGuarnicao" class="lista-seletor-militar"></div>
+      </div>
+    </div>
+
+  <script src="app.js?v=26.1.0"></script>
   </body>
 </html>

@@ -351,6 +351,8 @@ let tipoMovimentacaoAtual = 'Entrada';
   let cicloGuarnicoesServico = null;
   let idsGuarnicaoServicoEdicao = [];
   let guarnicoesServicoCarregadas = false;
+  let tipoSeletorMilitarGuarnicaoServico = '';
+  let focoAntesDoSeletorMilitarGuarnicao = null;
 
   let dadosCodigoGuarda = null;
   let guardaAtual = null;
@@ -400,6 +402,31 @@ let tipoMovimentacaoAtual = 'Entrada';
         evento.preventDefault();
         clearTimeout(temporizadorSugestaoPessoa);
         buscarPessoa(false);
+      }
+    });
+
+    document.addEventListener('keydown', evento => {
+      const modal = document.getElementById('modalSeletorMilitarGuarnicao');
+      if (!modal || modal.classList.contains('oculto')) return;
+
+      if (evento.key === 'Escape') {
+        fecharSeletorMilitarGuarnicaoServico();
+        return;
+      }
+
+      if (evento.key === 'Tab') {
+        const focaveis = Array.from(modal.querySelectorAll('button:not([disabled]), input:not([disabled])'));
+        if (!focaveis.length) return;
+        const primeiro = focaveis[0];
+        const ultimo = focaveis[focaveis.length - 1];
+
+        if (evento.shiftKey && document.activeElement === primeiro) {
+          evento.preventDefault();
+          ultimo.focus();
+        } else if (!evento.shiftKey && document.activeElement === ultimo) {
+          evento.preventDefault();
+          primeiro.focus();
+        }
       }
     });
 
@@ -983,8 +1010,10 @@ let tipoMovimentacaoAtual = 'Entrada';
     areaCondutor.onchange = () => {
       idsGuarnicaoServicoEdicao = idsGuarnicaoServicoEdicao.filter(id => id !== areaCondutor.value);
       renderizarIntegrantesGuarnicaoServico();
+      atualizarBotoesSeletoresMilitaresGuarnicaoServico();
     };
     renderizarIntegrantesGuarnicaoServico();
+    atualizarBotoesSeletoresMilitaresGuarnicaoServico();
   }
 
   function renderizarIntegrantesGuarnicaoServico() {
@@ -1012,6 +1041,8 @@ let tipoMovimentacaoAtual = 'Entrada';
       };
       chips.appendChild(chip);
     });
+
+    atualizarBotoesSeletoresMilitaresGuarnicaoServico();
   }
 
   function adicionarIntegranteGuarnicaoServico() {
@@ -1019,6 +1050,173 @@ let tipoMovimentacaoAtual = 'Entrada';
     if (!select.value) return;
     idsGuarnicaoServicoEdicao.push(select.value);
     renderizarIntegrantesGuarnicaoServico();
+  }
+
+  function obterMilitarSOSPorId(idPessoa) {
+    const id = String(idPessoa || '');
+    return militaresSOS.find(item => String(item.ID_Pessoa || '') === id) || null;
+  }
+
+  function textoMilitarSeletorGuarnicao(militar, textoPadrao) {
+    if (!militar) return textoPadrao;
+    const rg = String(militar.RG_CPF || '').trim();
+    return militar.Nome + (rg ? ' — RG ' + rg : '');
+  }
+
+  function atualizarBotoesSeletoresMilitaresGuarnicaoServico() {
+    const selectCondutor = document.getElementById('condutorGuarnicaoServico');
+    const selectIntegrante = document.getElementById('integranteGuarnicaoServico');
+    const textoCondutor = document.getElementById('textoCondutorGuarnicaoServico');
+    const textoIntegrante = document.getElementById('textoIntegranteGuarnicaoServico');
+
+    if (selectCondutor && textoCondutor) {
+      textoCondutor.textContent = textoMilitarSeletorGuarnicao(
+        obterMilitarSOSPorId(selectCondutor.value),
+        'Selecione o condutor'
+      );
+    }
+
+    if (selectIntegrante && textoIntegrante) {
+      textoIntegrante.textContent = textoMilitarSeletorGuarnicao(
+        obterMilitarSOSPorId(selectIntegrante.value),
+        'Selecione um integrante'
+      );
+    }
+  }
+
+  function normalizarRgSeletorGuarnicao(valor) {
+    return String(valor || '').replace(/\D/g, '');
+  }
+
+  function militaresDisponiveisNoSeletorGuarnicaoServico() {
+    if (tipoSeletorMilitarGuarnicaoServico !== 'integrante') return militaresSOS.slice();
+
+    const idCondutor = String(document.getElementById('condutorGuarnicaoServico').value || '');
+    const idsIndisponiveis = new Set(
+      [idCondutor].concat(idsGuarnicaoServicoEdicao).filter(Boolean).map(String)
+    );
+    return militaresSOS.filter(militar => !idsIndisponiveis.has(String(militar.ID_Pessoa || '')));
+  }
+
+  function abrirSeletorMilitarGuarnicaoServico(tipo) {
+    if (tipo !== 'condutor' && tipo !== 'integrante') return;
+
+    tipoSeletorMilitarGuarnicaoServico = tipo;
+    focoAntesDoSeletorMilitarGuarnicao = document.activeElement;
+
+    document.getElementById('tituloSeletorMilitarGuarnicao').textContent = tipo === 'condutor'
+      ? 'Selecionar condutor'
+      : 'Selecionar integrante';
+    document.getElementById('buscaRgSeletorMilitarGuarnicao').value = '';
+    renderizarListaSeletorMilitarGuarnicaoServico();
+    const modal = document.getElementById('modalSeletorMilitarGuarnicao');
+    modal.classList.remove('oculto');
+
+    setTimeout(() => {
+      const usaMouse = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      const alvoFoco = usaMouse
+        ? document.getElementById('buscaRgSeletorMilitarGuarnicao')
+        : modal.querySelector('.fechar-seletor-militar');
+      if (alvoFoco) alvoFoco.focus();
+    }, 50);
+  }
+
+  function fecharSeletorMilitarGuarnicaoServico() {
+    const modal = document.getElementById('modalSeletorMilitarGuarnicao');
+    if (modal) modal.classList.add('oculto');
+    tipoSeletorMilitarGuarnicaoServico = '';
+
+    if (focoAntesDoSeletorMilitarGuarnicao && typeof focoAntesDoSeletorMilitarGuarnicao.focus === 'function') {
+      focoAntesDoSeletorMilitarGuarnicao.focus();
+    }
+    focoAntesDoSeletorMilitarGuarnicao = null;
+  }
+
+  function renderizarListaSeletorMilitarGuarnicaoServico() {
+    const lista = document.getElementById('listaSeletorMilitarGuarnicao');
+    const resumo = document.getElementById('resumoSeletorMilitarGuarnicao');
+    const campoBusca = document.getElementById('buscaRgSeletorMilitarGuarnicao');
+    if (!lista || !resumo || !campoBusca || !tipoSeletorMilitarGuarnicaoServico) return;
+
+    const filtroRg = normalizarRgSeletorGuarnicao(campoBusca.value);
+    const militares = militaresDisponiveisNoSeletorGuarnicaoServico().filter(militar => {
+      if (!filtroRg) return true;
+      return normalizarRgSeletorGuarnicao(militar.RG_CPF).includes(filtroRg);
+    });
+    const selectAtual = document.getElementById(
+      tipoSeletorMilitarGuarnicaoServico === 'condutor'
+        ? 'condutorGuarnicaoServico'
+        : 'integranteGuarnicaoServico'
+    );
+    const idSelecionado = selectAtual ? String(selectAtual.value || '') : '';
+
+    resumo.textContent = militares.length === 1
+      ? '1 militar encontrado'
+      : militares.length + ' militares encontrados';
+    lista.innerHTML = '';
+
+    if (!militares.length) {
+      const vazio = document.createElement('div');
+      vazio.className = 'vazio-seletor-militar';
+      vazio.innerHTML = '<strong>Nenhum RG encontrado</strong><span>Confira os números digitados ou apague a busca para ver a lista completa.</span>';
+      lista.appendChild(vazio);
+      return;
+    }
+
+    if (idSelecionado) {
+      const limpar = document.createElement('button');
+      limpar.type = 'button';
+      limpar.className = 'limpar-selecao-militar';
+      limpar.textContent = tipoSeletorMilitarGuarnicaoServico === 'condutor'
+        ? 'Limpar condutor selecionado'
+        : 'Limpar integrante selecionado';
+      limpar.onclick = limparSelecaoMilitarGuarnicaoServico;
+      lista.appendChild(limpar);
+    }
+
+    militares.forEach(militar => {
+      const idMilitar = String(militar.ID_Pessoa || '');
+      const botao = document.createElement('button');
+      botao.type = 'button';
+      botao.className = 'opcao-seletor-militar';
+      botao.setAttribute('aria-pressed', idMilitar === idSelecionado ? 'true' : 'false');
+      if (idMilitar === idSelecionado) botao.classList.add('selecionada');
+
+      const nome = document.createElement('strong');
+      nome.textContent = militar.Nome || 'Militar sem nome';
+      const rg = document.createElement('span');
+      rg.textContent = militar.RG_CPF ? 'RG ' + militar.RG_CPF : 'RG não informado';
+      botao.appendChild(nome);
+      botao.appendChild(rg);
+      botao.onclick = () => selecionarMilitarNoSeletorGuarnicaoServico(idMilitar);
+      lista.appendChild(botao);
+    });
+  }
+
+  function limparSelecaoMilitarGuarnicaoServico() {
+    const ehCondutor = tipoSeletorMilitarGuarnicaoServico === 'condutor';
+    const select = document.getElementById(
+      ehCondutor ? 'condutorGuarnicaoServico' : 'integranteGuarnicaoServico'
+    );
+    if (!select) return;
+
+    select.value = '';
+    if (ehCondutor && typeof select.onchange === 'function') select.onchange();
+    atualizarBotoesSeletoresMilitaresGuarnicaoServico();
+    fecharSeletorMilitarGuarnicaoServico();
+  }
+
+  function selecionarMilitarNoSeletorGuarnicaoServico(idMilitar) {
+    const ehCondutor = tipoSeletorMilitarGuarnicaoServico === 'condutor';
+    const select = document.getElementById(
+      ehCondutor ? 'condutorGuarnicaoServico' : 'integranteGuarnicaoServico'
+    );
+    if (!select) return;
+
+    select.value = String(idMilitar || '');
+    if (ehCondutor && typeof select.onchange === 'function') select.onchange();
+    atualizarBotoesSeletoresMilitaresGuarnicaoServico();
+    fecharSeletorMilitarGuarnicaoServico();
   }
 
   function salvarGuarnicaoServico() {

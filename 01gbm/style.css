@@ -710,7 +710,52 @@
     gap: 8px;
   }
 
-  .linha-adicionar-guarnicao button {
+  .seletor-militar-guarnicao {
+    min-width: 0;
+  }
+
+  .select-dados-guarnicao {
+    display: none;
+  }
+
+  .botao-seletor-militar {
+    width: 100%;
+    min-height: 48px;
+    padding: 11px 13px;
+    border: 1px solid #d1d5db;
+    border-radius: 13px;
+    background: #fff;
+    color: #111827;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 15px;
+    line-height: 1.25;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .botao-seletor-militar:focus-visible {
+    border-color: #111827;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(17,24,39,0.12);
+  }
+
+  .botao-seletor-militar > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .seta-seletor-militar {
+    flex: 0 0 auto;
+    color: #6b7280;
+    font-size: 18px;
+  }
+
+  .linha-adicionar-guarnicao > button {
     min-height: 48px;
     padding: 0 12px;
     border: none;
@@ -1304,6 +1349,170 @@
 
 .modal-confirmar.perigo {
   background: #991b1b;
+}
+
+.modal-selecao-militar {
+  max-width: 430px;
+  max-height: min(82vh, 680px);
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.cabecalho-seletor-militar {
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cabecalho-seletor-militar h3 {
+  margin: 0 0 3px;
+}
+
+.cabecalho-seletor-militar span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.fechar-seletor-militar {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border: 0;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 25px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.busca-seletor-militar {
+  padding: 14px 18px 12px;
+  background: #fff;
+}
+
+.busca-seletor-militar label {
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.busca-seletor-militar input {
+  min-height: 46px;
+  background-color: #f8fafc;
+}
+
+.busca-seletor-militar > span {
+  display: block;
+  margin-top: 7px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.lista-seletor-militar {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 12px 14px;
+}
+
+.limpar-selecao-militar {
+  width: 100%;
+  min-height: 42px;
+  margin-bottom: 4px;
+  padding: 9px 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.opcao-seletor-militar {
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 0;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+  color: #111827;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: left;
+  cursor: pointer;
+}
+
+.opcao-seletor-militar:first-child {
+  border-top: 0;
+}
+
+.opcao-seletor-militar strong {
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.opcao-seletor-militar span {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.opcao-seletor-militar:active,
+.opcao-seletor-militar.selecionada {
+  border-radius: 10px;
+  background: #f5f3ff;
+  color: #5b21b6;
+}
+
+.opcao-seletor-militar.selecionada span {
+  color: #7c3aed;
+}
+
+.vazio-seletor-militar {
+  min-height: 150px;
+  padding: 26px 18px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 13px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #334155;
+  text-align: center;
+}
+
+.vazio-seletor-militar span {
+  max-width: 290px;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+@media (max-width: 560px) {
+  .modal-seletor-fundo {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-selecao-militar {
+    max-width: none;
+    max-height: 88vh;
+    max-height: 88dvh;
+    border-radius: 22px 22px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 .acoes-guarda {
