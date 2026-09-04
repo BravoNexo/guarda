@@ -1515,6 +1515,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     document.getElementById('resultadoPessoa').innerHTML = '';
     document.getElementById('resultadoPessoa').classList.add('oculto');
     document.getElementById('areaPessoaNaoEncontrada').classList.add('oculto');
+    document.getElementById('rgCpfPessoaNaoEncontrada').value = '';
     document.getElementById('nomePessoaNaoEncontrada').value = '';
     preencherDestinos();
     preencherProcedencias();
@@ -1526,11 +1527,37 @@ let tipoMovimentacaoAtual = 'Entrada';
     return texto.length >= 2 || digitos.length >= 2;
   }
 
+  function termoBuscaPessoaPareceDocumento(termo) {
+    const texto = String(termo || '').trim();
+    const digitos = texto.replace(/\D/g, '');
+    const textoSemRotulos = texto.replace(/\b(?:rg|cpf)\b/gi, '');
+    const caracteresNaoDocumento = textoSemRotulos.replace(/[\d.\-/\s]/g, '');
+    return digitos.length >= 3 && !caracteresNaoDocumento;
+  }
+
+  function prepararCadastroPessoaNaoEncontrada(termo) {
+    const campoDocumento = document.getElementById('rgCpfPessoaNaoEncontrada');
+    const campoNome = document.getElementById('nomePessoaNaoEncontrada');
+
+    if (termoBuscaPessoaPareceDocumento(termo)) {
+      campoDocumento.value = String(termo || '').trim();
+      campoNome.value = '';
+      campoNome.focus();
+      return;
+    }
+
+    campoDocumento.value = '';
+    campoNome.value = String(termo || '').trim();
+    campoDocumento.focus();
+  }
+
   function sugerirPessoasEnquantoDigita() {
     clearTimeout(temporizadorSugestaoPessoa);
     numeroBuscaPessoa++;
     pessoaSelecionada = null;
     document.getElementById('areaPessoaNaoEncontrada').classList.add('oculto');
+    document.getElementById('rgCpfPessoaNaoEncontrada').value = '';
+    document.getElementById('nomePessoaNaoEncontrada').value = '';
     const resultado = document.getElementById('resultadoPessoa');
     resultado.innerHTML = '';
     resultado.classList.add('oculto');
@@ -1540,6 +1567,10 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function buscarPessoa(somenteSugestao = false) {
+    if (!somenteSugestao) {
+      clearTimeout(temporizadorSugestaoPessoa);
+    }
+
     const rgCpf = document.getElementById('rgCpfBusca').value.trim();
 
     if (!termoBuscaPessoaValido(rgCpf)) {
@@ -1574,9 +1605,9 @@ let tipoMovimentacaoAtual = 'Entrada';
           resultado.textContent = `${categoriaPessoaIndividualAtual} não encontrado(a).`;
           if (modoRegistroAtual === 'Individual') {
             document.getElementById('avisoPessoaNaoEncontrada').textContent =
-              `${categoriaPessoaIndividualAtual} não encontrado(a). Informe o nome para cadastrar automaticamente.`;
+              `${categoriaPessoaIndividualAtual} não encontrado(a). Confira o RG/CPF e o nome para cadastrar automaticamente.`;
             document.getElementById('areaPessoaNaoEncontrada').classList.remove('oculto');
-            document.getElementById('nomePessoaNaoEncontrada').focus();
+            prepararCadastroPessoaNaoEncontrada(rgCpf);
             preencherDestinos();
             preencherProcedencias();
           }
@@ -1629,6 +1660,8 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     pessoaSelecionada = pessoa;
     document.getElementById('areaPessoaNaoEncontrada').classList.add('oculto');
+    document.getElementById('rgCpfPessoaNaoEncontrada').value = '';
+    document.getElementById('nomePessoaNaoEncontrada').value = '';
     preencherDestinos();
     preencherProcedencias();
 
@@ -1850,7 +1883,7 @@ let tipoMovimentacaoAtual = 'Entrada';
         RG_CPF: document.getElementById('rgCondutorExterno').value.trim()
       } : null,
       nomePessoaNaoEncontrada: document.getElementById('nomePessoaNaoEncontrada').value.trim(),
-      rgCpfPessoaNaoEncontrada: document.getElementById('rgCpfBusca').value.trim(),
+      rgCpfPessoaNaoEncontrada: document.getElementById('rgCpfPessoaNaoEncontrada').value.trim(),
       destino: document.getElementById('destino').value,
       procedencia: document.getElementById('procedencia').value,
       complementoProcedencia: document.getElementById('complementoProcedencia').value.trim(),
@@ -1885,9 +1918,18 @@ let tipoMovimentacaoAtual = 'Entrada';
       return;
     }
 
-    if (tipoRegistro === 'Pessoa não encontrada' && !dados.nomePessoaNaoEncontrada) {
-      mostrarMensagem('Informe o nome completo da pessoa.', 'erro');
-      return;
+    if (tipoRegistro === 'Pessoa não encontrada') {
+      if (dados.rgCpfPessoaNaoEncontrada.replace(/\D/g, '').length < 3) {
+        mostrarMensagem('Informe um RG/CPF válido, com pelo menos 3 dígitos.', 'erro');
+        document.getElementById('rgCpfPessoaNaoEncontrada').focus();
+        return;
+      }
+
+      if (!dados.nomePessoaNaoEncontrada) {
+        mostrarMensagem('Informe o nome completo da pessoa.', 'erro');
+        document.getElementById('nomePessoaNaoEncontrada').focus();
+        return;
+      }
     }
 
     const areaComplemento = document.getElementById('areaComplementoProcedencia');
@@ -1934,6 +1976,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     document.getElementById('resultadoPessoa').innerHTML = '';
     document.getElementById('resultadoPessoa').classList.add('oculto');
 
+    document.getElementById('rgCpfPessoaNaoEncontrada').value = '';
     document.getElementById('nomePessoaNaoEncontrada').value = '';
     document.getElementById('areaPessoaNaoEncontrada').classList.add('oculto');
 

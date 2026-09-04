@@ -658,12 +658,16 @@
           </div>
 
           <div id="areaPessoaNaoEncontrada" class="oculto">
-            <div id="avisoPessoaNaoEncontrada" class="resultado erro">Pessoa não encontrada. Informe o nome para cadastrá-la automaticamente.</div>
+            <div id="avisoPessoaNaoEncontrada" class="resultado erro">Pessoa não encontrada. Confira os dados para cadastrá-la automaticamente.</div>
+            <div class="campo">
+              <label>RG/CPF</label>
+              <input type="text" id="rgCpfPessoaNaoEncontrada" placeholder="RG ou CPF" inputmode="numeric" autocomplete="off">
+            </div>
             <div class="campo">
               <label>Nome completo</label>
               <input type="text" id="nomePessoaNaoEncontrada" placeholder="Nome completo">
             </div>
-            <div class="dica-varios-ocupantes">O RG/CPF pesquisado será usado no cadastro. O cadastro permanecerá ativo por 1 ano após a movimentação mais recente.</div>
+            <div class="dica-varios-ocupantes">O cadastro permanecerá ativo por 1 ano após a movimentação mais recente.</div>
           </div>
 
           <div class="campo">
@@ -758,6 +762,6 @@
       </div>
     </div>
 
-  <script src="app.js?v=26.2.0"></script>
+  <script src="app.js?v=26.3.0"></script>
   </body>
 </html>
