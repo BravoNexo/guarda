@@ -1,4 +1,4 @@
-const URL_API = 'https://script.google.com/macros/s/AKfycbwqSpqWQOjFcOfSClEGTesKZAGPnuMaKQiIIu9RYChC5yFX6gwXpwFg1f5DpvbNHy5j/exec';
+const URL_API = 'https://script.google.com/macros/s/AKfycby0yR2Y1R-PQyvh19DeqAduqrFdjYJLjZvt1OskagfqyLjgB4n6RaNHCXgCNgig5J1S/exec';
 const parametrosUrl = new URLSearchParams(window.location.search);
 
 window.PARAM_EMAIL_GUARDA = parametrosUrl.get('email') || '';

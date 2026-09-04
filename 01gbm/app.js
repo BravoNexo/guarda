@@ -1,4 +1,4 @@
-const URL_API = 'https://script.google.com/macros/s/AKfycbwqSpqWQOjFcOfSClEGTesKZAGPnuMaKQiIIu9RYChC5yFX6gwXpwFg1f5DpvbNHy5j/exec';
+const URL_API = 'https://script.google.com/macros/s/AKfycby0yR2Y1R-PQyvh19DeqAduqrFdjYJLjZvt1OskagfqyLjgB4n6RaNHCXgCNgig5J1S/exec';
 const parametrosUrl = new URLSearchParams(window.location.search);
 
 window.PARAM_EMAIL_GUARDA = parametrosUrl.get('email') || '';
@@ -70,13 +70,21 @@ function montarDadosChamadaApi(nome, argumentos) {
     case 'getComandanteAtivo':
       return { sessaoToken: sessaoComandanteToken };
     case 'getOficialDiaAtivo':
-      return {};
+      return {
+        sessaoComandanteToken: sessaoComandanteToken,
+        sessaoOficialToken: sessaoOficialToken
+      };
     case 'getDadosOficialDiaParaComandante':
       return { sessaoToken: sessaoComandanteToken };
     case 'designarOficialDia':
       return { rgOficial: argumentos[0], sessaoToken: sessaoComandanteToken };
     case 'getStatusToqueFogo':
-      return { sessaoToken: sessaoToqueToken };
+      return {
+        sessaoToken: sessaoToqueToken,
+        sessaoGuardaToken: sessaoToken,
+        sessaoComandanteToken: sessaoComandanteToken,
+        sessaoOficialToken: sessaoOficialToken
+      };
     case 'getPainelComandante':
       return { sessaoToken: sessaoComandanteToken, sessaoOficialToken: sessaoOficialToken };
     case 'consultarHistoricoMovimentacoes':
@@ -1236,7 +1244,7 @@ let consultaEfetivoAtual = null;
     resultado.classList.remove('erro');
     resultado.innerHTML = `
       <div class="pessoa-selecionada">
-        Selecionado: ${pessoa.Nome} — ${pessoa.RG_CPF}
+        Selecionado: ${escaparHtml(pessoa.Nome)} — ${escaparHtml(pessoa.RG_CPF)}
       </div>
     `;
   }
@@ -1592,12 +1600,13 @@ let consultaEfetivoAtual = null;
 
     if (guardaAtual) {
       const esteAparelhoAssumiu = aparelhoAssumiuGuardaAtual();
+      const identidadeDisponivel = !!(guardaAtual.Nome_Guarda && guardaAtual.RG_Guarda);
 
       status.classList.add('com-guarda');
-      status.innerHTML = `
-        Guarda atual:<br>
-        ${guardaAtual.Nome_Guarda} — RG ${guardaAtual.RG_Guarda}
-      `;
+      status.innerHTML = identidadeDisponivel
+        ? 'Guarda atual:<br>' + escaparHtml(guardaAtual.Nome_Guarda) +
+          ' — RG ' + escaparHtml(guardaAtual.RG_Guarda)
+        : 'A Guarda já está assumida neste serviço.<br><small>Entre com seu e-mail para consultar ou trocar o responsável.</small>';
 
       areaAssumir.classList.add('oculto');
 
@@ -1648,17 +1657,17 @@ let consultaEfetivoAtual = null;
     google.script.run
       .withSuccessHandler((resposta) => {
         dadosCodigoGuarda = {
-          email: resposta.email,
-          encontradoNoEfetivo: resposta.encontradoNoEfetivo,
-          militar: resposta.militar || null,
+          email: email,
+          encontradoNoEfetivo: false,
+          militar: null,
           ticketAssuncao: ''
         };
 
-        salvarCodigoGuardaPendente(resposta.email);
+        salvarCodigoGuardaPendente(email);
 
         document.getElementById('areaCodigoGuarda').classList.remove('oculto');
 
-        mostrarMensagem('Código enviado. Você pode abrir seu e-mail e voltar para informar o código.', 'sucesso');
+        mostrarMensagem('Se o e-mail estiver autorizado, o código será enviado.', 'sucesso');
       })
       .withFailureHandler((erro) => {
         mostrarMensagem('Erro ao enviar código: ' + erro.message, 'erro');
@@ -1697,7 +1706,7 @@ let consultaEfetivoAtual = null;
           areaMilitar.innerHTML = `
             E-mail validado.<br>
             Militar identificado:<br>
-            ${resposta.militar.Nome} — RG ${resposta.militar.RG}
+            ${escaparHtml(resposta.militar.Nome)} — RG ${escaparHtml(resposta.militar.RG)}
           `;
           areaManual.classList.add('oculto');
         } else {
@@ -1747,7 +1756,7 @@ let consultaEfetivoAtual = null;
           abrirModalConfirmacao(
             'Guarda já assumida',
             `Já existe um guarda ativo:<br><br>
-            <strong>${g.Nome_Guarda} — RG ${g.RG_Guarda}</strong><br><br>
+            <strong>${escaparHtml(g.Nome_Guarda)} — RG ${escaparHtml(g.RG_Guarda)}</strong><br><br>
             Deseja encerrar a sessão anterior e assumir a Guarda neste celular?`,
             () => assumirGuarda(true),
             true
@@ -1980,7 +1989,10 @@ function atualizarTelaOficial() {
 
   if (oficialAtual) {
     status.classList.add('ativo');
-    status.innerHTML = `Oficial de Dia informado pelo Comandante:<br>${oficialAtual.Nome_Oficial} — RG ${oficialAtual.RG_Oficial}`;
+    status.innerHTML = oficialAtual.Nome_Oficial && oficialAtual.RG_Oficial
+      ? 'Oficial de Dia informado pelo Comandante:<br>' + escaparHtml(oficialAtual.Nome_Oficial) +
+        ' — RG ' + escaparHtml(oficialAtual.RG_Oficial)
+      : 'O Oficial de Dia já foi informado para este serviço.';
   } else {
     status.classList.remove('ativo');
     status.textContent = 'Oficial de Dia ainda não informado para este serviço.';
@@ -2093,11 +2105,11 @@ function enviarCodigoOficial() {
   botao.textContent = 'Enviando...';
   google.script.run
     .withSuccessHandler((resposta) => {
-      dadosCodigoOficial = { email: resposta.email, militar: null };
-      salvarCodigoOficialPendente(resposta.email);
+      dadosCodigoOficial = { email: email, militar: null };
+      salvarCodigoOficialPendente(email);
       document.getElementById('areaCodigoOficial').classList.remove('oculto');
       document.getElementById('codigoOficial').focus();
-      mostrarMensagem('Código enviado ao e-mail do oficial.', 'sucesso');
+      mostrarMensagem('Se o e-mail estiver autorizado, o código será enviado.', 'sucesso');
       botao.disabled = false;
       botao.textContent = 'Reenviar código';
     })
@@ -2118,9 +2130,8 @@ function validarCodigoOficial() {
   botao.textContent = 'Validando...';
   google.script.run
     .withSuccessHandler((resposta) => {
-      oficialAcessoAtual = resposta.militar;
       localStorage.setItem('oficial_dia_sessao_token', resposta.sessaoToken || '');
-      localStorage.setItem('oficial_acesso_militar', JSON.stringify(oficialAcessoAtual || {}));
+      salvarOficialLocal(resposta.militar);
       limparCodigoOficialPendente();
       atualizarTelaAcessoOficial();
       atualizarVisibilidadePainelComandante();
@@ -2145,7 +2156,7 @@ function assumirOficial(encerrarAnterior = false) {
         const atual = resposta.oficialAtivo;
         abrirModalConfirmacao(
           'Oficial de Dia já assumido',
-          `Já existe Oficial de Dia ativo:<br><br><strong>${atual.Nome_Oficial} — RG ${atual.RG_Oficial}</strong><br><br>Deseja substituir o Oficial de Dia anterior?`,
+          `Já existe Oficial de Dia ativo:<br><br><strong>${escaparHtml(atual.Nome_Oficial)} — RG ${escaparHtml(atual.RG_Oficial)}</strong><br><br>Deseja substituir o Oficial de Dia anterior?`,
           () => assumirOficial(true), true
         );
         return;
@@ -2290,7 +2301,9 @@ function restaurarCodigoOficialPendente() {
 }
 
 function salvarOficialLocal(oficial) {
-  oficialAcessoAtual = oficial || null;
+  oficialAcessoAtual = oficial
+    ? { Nome: String(oficial.Nome || 'Oficial do 1º GBM') }
+    : null;
   localStorage.setItem('oficial_acesso_militar', JSON.stringify(oficialAcessoAtual || {}));
 }
 
@@ -2307,7 +2320,13 @@ function aparelhoAssumiuOficialAtual() {
 
 function restaurarAcessoOficial() {
   try {
-    oficialAcessoAtual = JSON.parse(localStorage.getItem('oficial_acesso_militar') || 'null');
+    const armazenado = JSON.parse(localStorage.getItem('oficial_acesso_militar') || 'null');
+    oficialAcessoAtual = armazenado && armazenado.Nome
+      ? { Nome: String(armazenado.Nome) }
+      : null;
+    if (oficialAcessoAtual) {
+      localStorage.setItem('oficial_acesso_militar', JSON.stringify(oficialAcessoAtual));
+    }
   } catch (erro) {
     oficialAcessoAtual = null;
   }
@@ -2381,15 +2400,16 @@ function atualizarTelaComandante() {
   if (comandanteAtual) {
     const esteAparelhoAssumiu = aparelhoAssumiuComandanteAtual();
     const esteAparelhoReconhecido = aparelhoReconheceComandanteAtual();
+    const identidadeDisponivel = !!(comandanteAtual.Nome_Comandante && comandanteAtual.RG_Comandante);
 
     status.classList.add('com-guarda');
-    status.innerHTML = `
-      Comandante atual:<br>
-      ${comandanteAtual.Nome_Comandante} — RG ${comandanteAtual.RG_Comandante}
-      ${esteAparelhoReconhecido && !esteAparelhoAssumiu
-        ? '<br><small>Sessão expirada. Use Sair para receber um novo código no e-mail.</small>'
-        : ''}
-    `;
+    status.innerHTML = identidadeDisponivel
+      ? 'Comandante atual:<br>' + escaparHtml(comandanteAtual.Nome_Comandante) +
+        ' — RG ' + escaparHtml(comandanteAtual.RG_Comandante) +
+        (esteAparelhoReconhecido && !esteAparelhoAssumiu
+          ? '<br><small>Sessão expirada. Use Sair para receber um novo código no e-mail.</small>'
+          : '')
+      : 'O serviço já possui Comandante da Guarda.<br><small>Entre com seu e-mail para consultar ou trocar o responsável.</small>';
 
     areaAssumir.classList.add('oculto');
     btnEncerrar.classList.toggle('oculto', !esteAparelhoReconhecido);
@@ -2951,14 +2971,14 @@ function enviarCodigoComandante() {
   google.script.run
     .withSuccessHandler((resposta) => {
       dadosCodigoComandante = {
-        email: resposta.email,
-        militar: resposta.militar || null,
+        email: email,
+        militar: null,
         ticketAssuncao: ''
       };
 
-      salvarCodigoComandantePendente(resposta.email);
+      salvarCodigoComandantePendente(email);
       document.getElementById('areaCodigoComandante').classList.remove('oculto');
-      mostrarMensagem('Código enviado ao e-mail cadastrado do comandante.', 'sucesso');
+      mostrarMensagem('Se o e-mail estiver autorizado, o código será enviado.', 'sucesso');
     })
     .withFailureHandler((erro) => {
       mostrarMensagem('Erro ao enviar código do comandante: ' + erro.message, 'erro');
@@ -2990,7 +3010,7 @@ function validarCodigoComandante() {
       area.innerHTML = `
         E-mail validado.<br>
         Militar identificado:<br>
-        ${resposta.militar.Nome} — RG ${resposta.militar.RG}
+        ${escaparHtml(resposta.militar.Nome)} — RG ${escaparHtml(resposta.militar.RG)}
       `;
 
       document.getElementById('btnAssumirComandante').classList.remove('oculto');
@@ -3023,7 +3043,7 @@ function assumirComandante(encerrarAnterior = false) {
         abrirModalConfirmacao(
           'Comandante já assumido',
           `Já existe um Comandante da Guarda ativo:<br><br>
-          <strong>${comandante.Nome_Comandante} — RG ${comandante.RG_Comandante}</strong><br><br>
+          <strong>${escaparHtml(comandante.Nome_Comandante)} — RG ${escaparHtml(comandante.RG_Comandante)}</strong><br><br>
           Deseja encerrar somente a sessão do comandante anterior e assumir neste celular?`,
           () => assumirComandante(true),
           true
@@ -3197,9 +3217,9 @@ function salvarComandanteLocal(comandante) {
   if (!comandante || !comandante.ID_ComandanteGuarda) return;
 
   localStorage.setItem('comandante_id_local', comandante.ID_ComandanteGuarda);
-  localStorage.setItem('comandante_nome_local', comandante.Nome_Comandante || '');
-  localStorage.setItem('comandante_rg_local', comandante.RG_Comandante || '');
-  localStorage.setItem('comandante_email_local', comandante.Email_Comandante || '');
+  localStorage.removeItem('comandante_nome_local');
+  localStorage.removeItem('comandante_rg_local');
+  localStorage.removeItem('comandante_email_local');
 
   if (comandante.Sessao_Token) {
     localStorage.setItem('comandante_sessao_token', comandante.Sessao_Token);
@@ -3321,9 +3341,9 @@ function salvarGuardaLocal(guarda) {
   }
 
   localStorage.setItem('guarda_id_local', guarda.ID_GuardaServico);
-  localStorage.setItem('guarda_nome_local', guarda.Nome_Guarda || '');
-  localStorage.setItem('guarda_rg_local', guarda.RG_Guarda || '');
-  localStorage.setItem('guarda_email_local', guarda.Email_Guarda || '');
+  localStorage.removeItem('guarda_nome_local');
+  localStorage.removeItem('guarda_rg_local');
+  localStorage.removeItem('guarda_email_local');
   localStorage.setItem(
     'guarda_sessao_token',
     guarda.Sessao_Token || (typeof URL_API === 'undefined' ? 'apps-script-local' : '')
@@ -3612,8 +3632,10 @@ function atualizarTelaToqueFogo() {
 
   if (toque) {
     statusEl.classList.add('com-guarda');
-    statusEl.innerHTML = 'Toque de Fogo atual:<br>' + escaparHtml(toque.Nome_Toque) +
-      ' — RG ' + escaparHtml(toque.RG_Toque);
+    statusEl.innerHTML = toque.Nome_Toque && toque.RG_Toque
+      ? 'Toque de Fogo atual:<br>' + escaparHtml(toque.Nome_Toque) +
+        ' — RG ' + escaparHtml(toque.RG_Toque)
+      : 'O período atual do Toque de Fogo já está assumido.<br><small>Entre para consultar ou realizar a troca.</small>';
     areaAssumir.classList.toggle('oculto', !loginToqueFogoAberto);
     btnTrocar.classList.toggle('oculto', aparelhoAssumiuToqueAtual());
     btnTrocar.textContent = 'Assumir / Trocar';
@@ -3628,10 +3650,12 @@ function atualizarTelaToqueFogo() {
 
   if (cobertura) {
     coberturaEl.classList.remove('oculto');
-    coberturaEl.innerHTML = '<strong>Cobertura ativa</strong><br>' +
-      escaparHtml(cobertura.Nome_Toque) + ' está no posto por ' +
-      escaparHtml(cobertura.Nome_Guarda_Titular) + '.<br>' +
-      'Início: ' + escaparHtml(cobertura.DataHora_Inicio || '-');
+    coberturaEl.innerHTML = cobertura.Nome_Toque && cobertura.Nome_Guarda_Titular
+      ? '<strong>Cobertura ativa</strong><br>' +
+        escaparHtml(cobertura.Nome_Toque) + ' está no posto por ' +
+        escaparHtml(cobertura.Nome_Guarda_Titular) + '.<br>' +
+        'Início: ' + escaparHtml(cobertura.DataHora_Inicio || '-')
+      : '<strong>Cobertura ativa</strong><br>O posto está em cobertura temporária.';
   } else {
     coberturaEl.classList.add('oculto');
     coberturaEl.innerHTML = '';
@@ -3666,13 +3690,13 @@ function enviarCodigoToqueFogo() {
   google.script.run
     .withSuccessHandler((resposta) => {
       dadosCodigoToqueFogo = {
-        email: resposta.email,
-        encontradoNoEfetivo: resposta.encontradoNoEfetivo,
-        militar: resposta.militar || null,
+        email: email,
+        encontradoNoEfetivo: false,
+        militar: null,
         ticketAssuncao: ''
       };
       document.getElementById('areaCodigoToqueFogo').classList.remove('oculto');
-      mostrarMensagem('Código enviado para o e-mail do Toque de Fogo.', 'sucesso');
+      mostrarMensagem('Se o e-mail estiver autorizado, o código será enviado.', 'sucesso');
     })
     .withFailureHandler((erro) => mostrarMensagem('Erro ao enviar código: ' + erro.message, 'erro'))
     .enviarCodigoAssumirToqueFogo(email);
