@@ -66,7 +66,11 @@ function montarDadosChamadaApi(nome, argumentos) {
     case 'getListasFormulario':
       return {};
     case 'getGuardaAtivo':
-      return { sessaoToken: sessaoToken };
+      return {
+        sessaoToken: sessaoToken,
+        sessaoComandanteToken: sessaoComandanteToken,
+        sessaoOficialToken: sessaoOficialToken
+      };
     case 'getComandanteAtivo':
       return { sessaoToken: sessaoComandanteToken };
     case 'getOficialDiaAtivo':
@@ -2378,6 +2382,7 @@ function validarCodigoOficial() {
       limparCodigoOficialPendente();
       atualizarTelaAcessoOficial();
       atualizarVisibilidadePainelComandante();
+      carregarGuardaAtivo(true);
       carregarPainelComandante();
       mostrarMensagem('Acesso ao Painel de Gestão liberado.', 'sucesso');
       botao.disabled = false;
@@ -3320,6 +3325,7 @@ function assumirComandante(encerrarAnterior = false) {
         comandanteAtual = resposta.comandante;
         salvarComandanteLocal(resposta.comandante);
         atualizarTelaComandante();
+        carregarGuardaAtivo(true);
       }
 
       limparAreaComandante();
