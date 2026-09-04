@@ -1430,14 +1430,19 @@
 .perfil-servico .periodo-toque-fogo { font-size: 10px; }
 .perfil-servico:not(.perfil-expandido) > [id^="areaAssumir"],
 .perfil-servico:not(.perfil-expandido) > [id^="areaCodigo"],
-.perfil-servico:not(.perfil-expandido) > .resultado,
-.perfil-servico:not(.perfil-expandido) > [id^="btnAssumirHora"],
-.perfil-servico:not(.perfil-expandido) > [id^="btnRetomarPosto"] { display: none !important; }
+.perfil-servico:not(.perfil-expandido) > .resultado { display: none !important; }
 .perfil-servico.perfil-expandido { padding-bottom: 15px !important; background: #f8fafc; }
 .perfil-servico.perfil-expandido > [id^="areaAssumir"]:not(.oculto),
 .perfil-servico.perfil-expandido > [id^="areaCodigo"]:not(.oculto) { margin-top: 12px; }
 .perfil-servico .acoes-guarda { margin-left: auto; gap: 4px; }
 .perfil-servico .acoes-guarda button { padding: 6px 8px; font-size: 11px; }
+.perfil-servico.tem-acao-cobertura {
+  background: #fffbeb !important;
+  box-shadow: inset 3px 0 0 #f59e0b !important;
+}
+.perfil-servico .acao-cobertura-operacional {
+  display: block;
+}
 .card-historico {
   display: flex;
   flex-direction: column;

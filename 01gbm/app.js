@@ -144,7 +144,7 @@ function montarDadosChamadaApi(nome, argumentos) {
     case 'assumirToqueFogoComEmailValidado':
       return argumentos[0] || {};
     case 'retomarPostoAposSOS':
-      return { sessaoToken: sessaoToken };
+      return { sessaoToken: sessaoToken, idCobertura: argumentos[0] || '' };
     case 'assumirHoraToqueFogo':
       return { sessaoToqueToken: sessaoToqueToken };
     case 'enviarCodigoAssumirGuarda':
@@ -367,9 +367,12 @@ let tipoMovimentacaoAtual = 'Entrada';
   let pessoasDentroGuardaCarregadas = false;
   let movimentacoesGuardaCarregadas = false;
   let statusToqueFogoAtual = null;
-let dadosCodigoToqueFogo = null;
-let loginToqueFogoAberto = false;
-let consultaEfetivoAtual = null;
+  let estadoToqueFogoCarregado = false;
+  let geracaoConsultaGuarda = 0;
+  let geracaoConsultaToque = 0;
+  let dadosCodigoToqueFogo = null;
+  let loginToqueFogoAberto = false;
+  let consultaEfetivoAtual = null;
 
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -401,6 +404,8 @@ let consultaEfetivoAtual = null;
     });
 
     setInterval(() => {
+      carregarGuardaAtivo(true);
+
       if (aparelhoPodeOperarGuardaAtual()) {
         carregarPessoasDentroGuarda(true);
         carregarMovimentacoesGuarda(true);
@@ -414,6 +419,23 @@ let consultaEfetivoAtual = null;
 
     if (obterSessaoConsultaEfetivo()) carregarMovimentacoesConsultaEfetivo(true);
     }, 60000);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        carregarGuardaAtivo(true);
+        carregarStatusToqueFogo(true);
+      }
+    });
+
+    // Nos celulares que assumiram uma das funções, mantém a troca de operador
+    // visível em poucos segundos. As validações do servidor continuam sendo a
+    // autoridade final para qualquer lançamento.
+    setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      if (!obterSessaoTokenLocal() && !obterSessaoTokenToqueLocal()) return;
+      carregarGuardaAtivo(true);
+      carregarStatusToqueFogo(true);
+    }, 8000);
   });
 
   const secoesPainelComandante = {
@@ -780,6 +802,8 @@ let consultaEfetivoAtual = null;
   }
 
   function registrarSOS() {
+    if (!garantirPermissaoOperacionalAtual()) return;
+
     const viaturas = Object.values(selecoesViaturasSOS);
 
     if (!viaturas.length) {
@@ -804,6 +828,10 @@ let consultaEfetivoAtual = null;
         guarnicoesServico = resposta.dadosSOS ? resposta.dadosSOS.guarnicoesServico || [] : guarnicoesServico;
         cicloGuarnicoesServico = resposta.dadosSOS ? resposta.dadosSOS.ciclo || cicloGuarnicoesServico : cicloGuarnicoesServico;
         statusToqueFogoAtual = resposta.statusToque || statusToqueFogoAtual;
+        if (resposta.statusToque) {
+          estadoToqueFogoCarregado = true;
+          atualizarTelaToqueFogo();
+        }
         selecoesViaturasSOS = {};
         document.getElementById('observacoesSOS').value = '';
         renderizarSelecaoViaturasSOS();
@@ -828,9 +856,7 @@ let consultaEfetivoAtual = null;
   }
 
   function aparelhoPodeConfigurarGuarnicoesServico() {
-    return aparelhoAssumiuGuardaAtual() ||
-      aparelhoAssumiuToqueAtual() ||
-      aparelhoAssumiuComandanteAtual();
+    return aparelhoPodeOperarGuardaAtual() || aparelhoAssumiuComandanteAtual();
   }
 
   function definirGuarnicoesServicoRecolhido(recolhido) {
@@ -1434,6 +1460,8 @@ let consultaEfetivoAtual = null;
   }
 
   function registrarMovimentacao() {
+    if (!garantirPermissaoOperacionalAtual()) return;
+
     if (modoRegistroAtual === 'SOS') {
       registrarSOS();
       return;
@@ -1578,14 +1606,17 @@ let consultaEfetivoAtual = null;
     }, 3500);
   }
 
-  function carregarGuardaAtivo() {
+  function carregarGuardaAtivo(silencioso = false) {
+    const geracao = ++geracaoConsultaGuarda;
     google.script.run
       .withSuccessHandler((guarda) => {
+        if (geracao !== geracaoConsultaGuarda) return;
         guardaAtual = guarda;
         atualizarTelaGuarda();
       })
       .withFailureHandler((erro) => {
-        mostrarMensagem('Erro ao carregar guarda: ' + erro.message, 'erro');
+        if (geracao !== geracaoConsultaGuarda) return;
+        if (!silencioso) mostrarMensagem('Erro ao carregar guarda: ' + erro.message, 'erro');
       })
       .getGuardaAtivo();
   }
@@ -1601,6 +1632,12 @@ let consultaEfetivoAtual = null;
     if (guardaAtual) {
       const esteAparelhoAssumiu = aparelhoAssumiuGuardaAtual();
       const identidadeDisponivel = !!(guardaAtual.Nome_Guarda && guardaAtual.RG_Guarda);
+      const idGuardaLocal = localStorage.getItem('guarda_id_local') || '';
+
+      if (!esteAparelhoAssumiu && obterSessaoTokenLocal() &&
+          (guardaAtual.Sessao_Valida === false || idGuardaLocal !== guardaAtual.ID_GuardaServico)) {
+        limparGuardaLocal();
+      }
 
       status.classList.add('com-guarda');
       status.innerHTML = identidadeDisponivel
@@ -1637,7 +1674,13 @@ let consultaEfetivoAtual = null;
       limparGuardaLocal();
     }
 
-    atualizarPermissaoLancamento();
+    // Recruza os dois estados sempre que a Guarda mudar. Assim, uma resposta
+    // antiga da cobertura nunca continua exibindo o guarda anterior na tela.
+    if (estadoToqueFogoCarregado) {
+      atualizarTelaToqueFogo();
+    } else {
+      atualizarAcoesCoberturaEPermissoes();
+    }
   }
 
   function mostrarAreaTrocaGuarda() {
@@ -1768,6 +1811,7 @@ let consultaEfetivoAtual = null;
         mostrarMensagem(resposta.mensagem || 'Guarda assumida com sucesso.', 'sucesso');
 
         if (resposta && resposta.guarda) {
+          geracaoConsultaGuarda += 1;
           guardaAtual = resposta.guarda;
 
           // Autoriza o celular pessoal usado pelo guarda durante este serviço.
@@ -1807,6 +1851,7 @@ let consultaEfetivoAtual = null;
       .withSuccessHandler((resposta) => {
         mostrarMensagem(resposta.mensagem || 'Guarda encerrada com sucesso.', 'sucesso');
 
+        geracaoConsultaGuarda += 1;
         guardaAtual = null;
         limparGuardaLocal();
 
@@ -2275,6 +2320,14 @@ function limparAreaOficial() {
     const botao = document.getElementById('btnAlternarEquipeServico');
     if (!card || !botao) return;
     const recolher = !card.classList.contains('equipe-recolhida');
+
+    if (recolher && document.querySelector('.acao-cobertura-operacional:not(.oculto)')) {
+      card.classList.remove('equipe-recolhida');
+      botao.setAttribute('aria-expanded', 'true');
+      mostrarMensagem('Há uma ação da Guarda disponível. A Equipe de Serviço permanecerá aberta.', 'sucesso');
+      return;
+    }
+
     card.classList.toggle('equipe-recolhida', recolher);
     botao.setAttribute('aria-expanded', String(!recolher));
   }
@@ -2577,8 +2630,12 @@ function renderizarHistorico(resultado) {
       item.appendChild(linha);
     }
 
+    const nomeOperador = registro.nomeOperador || registro.Nome_Operador || '';
+    const perfilOperador = registro.perfilOperador || registro.Perfil_Operador || '';
     const responsaveis = [
-      registro.guarda ? 'Guarda: ' + registro.guarda : '',
+      nomeOperador
+        ? 'Lançado por: ' + nomeOperador + (perfilOperador ? ' (' + perfilOperador + ')' : '')
+        : (registro.guarda ? 'Guarda: ' + registro.guarda : ''),
       registro.comandante ? 'Comandante: ' + registro.comandante : '',
       registro.observacoes ? 'Obs.: ' + registro.observacoes : ''
     ].filter(Boolean);
@@ -2765,6 +2822,12 @@ function criarDetalhesPessoaPainel(pessoa) {
     );
   }
 
+  const nomeOperador = pessoa.nomeOperador || pessoa.Nome_Operador || '';
+  const perfilOperador = pessoa.perfilOperador || pessoa.Perfil_Operador || '';
+  if (nomeOperador) {
+    partes.push('Lançado por: ' + nomeOperador + (perfilOperador ? ' (' + perfilOperador + ')' : ''));
+  }
+
   detalhes.textContent = partes.join(' • ') || 'Sem detalhes adicionais';
   return detalhes;
 }
@@ -2902,13 +2965,15 @@ function confirmarSaidaRapidaPessoa(pessoa, botao) {
   abrirModalConfirmacao(
     'Registrar saída',
     'Confirma a saída de <strong>' + escaparHtml(pessoa.nome || 'pessoa não identificada') +
-      '</strong>?<br><br>O registro ficará vinculado ao guarda atualmente logado.',
+      '</strong>?<br><br>O registro ficará vinculado ao militar que está efetivamente no posto.',
     () => registrarSaidaRapidaPessoaGuarda(pessoa.idMovimentacao, botao),
     true
   );
 }
 
 function registrarSaidaRapidaPessoaGuarda(idMovimentacaoEntrada, botao) {
+  if (!garantirPermissaoOperacionalAtual()) return;
+
   if (botao) {
     botao.disabled = true;
     botao.textContent = 'Registrando...';
@@ -3589,13 +3654,76 @@ function atualizarVisibilidadePessoasDentroGuarda() {
   }
 }
 
+function normalizarIdOperacional(valor) {
+  return String(valor || '').trim();
+}
+
+function obterCoberturaOperacionalAtual() {
+  const status = statusToqueFogoAtual || {};
+  const cobertura = status.cobertura || null;
+
+  if (!estadoToqueFogoCarregado || !cobertura || !guardaAtual) return null;
+
+  const idTitular = normalizarIdOperacional(cobertura.ID_GuardaServico_Titular);
+  const idGuardaAtual = normalizarIdOperacional(guardaAtual.ID_GuardaServico);
+
+  // Uma nova Guarda sempre tem prioridade sobre eventual cobertura antiga ainda
+  // presente numa resposta em trânsito.
+  if (!idTitular || !idGuardaAtual || idTitular !== idGuardaAtual) return null;
+
+  return cobertura;
+}
+
+function coberturaPertenceAoToqueAtual(cobertura) {
+  const toque = statusToqueFogoAtual && statusToqueFogoAtual.toque;
+  if (!cobertura || !toque) return false;
+
+  const idCobertura = normalizarIdOperacional(cobertura.ID_ToqueFogo);
+  const idToqueAtual = normalizarIdOperacional(toque.ID_ToqueFogo);
+  return !!(idCobertura && idToqueAtual && idCobertura === idToqueAtual);
+}
+
+function aparelhoAtuaComoGuardaTitular() {
+  return estadoToqueFogoCarregado && !obterCoberturaOperacionalAtual() && aparelhoAssumiuGuardaAtual();
+}
+
+function aparelhoAtuaComoToqueNaCobertura() {
+  const cobertura = obterCoberturaOperacionalAtual();
+  return !!(cobertura && coberturaPertenceAoToqueAtual(cobertura) && aparelhoAssumiuToqueAtual());
+}
+
+function podeGuardaRetomarNesteAparelho() {
+  const cobertura = obterCoberturaOperacionalAtual();
+  if (!cobertura || !aparelhoAssumiuGuardaAtual()) return false;
+
+  const idTitular = normalizarIdOperacional(cobertura.ID_GuardaServico_Titular);
+  const idGuardaAtual = normalizarIdOperacional(guardaAtual && guardaAtual.ID_GuardaServico);
+  return !!(idTitular && idGuardaAtual && idTitular === idGuardaAtual);
+}
+
+function podeToqueAssumirHoraNesteAparelho() {
+  const status = statusToqueFogoAtual || {};
+  const cobertura = obterCoberturaOperacionalAtual();
+  return !!(
+    estadoToqueFogoCarregado &&
+    guardaAtual &&
+    status.toque &&
+    aparelhoAssumiuToqueAtual() &&
+    (!cobertura || !coberturaPertenceAoToqueAtual(cobertura))
+  );
+}
+
 function carregarStatusToqueFogo(silencioso = false) {
+  const geracao = ++geracaoConsultaToque;
   google.script.run
     .withSuccessHandler((status) => {
-      statusToqueFogoAtual = status || null;
+      if (geracao !== geracaoConsultaToque) return;
+      statusToqueFogoAtual = status || {};
+      estadoToqueFogoCarregado = true;
       atualizarTelaToqueFogo();
     })
     .withFailureHandler((erro) => {
+      if (geracao !== geracaoConsultaToque) return;
       if (!silencioso) mostrarMensagem('Erro ao carregar Toque de Fogo: ' + erro.message, 'erro');
     })
     .getStatusToqueFogo();
@@ -3618,26 +3746,31 @@ function atualizarTelaToqueFogo() {
   const status = statusToqueFogoAtual || {};
   const periodo = status.periodo || {};
   const toque = status.toque || null;
-  const cobertura = status.cobertura || null;
+  const cobertura = obterCoberturaOperacionalAtual();
   const statusEl = document.getElementById('statusToqueFogo');
   const periodoEl = document.getElementById('periodoToqueFogo');
   const areaAssumir = document.getElementById('areaAssumirToqueFogo');
   const btnTrocar = document.getElementById('btnTrocarToqueFogo');
   const coberturaEl = document.getElementById('statusCoberturaToque');
-  const btnAssumirHora = document.getElementById('btnAssumirHoraToque');
-  const btnRetomar = document.getElementById('btnRetomarPosto');
 
   periodoEl.textContent = (periodo.nome || 'Período atual') + ' • ' + (periodo.faixa || '');
   statusEl.classList.remove('sem-guarda', 'com-guarda');
 
   if (toque) {
+    const esteAparelhoAssumiuToque = aparelhoAssumiuToqueAtual();
+    const idToqueLocal = localStorage.getItem('toque_fogo_id_local') || '';
+    if (!esteAparelhoAssumiuToque && obterSessaoTokenToqueLocal() &&
+        (toque.Sessao_Valida === false || idToqueLocal !== toque.ID_ToqueFogo)) {
+      limparToqueFogoLocal();
+    }
+
     statusEl.classList.add('com-guarda');
     statusEl.innerHTML = toque.Nome_Toque && toque.RG_Toque
       ? 'Toque de Fogo atual:<br>' + escaparHtml(toque.Nome_Toque) +
         ' — RG ' + escaparHtml(toque.RG_Toque)
       : 'O período atual do Toque de Fogo já está assumido.<br><small>Entre para consultar ou realizar a troca.</small>';
     areaAssumir.classList.toggle('oculto', !loginToqueFogoAberto);
-    btnTrocar.classList.toggle('oculto', aparelhoAssumiuToqueAtual());
+    btnTrocar.classList.toggle('oculto', esteAparelhoAssumiuToque);
     btnTrocar.textContent = 'Assumir / Trocar';
   } else {
     statusEl.classList.add('sem-guarda');
@@ -3661,17 +3794,7 @@ function atualizarTelaToqueFogo() {
     coberturaEl.innerHTML = '';
   }
 
-  const titularPodeRetomar = !!(
-    cobertura && guardaAtual && aparelhoAssumiuGuardaAtual() &&
-    cobertura.ID_GuardaServico_Titular === guardaAtual.ID_GuardaServico
-  );
-  btnRetomar.classList.toggle('oculto', !titularPodeRetomar);
-
-  const toquePodeAssumirHora = !!(
-    guardaAtual && toque && !cobertura && aparelhoAssumiuToqueAtual()
-  );
-  btnAssumirHora.classList.toggle('oculto', !toquePodeAssumirHora);
-  atualizarPermissaoLancamento();
+  atualizarAcoesCoberturaEPermissoes();
 }
 
 function mostrarAreaTrocaToqueFogo() {
@@ -3767,6 +3890,7 @@ function assumirToqueFogo(encerrarAnterior = false) {
         return;
       }
       if (resposta.toque) salvarToqueFogoLocal(resposta.toque);
+      geracaoConsultaToque += 1;
       statusToqueFogoAtual = resposta.statusToque || statusToqueFogoAtual;
       limparAreaToqueFogo();
       carregarStatusToqueFogo(true);
@@ -3814,21 +3938,70 @@ function aparelhoAssumiuToqueAtual() {
 }
 
 function aparelhoPodeOperarGuardaAtual() {
-  const cobertura = statusToqueFogoAtual && statusToqueFogoAtual.cobertura;
-  return aparelhoAssumiuGuardaAtual() || !!(cobertura && aparelhoAssumiuToqueAtual());
+  return aparelhoAtuaComoGuardaTitular() || aparelhoAtuaComoToqueNaCobertura();
+}
+
+function garantirPermissaoOperacionalAtual() {
+  if (guardaAtual && aparelhoPodeOperarGuardaAtual()) return true;
+
+  atualizarAcoesCoberturaEPermissoes();
+  carregarGuardaAtivo(true);
+  carregarStatusToqueFogo(true);
+  mostrarMensagem(
+    'Este celular não está autorizado a lançar agora. Atualizamos o estado da Guarda para sua segurança.',
+    'erro'
+  );
+  return false;
+}
+
+function manterAcoesCoberturaAcessiveis(retomarVisivel, assumirVisivel) {
+  const perfilGuarda = document.getElementById('perfilGuarda');
+  const perfilToque = document.getElementById('cardToqueFogo');
+  if (perfilGuarda) perfilGuarda.classList.toggle('tem-acao-cobertura', retomarVisivel);
+  if (perfilToque) perfilToque.classList.toggle('tem-acao-cobertura', assumirVisivel);
+
+  if (!retomarVisivel && !assumirVisivel) return;
+
+  const cardEquipe = document.getElementById('cardEquipeServico');
+  const botaoEquipe = document.getElementById('btnAlternarEquipeServico');
+  if (cardEquipe) cardEquipe.classList.remove('equipe-recolhida');
+  if (botaoEquipe) botaoEquipe.setAttribute('aria-expanded', 'true');
+}
+
+function atualizarAcoesCoberturaEPermissoes() {
+  const btnRetomar = document.getElementById('btnRetomarPosto');
+  const btnAssumirHora = document.getElementById('btnAssumirHoraToque');
+  const retomarVisivel = podeGuardaRetomarNesteAparelho();
+  const assumirVisivel = podeToqueAssumirHoraNesteAparelho();
+
+  if (btnRetomar) btnRetomar.classList.toggle('oculto', !retomarVisivel);
+  if (btnAssumirHora) btnAssumirHora.classList.toggle('oculto', !assumirVisivel);
+
+  manterAcoesCoberturaAcessiveis(retomarVisivel, assumirVisivel);
+  atualizarPermissaoLancamento();
 }
 
 function confirmarRetomadaPosto() {
+  const cobertura = obterCoberturaOperacionalAtual();
+  const idCobertura = normalizarIdOperacional(cobertura && cobertura.ID_Cobertura);
+
+  if (!podeGuardaRetomarNesteAparelho() || !idCobertura) {
+    carregarGuardaAtivo(true);
+    carregarStatusToqueFogo(true);
+    mostrarMensagem('A cobertura foi atualizada. Verifique novamente antes de retomar o posto.', 'erro');
+    return;
+  }
+
   abrirModalConfirmacao(
-    'Retomar posto',
+    'Retomar Posto',
     'Confirma que o militar da hora retornou e está retomando o posto da Guarda?',
-    () => retomarPostoAposSOS()
+    () => retomarPostoAposSOS(idCobertura)
   );
 }
 
 function confirmarAssuncaoHoraToque() {
   abrirModalConfirmacao(
-    'Assumir hora',
+    'Assumir Hora',
     'Confirma que o Toque de Fogo está assumindo imediatamente o posto do militar da hora?',
     () => assumirHoraToqueFogo()
   );
@@ -3836,34 +4009,70 @@ function confirmarAssuncaoHoraToque() {
 
 function assumirHoraToqueFogo() {
   const botao = document.getElementById('btnAssumirHoraToque');
+
+  if (!podeToqueAssumirHoraNesteAparelho()) {
+    carregarGuardaAtivo(true);
+    carregarStatusToqueFogo(true);
+    mostrarMensagem('A Guarda foi atualizada e este Toque de Fogo não pode assumir a hora agora.', 'erro');
+    return;
+  }
+
   botao.disabled = true;
   botao.textContent = 'Assumindo...';
 
   google.script.run
     .withSuccessHandler((resposta) => {
       botao.disabled = false;
-      botao.textContent = 'Assumir hora';
-      statusToqueFogoAtual = resposta.statusToque || null;
+      botao.textContent = 'Assumir Hora';
+      geracaoConsultaToque += 1;
+      statusToqueFogoAtual = resposta.statusToque || statusToqueFogoAtual || {};
+      estadoToqueFogoCarregado = true;
       atualizarTelaToqueFogo();
-      mostrarMensagem(resposta.mensagem, 'sucesso');
+      carregarGuardaAtivo(true);
+      mostrarMensagem(resposta.mensagem || 'Hora assumida pelo Toque de Fogo.', 'sucesso');
     })
     .withFailureHandler((erro) => {
       botao.disabled = false;
-      botao.textContent = 'Assumir hora';
+      botao.textContent = 'Assumir Hora';
       mostrarMensagem('Erro ao assumir a hora: ' + erro.message, 'erro');
     })
     .assumirHoraToqueFogo();
 }
 
-function retomarPostoAposSOS() {
+function retomarPostoAposSOS(idCobertura) {
+  const botao = document.getElementById('btnRetomarPosto');
+  const coberturaAtual = obterCoberturaOperacionalAtual();
+  const idCoberturaAtual = normalizarIdOperacional(coberturaAtual && coberturaAtual.ID_Cobertura);
+
+  if (!podeGuardaRetomarNesteAparelho() || !idCoberturaAtual || idCoberturaAtual !== idCobertura) {
+    carregarGuardaAtivo(true);
+    carregarStatusToqueFogo(true);
+    mostrarMensagem('A cobertura mudou antes da confirmação. Verifique novamente para retomar o posto.', 'erro');
+    return;
+  }
+
+  botao.disabled = true;
+  botao.textContent = 'Retomando...';
+
   google.script.run
     .withSuccessHandler((resposta) => {
-      statusToqueFogoAtual = resposta.statusToque || null;
+      botao.disabled = false;
+      botao.textContent = 'Retomar Posto';
+      geracaoConsultaToque += 1;
+      statusToqueFogoAtual = resposta.statusToque || statusToqueFogoAtual || {};
+      estadoToqueFogoCarregado = true;
       atualizarTelaToqueFogo();
-      mostrarMensagem(resposta.mensagem, 'sucesso');
+      carregarGuardaAtivo(true);
+      mostrarMensagem(resposta.mensagem || 'Posto retomado pelo guarda.', 'sucesso');
     })
-    .withFailureHandler((erro) => mostrarMensagem('Erro ao retomar o posto: ' + erro.message, 'erro'))
-    .retomarPostoAposSOS();
+    .withFailureHandler((erro) => {
+      botao.disabled = false;
+      botao.textContent = 'Retomar Posto';
+      carregarGuardaAtivo(true);
+      carregarStatusToqueFogo(true);
+      mostrarMensagem('Erro ao retomar o posto: ' + erro.message, 'erro');
+    })
+    .retomarPostoAposSOS(idCoberturaAtual);
 }
 
 function atualizarPermissaoLancamento() {
@@ -3875,6 +4084,7 @@ function atualizarPermissaoLancamento() {
   }
 
   const podeLancar = guardaAtual && aparelhoPodeOperarGuardaAtual();
+  const cobertura = obterCoberturaOperacionalAtual();
 
   atualizarVisibilidadePessoasDentroGuarda();
   atualizarVisibilidadeMovimentacoesGuarda();
@@ -3887,6 +4097,17 @@ function atualizarPermissaoLancamento() {
     cardMovimentacao.classList.add('oculto');
 
     if (guardaAtual) {
+      if (!estadoToqueFogoCarregado) {
+        aviso.textContent = 'Atualizando quem está efetivamente no posto...';
+      } else if (cobertura && aparelhoAssumiuGuardaAtual()) {
+        aviso.textContent = 'O Toque de Fogo assumiu a hora. Os lançamentos deste celular ficam bloqueados até o guarda usar Retomar Posto.';
+      } else if (cobertura) {
+        aviso.textContent = 'A Guarda está em cobertura. Somente o celular do Toque de Fogo que assumiu a hora pode lançar.';
+      } else if (aparelhoAssumiuToqueAtual()) {
+        aviso.textContent = 'O guarda titular está no posto. Para substituí-lo, use Assumir Hora no cartão do Toque de Fogo.';
+      } else {
+        aviso.textContent = 'Este celular não está autorizado para lançar registros. Assuma a Guarda neste aparelho.';
+      }
       aviso.classList.remove('oculto');
     } else {
       aviso.classList.add('oculto');

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=25.0.0">
+  <link rel="stylesheet" href="style.css?v=26.0.0">
   </head>
 
   <body>
@@ -41,6 +41,10 @@
           <div id="statusGuarda" class="status-guarda">
             Carregando guarda atual...
           </div>
+
+          <button type="button" id="btnRetomarPosto" class="botao-retomar-posto acao-cobertura-operacional oculto" onclick="confirmarRetomadaPosto()">
+            Retomar Posto
+          </button>
 
           <div id="areaCodigoEncerrarGuarda" class="oculto">
             <div class="campo">
@@ -108,11 +112,8 @@
           <div id="statusToqueFogo" class="status-guarda">Carregando Toque de Fogo atual...</div>
 
           <div id="statusCoberturaToque" class="status-cobertura-toque oculto"></div>
-          <button type="button" id="btnAssumirHoraToque" class="botao-assumir-hora oculto" onclick="confirmarAssuncaoHoraToque()">
-            Assumir hora
-          </button>
-          <button type="button" id="btnRetomarPosto" class="botao-retomar-posto oculto" onclick="confirmarRetomadaPosto()">
-            Retomar posto
+          <button type="button" id="btnAssumirHoraToque" class="botao-assumir-hora acao-cobertura-operacional oculto" onclick="confirmarAssuncaoHoraToque()">
+            Assumir Hora
           </button>
 
           <div id="areaAssumirToqueFogo">
@@ -528,7 +529,7 @@
           </div>
         </section>
 
-        <section class="card" id="cardMovimentacao">
+        <section class="card oculto" id="cardMovimentacao">
           <h2>Registrar Movimentação</h2>
 
           <div class="campo">
@@ -718,6 +719,6 @@
       </div>
     </div>
 
-  <script src="app.js?v=25.0.0"></script>
+  <script src="app.js?v=26.0.0"></script>
   </body>
 </html>
