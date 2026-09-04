@@ -5,6 +5,32 @@ window.PARAM_EMAIL_GUARDA = parametrosUrl.get('email') || '';
 window.PARAM_CODIGO_GUARDA = parametrosUrl.get('codigo') || '';
 window.PARAM_PERFIL = parametrosUrl.get('perfil') || '';
 
+const DURACAO_SESSAO_LOCAL = {
+  guarda: 36 * 60 * 60 * 1000,
+  comandante: 36 * 60 * 60 * 1000,
+  oficial: 36 * 60 * 60 * 1000,
+  toque: 16 * 60 * 60 * 1000,
+  consultaEfetivo: 12 * 60 * 60 * 1000
+};
+
+function obterTokenSessaoLocal(chaveToken, chaveInicio, duracao) {
+  const token = localStorage.getItem(chaveToken) || '';
+  if (!token) return '';
+
+  let iniciadaEm = Number(localStorage.getItem(chaveInicio) || 0);
+  if (!Number.isFinite(iniciadaEm) || iniciadaEm <= 0) {
+    // Migra com segurança as sessões criadas antes deste controle local.
+    iniciadaEm = Date.now();
+    localStorage.setItem(chaveInicio, String(iniciadaEm));
+  }
+
+  return Date.now() - iniciadaEm < duracao ? token : '';
+}
+
+function marcarInicioSessaoLocal(chaveInicio) {
+  localStorage.setItem(chaveInicio, String(Date.now()));
+}
+
 async function chamarApi(acao, dados = {}) {
   let resposta;
 
@@ -37,23 +63,43 @@ async function chamarApi(acao, dados = {}) {
 }
 
 function obterSessaoTokenLocal() {
-  return localStorage.getItem('guarda_sessao_token') || '';
+  return obterTokenSessaoLocal(
+    'guarda_sessao_token',
+    'guarda_sessao_iniciada_em',
+    DURACAO_SESSAO_LOCAL.guarda
+  );
 }
 
 function obterSessaoTokenComandanteLocal() {
-  return localStorage.getItem('comandante_sessao_token') || '';
+  return obterTokenSessaoLocal(
+    'comandante_sessao_token',
+    'comandante_sessao_iniciada_em',
+    DURACAO_SESSAO_LOCAL.comandante
+  );
 }
 
 function obterSessaoTokenToqueLocal() {
-  return localStorage.getItem('toque_fogo_sessao_token') || '';
+  return obterTokenSessaoLocal(
+    'toque_fogo_sessao_token',
+    'toque_fogo_sessao_iniciada_em',
+    DURACAO_SESSAO_LOCAL.toque
+  );
 }
 
 function obterSessaoTokenOficialLocal() {
-  return localStorage.getItem('oficial_dia_sessao_token') || '';
+  return obterTokenSessaoLocal(
+    'oficial_dia_sessao_token',
+    'oficial_dia_sessao_iniciada_em',
+    DURACAO_SESSAO_LOCAL.oficial
+  );
 }
 
 function obterSessaoTokenConsultaEfetivoLocal() {
-  return localStorage.getItem('consulta_efetivo_sessao_token') || '';
+  return obterTokenSessaoLocal(
+    'consulta_efetivo_sessao_token',
+    'consulta_efetivo_sessao_iniciada_em',
+    DURACAO_SESSAO_LOCAL.consultaEfetivo
+  );
 }
 
 function montarDadosChamadaApi(nome, argumentos) {
@@ -61,6 +107,7 @@ function montarDadosChamadaApi(nome, argumentos) {
   const sessaoComandanteToken = obterSessaoTokenComandanteLocal();
   const sessaoToqueToken = obterSessaoTokenToqueLocal();
   const sessaoOficialToken = obterSessaoTokenOficialLocal();
+  const sessaoConsultaEfetivoToken = obterSessaoTokenConsultaEfetivoLocal();
 
   switch (nome) {
     case 'getListasFormulario':
@@ -68,15 +115,28 @@ function montarDadosChamadaApi(nome, argumentos) {
     case 'getGuardaAtivo':
       return {
         sessaoToken: sessaoToken,
+        sessaoGuardaToken: sessaoToken,
+        sessaoToqueToken: sessaoToqueToken,
         sessaoComandanteToken: sessaoComandanteToken,
-        sessaoOficialToken: sessaoOficialToken
+        sessaoOficialToken: sessaoOficialToken,
+        sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
       };
     case 'getComandanteAtivo':
-      return { sessaoToken: sessaoComandanteToken };
+      return {
+        sessaoToken: sessaoComandanteToken,
+        sessaoGuardaToken: sessaoToken,
+        sessaoToqueToken: sessaoToqueToken,
+        sessaoComandanteToken: sessaoComandanteToken,
+        sessaoOficialToken: sessaoOficialToken,
+        sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
+      };
     case 'getOficialDiaAtivo':
       return {
+        sessaoGuardaToken: sessaoToken,
+        sessaoToqueToken: sessaoToqueToken,
         sessaoComandanteToken: sessaoComandanteToken,
-        sessaoOficialToken: sessaoOficialToken
+        sessaoOficialToken: sessaoOficialToken,
+        sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
       };
     case 'getDadosOficialDiaParaComandante':
       return { sessaoToken: sessaoComandanteToken };
@@ -86,8 +146,10 @@ function montarDadosChamadaApi(nome, argumentos) {
       return {
         sessaoToken: sessaoToqueToken,
         sessaoGuardaToken: sessaoToken,
+        sessaoToqueToken: sessaoToqueToken,
         sessaoComandanteToken: sessaoComandanteToken,
-        sessaoOficialToken: sessaoOficialToken
+        sessaoOficialToken: sessaoOficialToken,
+        sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
       };
     case 'getPainelComandante':
       return { sessaoToken: sessaoComandanteToken, sessaoOficialToken: sessaoOficialToken };
@@ -376,20 +438,119 @@ let tipoMovimentacaoAtual = 'Entrada';
   let estadoToqueFogoCarregado = false;
   let geracaoConsultaGuarda = 0;
   let geracaoConsultaToque = 0;
+  let geracaoConsultaComandante = 0;
+  let geracaoConsultaOficial = 0;
+  let geracaoSessaoEquipe = 0;
   let dadosCodigoToqueFogo = null;
   let loginToqueFogoAberto = false;
   let consultaEfetivoAtual = null;
 
+  function aparelhoTemSessaoEquipeLocal() {
+    return !!(
+      obterSessaoTokenLocal() ||
+      obterSessaoTokenToqueLocal() ||
+      obterSessaoTokenComandanteLocal() ||
+      obterSessaoTokenOficialLocal() ||
+      obterSessaoTokenConsultaEfetivoLocal()
+    );
+  }
+
+  function aplicarVisibilidadePublicaEquipeLocal() {
+    if (aparelhoTemSessaoEquipeLocal()) return;
+
+    geracaoSessaoEquipe += 1;
+    geracaoConsultaGuarda += 1;
+    geracaoConsultaToque += 1;
+    geracaoConsultaComandante += 1;
+    geracaoConsultaOficial += 1;
+
+    const toqueAtual = statusToqueFogoAtual && statusToqueFogoAtual.toque;
+    const coberturaAtual = statusToqueFogoAtual && statusToqueFogoAtual.cobertura;
+    const possuiIdentidadeRestrita = !!(
+      (guardaAtual && guardaAtual.RG_Guarda) ||
+      (comandanteAtual && (comandanteAtual.Nome_Comandante || comandanteAtual.RG_Comandante)) ||
+      (oficialAtual && (oficialAtual.Nome_Oficial || oficialAtual.RG_Oficial)) ||
+      (toqueAtual && (toqueAtual.Nome_Toque || toqueAtual.RG_Toque)) ||
+      (coberturaAtual && (coberturaAtual.Nome_Toque || coberturaAtual.Nome_Guarda_Titular))
+    );
+
+    if (!possuiIdentidadeRestrita) return;
+
+    // Invalida respostas autenticadas que ainda estejam em trânsito e remove
+    // imediatamente as identidades privadas quando a última sessão sair.
+    if (guardaAtual) {
+      guardaAtual = {
+        ID_GuardaServico: guardaAtual.ID_GuardaServico || '',
+        Nome_Guarda: guardaAtual.Nome_Guarda || '',
+        DataHora_Inicio: guardaAtual.DataHora_Inicio || '',
+        Identidade_Visivel: false,
+        Sessao_Valida: false
+      };
+    }
+
+    if (comandanteAtual) {
+      comandanteAtual = {
+        ID_ComandanteGuarda: comandanteAtual.ID_ComandanteGuarda || '',
+        DataHora_Assuncao_Real: comandanteAtual.DataHora_Assuncao_Real || '',
+        DataHora_Inicio_Ciclo: comandanteAtual.DataHora_Inicio_Ciclo || '',
+        DataHora_Fim_Ciclo: comandanteAtual.DataHora_Fim_Ciclo || '',
+        Identidade_Visivel: false,
+        Sessao_Valida: false
+      };
+    }
+
+    if (oficialAtual) {
+      oficialAtual = {
+        ID_OficialDia: oficialAtual.ID_OficialDia || '',
+        DataHora_Assuncao: oficialAtual.DataHora_Assuncao || '',
+        Identidade_Visivel: false,
+        Sessao_Valida: false
+      };
+    }
+
+    if (statusToqueFogoAtual) {
+      statusToqueFogoAtual = {
+        periodo: statusToqueFogoAtual.periodo || null,
+        toque: toqueAtual ? {
+          ID_ToqueFogo: toqueAtual.ID_ToqueFogo || '',
+          Identidade_Visivel: false,
+          Sessao_Valida: false
+        } : null,
+        cobertura: coberturaAtual ? {
+          ID_Cobertura: coberturaAtual.ID_Cobertura || '',
+          ID_ToqueFogo: coberturaAtual.ID_ToqueFogo || '',
+          ID_GuardaServico_Titular: coberturaAtual.ID_GuardaServico_Titular || '',
+          DataHora_Inicio: coberturaAtual.DataHora_Inicio || '',
+          Identidade_Visivel: false
+        } : null,
+        sessaoValida: false
+      };
+    }
+
+    atualizarTelaGuarda();
+    atualizarTelaComandante();
+    atualizarTelaOficial();
+    atualizarTelaToqueFogo();
+  }
+
+  function respostaPertenceASessaoEquipe(geracao) {
+    return geracao === geracaoSessaoEquipe && aparelhoTemSessaoEquipeLocal();
+  }
+
+  function carregarIdentidadesEquipeServico(silencioso = false) {
+    aplicarVisibilidadePublicaEquipeLocal();
+    carregarGuardaAtivo(silencioso);
+    carregarComandanteAtivo(silencioso);
+    carregarOficialDiaAtivo(silencioso);
+    carregarStatusToqueFogo(silencioso);
+  }
 
   document.addEventListener('DOMContentLoaded', () => {
     inicializarEquipeServico();
     carregarListas();
     selecionarModoRegistro('Individual');
     alternarTipoRegistro();
-    carregarGuardaAtivo();
-    carregarComandanteAtivo();
-    carregarOficialDiaAtivo();
-    carregarStatusToqueFogo();
+    carregarIdentidadesEquipeServico();
     restaurarCodigoGuardaPendente();
     restaurarCodigoComandantePendente();
     restaurarCodigoOficialPendente();
@@ -435,14 +596,12 @@ let tipoMovimentacaoAtual = 'Entrada';
     });
 
     setInterval(() => {
-      carregarGuardaAtivo(true);
+      carregarIdentidadesEquipeServico(true);
 
       if (aparelhoPodeOperarGuardaAtual()) {
         carregarPessoasDentroGuarda(true);
         carregarMovimentacoesGuarda(true);
       }
-
-      carregarStatusToqueFogo(true);
 
     if (aparelhoAssumiuComandanteAtual() || aparelhoAssumiuOficialAtual()) {
       carregarPainelComandante(true);
@@ -453,8 +612,7 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        carregarGuardaAtivo(true);
-        carregarStatusToqueFogo(true);
+        carregarIdentidadesEquipeServico(true);
       }
     });
 
@@ -834,6 +992,7 @@ let tipoMovimentacaoAtual = 'Entrada';
 
   function registrarSOS() {
     if (!garantirPermissaoOperacionalAtual()) return;
+    const geracaoSessao = geracaoSessaoEquipe;
 
     const viaturas = Object.values(selecoesViaturasSOS);
 
@@ -853,6 +1012,11 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     google.script.run
       .withSuccessHandler((resposta) => {
+        if (!respostaPertenceASessaoEquipe(geracaoSessao)) {
+          botao.disabled = false;
+          carregarIdentidadesEquipeServico(true);
+          return;
+        }
         mostrarMensagem(resposta.mensagem || 'SOS registrado com sucesso.', 'sucesso');
         viaturasSOS = resposta.dadosSOS ? resposta.dadosSOS.viaturas || [] : viaturasSOS;
         militaresSOS = resposta.dadosSOS ? resposta.dadosSOS.militares || [] : militaresSOS;
@@ -1833,7 +1997,7 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     if (guardaAtual) {
       const esteAparelhoAssumiu = aparelhoAssumiuGuardaAtual();
-      const identidadeDisponivel = !!(guardaAtual.Nome_Guarda && guardaAtual.RG_Guarda);
+      const identidadeDisponivel = !!guardaAtual.Nome_Guarda;
       const idGuardaLocal = localStorage.getItem('guarda_id_local') || '';
 
       if (!esteAparelhoAssumiu && obterSessaoTokenLocal() &&
@@ -1844,7 +2008,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       status.classList.add('com-guarda');
       status.innerHTML = identidadeDisponivel
         ? 'Guarda atual:<br>' + escaparHtml(guardaAtual.Nome_Guarda) +
-          ' — RG ' + escaparHtml(guardaAtual.RG_Guarda)
+          (guardaAtual.RG_Guarda ? ' — RG ' + escaparHtml(guardaAtual.RG_Guarda) : '')
         : 'A Guarda já está assumida neste serviço.<br><small>Entre com seu e-mail para consultar ou trocar o responsável.</small>';
 
       areaAssumir.classList.add('oculto');
@@ -2020,7 +2184,7 @@ let tipoMovimentacaoAtual = 'Entrada';
           salvarGuardaLocal(resposta.guarda);
 
           atualizarTelaGuarda();
-          carregarStatusToqueFogo(true);
+          carregarIdentidadesEquipeServico(true);
         }
 
         limparAreaGuarda();
@@ -2059,6 +2223,7 @@ let tipoMovimentacaoAtual = 'Entrada';
 
         limparAreaGuarda();
         atualizarTelaGuarda();
+        carregarIdentidadesEquipeServico(true);
 
         botao.disabled = false;
         botao.textContent = 'Sair';
@@ -2218,13 +2383,18 @@ function aplicarCodigoDoLink() {
   }, 500);
 }
 
-function carregarOficialDiaAtivo() {
+function carregarOficialDiaAtivo(silencioso = false) {
+  const geracao = ++geracaoConsultaOficial;
   google.script.run
     .withSuccessHandler((oficial) => {
+      if (geracao !== geracaoConsultaOficial) return;
       oficialAtual = oficial;
       atualizarTelaOficial();
     })
-    .withFailureHandler((erro) => mostrarMensagem('Erro ao carregar Oficial de Dia: ' + erro.message, 'erro'))
+    .withFailureHandler((erro) => {
+      if (geracao !== geracaoConsultaOficial) return;
+      if (!silencioso) mostrarMensagem('Erro ao carregar Oficial de Dia: ' + erro.message, 'erro');
+    })
     .getOficialDiaAtivo();
 }
 
@@ -2296,8 +2466,10 @@ function fecharDesignacaoOficialDia() {
 }
 
 function carregarOpcoesOficialDia() {
+  const geracaoSessao = geracaoSessaoEquipe;
   google.script.run
     .withSuccessHandler((dados) => {
+      if (!respostaPertenceASessaoEquipe(geracaoSessao)) return;
       oficialAtual = dados && dados.oficialAtual ? dados.oficialAtual : oficialAtual;
       const select = document.getElementById('selectOficialDia');
       select.innerHTML = '<option value="">Selecione o oficial</option>';
@@ -2318,11 +2490,19 @@ function carregarOpcoesOficialDia() {
 function salvarDesignacaoOficialDia() {
   const rg = document.getElementById('selectOficialDia').value;
   if (!rg) return mostrarMensagem('Selecione o Oficial de Dia.', 'erro');
+  const geracaoSessao = geracaoSessaoEquipe;
   const botao = document.getElementById('btnSalvarOficialDia');
   botao.disabled = true;
   botao.textContent = 'Salvando...';
   google.script.run
     .withSuccessHandler((resposta) => {
+      if (!respostaPertenceASessaoEquipe(geracaoSessao)) {
+        botao.disabled = false;
+        botao.textContent = 'Salvar Oficial de Dia';
+        fecharDesignacaoOficialDia();
+        carregarIdentidadesEquipeServico(true);
+        return;
+      }
       oficialAtual = resposta.oficial;
       fecharDesignacaoOficialDia();
       atualizarTelaOficial();
@@ -2378,11 +2558,12 @@ function validarCodigoOficial() {
   google.script.run
     .withSuccessHandler((resposta) => {
       localStorage.setItem('oficial_dia_sessao_token', resposta.sessaoToken || '');
+      marcarInicioSessaoLocal('oficial_dia_sessao_iniciada_em');
       salvarOficialLocal(resposta.militar);
       limparCodigoOficialPendente();
       atualizarTelaAcessoOficial();
       atualizarVisibilidadePainelComandante();
-      carregarGuardaAtivo(true);
+      carregarIdentidadesEquipeServico(true);
       carregarPainelComandante();
       mostrarMensagem('Acesso ao Painel de Gestão liberado.', 'sucesso');
       botao.disabled = false;
@@ -2413,6 +2594,7 @@ function assumirOficial(encerrarAnterior = false) {
       salvarOficialLocal(resposta.oficial);
       limparAreaOficial();
       atualizarTelaOficial();
+      carregarIdentidadesEquipeServico(true);
       mostrarMensagem(resposta.mensagem || 'Oficial de Dia assumido com sucesso.', 'sucesso');
     })
     .withFailureHandler((erro) => mostrarMensagem('Erro ao assumir como Oficial de Dia: ' + erro.message, 'erro'))
@@ -2447,6 +2629,7 @@ function validarCodigoEEncerrarOficial() {
       limparOficialLocal();
       limparAreaOficial();
       atualizarTelaOficial();
+      carregarIdentidadesEquipeServico(true);
       mostrarMensagem(resposta.mensagem, 'sucesso');
     })
     .withFailureHandler((erro) => mostrarMensagem('Erro ao encerrar Oficial de Dia: ' + erro.message, 'erro'))
@@ -2565,13 +2748,14 @@ function salvarOficialLocal(oficial) {
 
 function limparOficialLocal() {
   localStorage.removeItem('oficial_dia_sessao_token');
+  localStorage.removeItem('oficial_dia_sessao_iniciada_em');
   localStorage.removeItem('oficial_acesso_militar');
   ['oficial_dia_id_local', 'oficial_dia_nome_local', 'oficial_dia_rg_local'].forEach(chave => localStorage.removeItem(chave));
   oficialAcessoAtual = null;
 }
 
 function aparelhoAssumiuOficialAtual() {
-  return !!localStorage.getItem('oficial_dia_sessao_token') && !!oficialAcessoAtual;
+  return !!obterSessaoTokenOficialLocal() && !!oficialAcessoAtual;
 }
 
 function restaurarAcessoOficial() {
@@ -2630,17 +2814,21 @@ function sairAcessoOficial() {
   limparOficialLocal();
   atualizarTelaAcessoOficial();
   atualizarVisibilidadePainelComandante();
+  carregarIdentidadesEquipeServico(true);
   mostrarMensagem('Acesso de oficial encerrado neste aparelho.', 'sucesso');
 }
 
-function carregarComandanteAtivo() {
+function carregarComandanteAtivo(silencioso = false) {
+  const geracao = ++geracaoConsultaComandante;
   google.script.run
     .withSuccessHandler((comandante) => {
+      if (geracao !== geracaoConsultaComandante) return;
       comandanteAtual = comandante;
       atualizarTelaComandante();
     })
     .withFailureHandler((erro) => {
-      mostrarMensagem('Erro ao carregar comandante: ' + erro.message, 'erro');
+      if (geracao !== geracaoConsultaComandante) return;
+      if (!silencioso) mostrarMensagem('Erro ao carregar comandante: ' + erro.message, 'erro');
     })
     .getComandanteAtivo();
 }
@@ -3325,7 +3513,7 @@ function assumirComandante(encerrarAnterior = false) {
         comandanteAtual = resposta.comandante;
         salvarComandanteLocal(resposta.comandante);
         atualizarTelaComandante();
-        carregarGuardaAtivo(true);
+        carregarIdentidadesEquipeServico(true);
       }
 
       limparAreaComandante();
@@ -3397,6 +3585,7 @@ function validarCodigoEEncerrarComandante() {
       limparComandanteLocal();
       limparAreaComandante();
       atualizarTelaComandante();
+      carregarIdentidadesEquipeServico(true);
     })
     .withFailureHandler((erro) => {
       mostrarMensagem('Erro ao encerrar comandante: ' + erro.message, 'erro');
@@ -3492,6 +3681,7 @@ function salvarComandanteLocal(comandante) {
 
   if (comandante.Sessao_Token) {
     localStorage.setItem('comandante_sessao_token', comandante.Sessao_Token);
+    marcarInicioSessaoLocal('comandante_sessao_iniciada_em');
   }
 }
 
@@ -3501,13 +3691,14 @@ function limparComandanteLocal() {
   localStorage.removeItem('comandante_rg_local');
   localStorage.removeItem('comandante_email_local');
   localStorage.removeItem('comandante_sessao_token');
+  localStorage.removeItem('comandante_sessao_iniciada_em');
 }
 
 function aparelhoAssumiuComandanteAtual() {
   if (!comandanteAtual || !comandanteAtual.ID_ComandanteGuarda) return false;
 
   const idLocal = localStorage.getItem('comandante_id_local');
-  const tokenLocal = localStorage.getItem('comandante_sessao_token');
+  const tokenLocal = obterSessaoTokenComandanteLocal();
 
   return !!(
     idLocal &&
@@ -3519,7 +3710,8 @@ function aparelhoAssumiuComandanteAtual() {
 
 function aparelhoReconheceComandanteAtual() {
   if (!comandanteAtual || !comandanteAtual.ID_ComandanteGuarda) return false;
-  return localStorage.getItem('comandante_id_local') === comandanteAtual.ID_ComandanteGuarda;
+  return !!obterSessaoTokenComandanteLocal() &&
+    localStorage.getItem('comandante_id_local') === comandanteAtual.ID_ComandanteGuarda;
 }
 
 
@@ -3596,7 +3788,7 @@ function validarCodigoEEncerrarGuarda() {
 
       limparAreaGuarda();
       atualizarTelaGuarda();
-      carregarStatusToqueFogo(true);
+      carregarIdentidadesEquipeServico(true);
     })
     .withFailureHandler((erro) => {
       mostrarMensagem('Erro ao encerrar Guarda: ' + erro.message, 'erro');
@@ -3613,10 +3805,9 @@ function salvarGuardaLocal(guarda) {
   localStorage.removeItem('guarda_nome_local');
   localStorage.removeItem('guarda_rg_local');
   localStorage.removeItem('guarda_email_local');
-  localStorage.setItem(
-    'guarda_sessao_token',
-    guarda.Sessao_Token || (typeof URL_API === 'undefined' ? 'apps-script-local' : '')
-  );
+  const token = guarda.Sessao_Token || (typeof URL_API === 'undefined' ? 'apps-script-local' : '');
+  localStorage.setItem('guarda_sessao_token', token);
+  if (token) marcarInicioSessaoLocal('guarda_sessao_iniciada_em');
 }
 
 function carregarMovimentacoesGuarda(silencioso = false) {
@@ -3664,7 +3855,7 @@ function carregarMovimentacoesGuarda(silencioso = false) {
 }
 
 function obterSessaoConsultaEfetivo() {
-  return localStorage.getItem('consulta_efetivo_sessao_token') || '';
+  return obterSessaoTokenConsultaEfetivoLocal();
 }
 
 function enviarCodigoConsultaEfetivo() {
@@ -3706,9 +3897,11 @@ function validarCodigoConsultaEfetivo() {
     .withSuccessHandler((resposta) => {
       consultaEfetivoAtual = resposta && resposta.militar ? resposta.militar : null;
       localStorage.setItem('consulta_efetivo_sessao_token', resposta.sessaoToken || '');
+      marcarInicioSessaoLocal('consulta_efetivo_sessao_iniciada_em');
       localStorage.setItem('consulta_efetivo_militar', JSON.stringify(consultaEfetivoAtual || {}));
       atualizarTelaConsultaEfetivo();
       carregarMovimentacoesConsultaEfetivo();
+      carregarIdentidadesEquipeServico(true);
       mostrarMensagem('E-mail validado. Consulta das últimas 48 horas liberada.', 'sucesso');
       botao.disabled = false;
       botao.textContent = 'Validar';
@@ -3789,10 +3982,12 @@ function carregarMovimentacoesConsultaEfetivo(silencioso = false) {
 function sairConsultaEfetivo(exibirMensagem = true) {
   consultaEfetivoAtual = null;
   localStorage.removeItem('consulta_efetivo_sessao_token');
+  localStorage.removeItem('consulta_efetivo_sessao_iniciada_em');
   localStorage.removeItem('consulta_efetivo_militar');
   const codigo = document.getElementById('codigoConsultaEfetivo');
   if (codigo) codigo.value = '';
   atualizarTelaConsultaEfetivo();
+  carregarIdentidadesEquipeServico(true);
   if (exibirMensagem) mostrarMensagem('Consulta encerrada neste aparelho.', 'sucesso');
 }
 
@@ -3826,6 +4021,7 @@ function limparGuardaLocal() {
   localStorage.removeItem('guarda_rg_local');
   localStorage.removeItem('guarda_email_local');
   localStorage.removeItem('guarda_sessao_token');
+  localStorage.removeItem('guarda_sessao_iniciada_em');
 }
 
 function aparelhoAssumiuGuardaAtual() {
@@ -3834,7 +4030,7 @@ function aparelhoAssumiuGuardaAtual() {
   }
 
   const idLocal = localStorage.getItem('guarda_id_local');
-  const tokenLocal = localStorage.getItem('guarda_sessao_token');
+  const tokenLocal = obterSessaoTokenLocal();
   const sessaoAceita = guardaAtual.Sessao_Valida === undefined || guardaAtual.Sessao_Valida === true;
 
   return !!(idLocal && tokenLocal && idLocal === guardaAtual.ID_GuardaServico && sessaoAceita);
@@ -4097,7 +4293,7 @@ function assumirToqueFogo(encerrarAnterior = false) {
       geracaoConsultaToque += 1;
       statusToqueFogoAtual = resposta.statusToque || statusToqueFogoAtual;
       limparAreaToqueFogo();
-      carregarStatusToqueFogo(true);
+      carregarIdentidadesEquipeServico(true);
       mostrarMensagem(resposta.mensagem || 'Toque de Fogo assumido.', 'sucesso');
     })
     .withFailureHandler((erro) => {
@@ -4125,18 +4321,20 @@ function salvarToqueFogoLocal(toque) {
   if (!toque || !toque.ID_ToqueFogo) return;
   localStorage.setItem('toque_fogo_id_local', toque.ID_ToqueFogo);
   localStorage.setItem('toque_fogo_sessao_token', toque.Sessao_Token || 'apps-script-local');
+  marcarInicioSessaoLocal('toque_fogo_sessao_iniciada_em');
 }
 
 function limparToqueFogoLocal() {
   localStorage.removeItem('toque_fogo_id_local');
   localStorage.removeItem('toque_fogo_sessao_token');
+  localStorage.removeItem('toque_fogo_sessao_iniciada_em');
 }
 
 function aparelhoAssumiuToqueAtual() {
   const toque = statusToqueFogoAtual && statusToqueFogoAtual.toque;
   if (!toque || !toque.ID_ToqueFogo) return false;
   const idLocal = localStorage.getItem('toque_fogo_id_local');
-  const token = localStorage.getItem('toque_fogo_sessao_token');
+  const token = obterSessaoTokenToqueLocal();
   const sessaoAceita = toque.Sessao_Valida === undefined || toque.Sessao_Valida === true;
   return !!(idLocal && token && idLocal === toque.ID_ToqueFogo && sessaoAceita);
 }
@@ -4213,6 +4411,7 @@ function confirmarAssuncaoHoraToque() {
 
 function assumirHoraToqueFogo() {
   const botao = document.getElementById('btnAssumirHoraToque');
+  const geracaoSessao = geracaoSessaoEquipe;
 
   if (!podeToqueAssumirHoraNesteAparelho()) {
     carregarGuardaAtivo(true);
@@ -4228,6 +4427,10 @@ function assumirHoraToqueFogo() {
     .withSuccessHandler((resposta) => {
       botao.disabled = false;
       botao.textContent = 'Assumir Hora';
+      if (!respostaPertenceASessaoEquipe(geracaoSessao)) {
+        carregarIdentidadesEquipeServico(true);
+        return;
+      }
       geracaoConsultaToque += 1;
       statusToqueFogoAtual = resposta.statusToque || statusToqueFogoAtual || {};
       estadoToqueFogoCarregado = true;
@@ -4245,6 +4448,7 @@ function assumirHoraToqueFogo() {
 
 function retomarPostoAposSOS(idCobertura) {
   const botao = document.getElementById('btnRetomarPosto');
+  const geracaoSessao = geracaoSessaoEquipe;
   const coberturaAtual = obterCoberturaOperacionalAtual();
   const idCoberturaAtual = normalizarIdOperacional(coberturaAtual && coberturaAtual.ID_Cobertura);
 
@@ -4262,6 +4466,10 @@ function retomarPostoAposSOS(idCobertura) {
     .withSuccessHandler((resposta) => {
       botao.disabled = false;
       botao.textContent = 'Retomar Posto';
+      if (!respostaPertenceASessaoEquipe(geracaoSessao)) {
+        carregarIdentidadesEquipeServico(true);
+        return;
+      }
       geracaoConsultaToque += 1;
       statusToqueFogoAtual = resposta.statusToque || statusToqueFogoAtual || {};
       estadoToqueFogoCarregado = true;
