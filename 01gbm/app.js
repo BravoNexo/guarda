@@ -160,12 +160,23 @@ function montarDadosChamadaApi(nome, argumentos) {
         sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
       };
     case 'getPainelComandante':
-      return { sessaoToken: sessaoComandanteToken, sessaoOficialToken: sessaoOficialToken };
+      return {
+        sessaoToken: sessaoComandanteToken,
+        sessaoComandanteToken: sessaoComandanteToken,
+        sessaoGuardaToken: sessaoToken,
+        sessaoToqueToken: sessaoToqueToken,
+        sessaoOficialToken: sessaoOficialToken,
+        sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
+      };
     case 'consultarHistoricoMovimentacoes':
       return {
         filtros: argumentos[0] || {},
         sessaoToken: sessaoComandanteToken,
-        sessaoOficialToken: sessaoOficialToken
+        sessaoComandanteToken: sessaoComandanteToken,
+        sessaoGuardaToken: sessaoToken,
+        sessaoToqueToken: sessaoToqueToken,
+        sessaoOficialToken: sessaoOficialToken,
+        sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
       };
     case 'getPessoasDentroGuarda':
       return { sessaoToken: sessaoToken, sessaoToqueToken: sessaoToqueToken };
@@ -475,6 +486,8 @@ let tipoMovimentacaoAtual = 'Entrada';
   let comandanteAtual = null;
   let emailEncerramentoComandante = null;
   let painelComandanteCarregado = false;
+  let painelComandanteEmCarregamento = false;
+  let permissoesPainelGestaoAtual = { podeLancarHorarioAnterior: false };
   let historicoInicializado = false;
   let dadosCodigoOficial = null;
   let oficialAtual = null;
@@ -827,11 +840,11 @@ let tipoMovimentacaoAtual = 'Entrada';
         carregarMovimentacoesGuarda(true);
       }
 
-    if (aparelhoAssumiuComandanteAtual() || aparelhoAssumiuOficialAtual()) {
-      carregarPainelComandante(true);
-    }
+      if (aparelhoTemAcessoPainelGestao()) {
+        carregarPainelComandante(true);
+      }
 
-    if (obterSessaoConsultaEfetivo()) carregarMovimentacoesConsultaEfetivo(true);
+      if (obterSessaoConsultaEfetivo()) carregarMovimentacoesConsultaEfetivo(true);
     }, 60000);
 
     document.addEventListener('visibilitychange', () => {
@@ -2391,7 +2404,7 @@ let tipoMovimentacaoAtual = 'Entrada';
         carregarPessoasDentroGuarda(true);
         carregarMovimentacoesGuarda(true);
 
-        if (aparelhoAssumiuComandanteAtual() || aparelhoAssumiuOficialAtual()) {
+        if (aparelhoTemAcessoPainelGestao()) {
           carregarPainelComandante(true);
         }
 
@@ -3405,6 +3418,35 @@ function sairAcessoOficial() {
   mostrarMensagem('Acesso de oficial encerrado neste aparelho.', 'sucesso');
 }
 
+function aparelhoTemAcessoPainelGestao() {
+  const militarDoEfetivoAutenticado = !!(
+    obterSessaoConsultaEfetivo() && consultaEfetivoAtual
+  );
+  const guardaAutenticado = typeof aparelhoAssumiuGuardaAtual === 'function' &&
+    aparelhoAssumiuGuardaAtual();
+  const toqueAutenticado = !!(
+    obterSessaoTokenToqueLocal() &&
+    statusToqueFogoAtual &&
+    statusToqueFogoAtual.sessaoValida === true
+  );
+
+  return aparelhoAssumiuComandanteAtual() ||
+    aparelhoAssumiuOficialAtual() ||
+    militarDoEfetivoAutenticado ||
+    guardaAutenticado ||
+    toqueAutenticado;
+}
+
+function obterAssinaturaCredenciaisPainelGestao() {
+  return [
+    obterSessaoTokenComandanteLocal() || '',
+    obterSessaoTokenLocal() || '',
+    obterSessaoTokenToqueLocal() || '',
+    obterSessaoTokenOficialLocal() || '',
+    obterSessaoTokenConsultaEfetivoLocal() || ''
+  ].join('|');
+}
+
 function carregarComandanteAtivo(silencioso = false) {
   carregarIdentidadesEquipeServico(silencioso, true);
 }
@@ -3458,13 +3500,15 @@ function atualizarVisibilidadePainelComandante() {
   if (!painel) return;
 
   const comandanteNesteAparelho = aparelhoAssumiuComandanteAtual();
-  if (acaoRetroativa) acaoRetroativa.classList.toggle('oculto', !comandanteNesteAparelho);
+  const podeLancarHorarioAnterior = comandanteNesteAparelho &&
+    permissoesPainelGestaoAtual.podeLancarHorarioAnterior === true;
+  if (acaoRetroativa) acaoRetroativa.classList.toggle('oculto', !podeLancarHorarioAnterior);
   if (!comandanteNesteAparelho && modoLancamentoRetroativoAtivo) {
     cancelarLancamentoRetroativoPendente();
     atualizarPermissaoLancamento();
   }
 
-  if (comandanteNesteAparelho || aparelhoAssumiuOficialAtual()) {
+  if (aparelhoTemAcessoPainelGestao()) {
     painel.classList.remove('oculto');
     if (historico) historico.classList.remove('oculto');
 
@@ -3475,6 +3519,7 @@ function atualizarVisibilidadePainelComandante() {
     painel.classList.add('oculto');
     if (historico) historico.classList.add('oculto');
     painelComandanteCarregado = false;
+    permissoesPainelGestaoAtual = { podeLancarHorarioAnterior: false };
   }
 }
 
@@ -3519,7 +3564,7 @@ function inicializarFiltrosHistorico() {
 }
 
 function consultarHistorico() {
-  if (!aparelhoAssumiuComandanteAtual() && !aparelhoAssumiuOficialAtual()) return;
+  if (!aparelhoTemAcessoPainelGestao()) return;
   const botao = document.getElementById('btnConsultarHistorico');
   const resumo = document.getElementById('resumoHistorico');
   const lista = document.getElementById('listaHistorico');
@@ -3631,12 +3676,15 @@ function renderizarHistorico(resultado) {
 }
 
 function carregarPainelComandante(silencioso = false) {
-  if (!aparelhoAssumiuComandanteAtual() && !aparelhoAssumiuOficialAtual()) {
+  if (!aparelhoTemAcessoPainelGestao()) {
     atualizarVisibilidadePainelComandante();
     return;
   }
+  if (painelComandanteEmCarregamento) return;
 
   const botao = document.getElementById('btnAtualizarPainelComandante');
+  const assinaturaRequisicao = obterAssinaturaCredenciaisPainelGestao();
+  painelComandanteEmCarregamento = true;
 
   if (botao) {
     botao.disabled = true;
@@ -3645,20 +3693,33 @@ function carregarPainelComandante(silencioso = false) {
 
   google.script.run
     .withSuccessHandler((painel) => {
-      renderizarPainelComandante(painel || {});
-      painelComandanteCarregado = true;
+      painelComandanteEmCarregamento = false;
+      const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaCredenciaisPainelGestao();
+
+      if (!respostaObsoleta) {
+        renderizarPainelComandante(painel || {});
+        painelComandanteCarregado = true;
+      }
 
       if (botao) {
         botao.disabled = false;
         botao.textContent = 'Atualizar';
       }
+
+      if (respostaObsoleta && aparelhoTemAcessoPainelGestao()) {
+        painelComandanteCarregado = false;
+        carregarPainelComandante(true);
+      }
     })
     .withFailureHandler((erro) => {
-      if (!silencioso) {
+      painelComandanteEmCarregamento = false;
+      const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaCredenciaisPainelGestao();
+
+      if (!silencioso && !respostaObsoleta) {
         mostrarMensagem('Erro ao atualizar painel: ' + erro.message, 'erro');
       }
 
-      if (!aparelhoAssumiuComandanteAtual() && aparelhoAssumiuOficialAtual()) {
+      if (!respostaObsoleta && !aparelhoAssumiuComandanteAtual() && aparelhoAssumiuOficialAtual()) {
         limparOficialLocal();
         atualizarTelaAcessoOficial();
         atualizarVisibilidadePainelComandante();
@@ -3668,12 +3729,24 @@ function carregarPainelComandante(silencioso = false) {
         botao.disabled = false;
         botao.textContent = 'Atualizar';
       }
+
+      if (respostaObsoleta && aparelhoTemAcessoPainelGestao()) {
+        painelComandanteCarregado = false;
+        carregarPainelComandante(true);
+      }
     })
     .getPainelComandante();
 }
 
 function renderizarPainelComandante(painel) {
   const totais = painel.totais || {};
+  permissoesPainelGestaoAtual = painel && painel.permissoes
+    ? painel.permissoes
+    : { podeLancarHorarioAnterior: false };
+  const acaoRetroativa = document.getElementById('acaoLancamentoRetroativo');
+  const podeLancarHorarioAnterior = aparelhoAssumiuComandanteAtual() &&
+    permissoesPainelGestaoAtual.podeLancarHorarioAnterior === true;
+  if (acaoRetroativa) acaoRetroativa.classList.toggle('oculto', !podeLancarHorarioAnterior);
 
   document.getElementById('totalPessoasDentro').textContent = totais.pessoasDentro || 0;
   document.getElementById('totalViaturasDentro').textContent = totais.viaturasDentro || 0;
@@ -3998,7 +4071,7 @@ function registrarSaidaRapidaPessoaGuarda(idMovimentacaoEntrada, botao) {
         atualizadoEm.textContent = 'Atualizado em ' + resposta.atualizadoEm;
       }
 
-      if (aparelhoAssumiuComandanteAtual() || aparelhoAssumiuOficialAtual()) {
+      if (aparelhoTemAcessoPainelGestao()) {
         carregarPainelComandante(true);
       }
     })
@@ -4130,6 +4203,8 @@ function assumirComandante(encerrarAnterior = false) {
       if (resposta && resposta.comandante) {
         comandanteAtual = resposta.comandante;
         salvarComandanteLocal(resposta.comandante);
+        painelComandanteCarregado = false;
+        permissoesPainelGestaoAtual = { podeLancarHorarioAnterior: false };
         atualizarTelaComandante();
         carregarIdentidadesEquipeServico(true);
       }
@@ -4589,7 +4664,8 @@ function validarCodigoConsultaEfetivo() {
       atualizarTelaConsultaEfetivo();
       carregarMovimentacoesConsultaEfetivo();
       carregarIdentidadesEquipeServico(true);
-      mostrarMensagem('E-mail validado. Consulta das últimas 48 horas liberada.', 'sucesso');
+      atualizarVisibilidadePainelComandante();
+      mostrarMensagem('E-mail validado. Painel de Gestão e consulta de movimentações liberados.', 'sucesso');
       botao.disabled = false;
       botao.textContent = 'Validar';
     })
@@ -4608,7 +4684,10 @@ function restaurarConsultaEfetivo() {
     consultaEfetivoAtual = null;
   }
   atualizarTelaConsultaEfetivo();
-  if (obterSessaoConsultaEfetivo()) carregarMovimentacoesConsultaEfetivo(true);
+  if (obterSessaoConsultaEfetivo()) {
+    carregarMovimentacoesConsultaEfetivo(true);
+    atualizarVisibilidadePainelComandante();
+  }
 }
 
 function atualizarTelaConsultaEfetivo() {
@@ -4622,7 +4701,7 @@ function atualizarTelaConsultaEfetivo() {
   sair.classList.toggle('oculto', !autenticado);
   const nome = document.getElementById('militarConsultaEfetivo');
   if (nome && consultaEfetivoAtual) {
-    nome.textContent = (consultaEfetivoAtual.Nome || 'Militar do 1º GBM') + ' • somente leitura';
+    nome.textContent = (consultaEfetivoAtual.Nome || 'Militar do 1º GBM') + ' • Painel de Gestão liberado';
   }
 }
 
@@ -4639,6 +4718,7 @@ function carregarMovimentacoesConsultaEfetivo(silencioso = false) {
       consultaEfetivoAtual = resposta && resposta.militar ? resposta.militar : consultaEfetivoAtual;
       localStorage.setItem('consulta_efetivo_militar', JSON.stringify(consultaEfetivoAtual || {}));
       atualizarTelaConsultaEfetivo();
+      atualizarVisibilidadePainelComandante();
       const movimentacoes = resposta && resposta.movimentacoes ? resposta.movimentacoes : [];
       renderizarListaMovimentacoesRecentes(movimentacoes, 'listaMovimentacoesConsultaEfetivo');
       const total = Number(resposta && resposta.total || 0);
@@ -4654,6 +4734,7 @@ function carregarMovimentacoesConsultaEfetivo(silencioso = false) {
         botao.disabled = false;
         botao.textContent = 'Atualizar';
       }
+
     })
     .withFailureHandler((erro) => {
       sairConsultaEfetivo(false);
@@ -4674,8 +4755,9 @@ function sairConsultaEfetivo(exibirMensagem = true) {
   const codigo = document.getElementById('codigoConsultaEfetivo');
   if (codigo) codigo.value = '';
   atualizarTelaConsultaEfetivo();
+  atualizarVisibilidadePainelComandante();
   carregarIdentidadesEquipeServico(true);
-  if (exibirMensagem) mostrarMensagem('Consulta encerrada neste aparelho.', 'sucesso');
+  if (exibirMensagem) mostrarMensagem('Acesso do efetivo encerrado neste aparelho.', 'sucesso');
 }
 
 

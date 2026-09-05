@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=26.8.0">
+  <link rel="stylesheet" href="style.css?v=26.9.0">
   </head>
 
   <body>
@@ -212,8 +212,8 @@
         <section class="card card-consulta-efetivo" id="cardConsultaEfetivo">
           <div class="cabecalho-consulta-efetivo">
             <div>
-              <h2>Consulta do Efetivo</h2>
-              <p>Militares do 1º GBM podem consultar, em modo somente leitura, as movimentações das últimas 48 horas.</p>
+              <h2>Acesso ao Painel de Gestão</h2>
+              <p>Todo militar do 1º GBM pode validar o e-mail cadastrado para abrir o painel e consultar as movimentações.</p>
             </div>
             <button type="button" id="btnSairConsultaEfetivo" class="botao-sair oculto" onclick="sairConsultaEfetivo()">Sair</button>
           </div>
@@ -240,7 +240,7 @@
           <div id="areaMovimentacoesConsultaEfetivo" class="oculto">
             <div class="cabecalho-lista-consulta">
               <div>
-                <strong id="militarConsultaEfetivo">Consulta liberada</strong>
+                <strong id="militarConsultaEfetivo">Acesso liberado</strong>
                 <span id="resumoConsultaEfetivo">Carregando movimentações...</span>
               </div>
               <button type="button" id="btnAtualizarConsultaEfetivo" onclick="carregarMovimentacoesConsultaEfetivo()">Atualizar</button>
@@ -317,7 +317,7 @@
           <div class="cabecalho-card-guarda">
             <h2>Oficial de Dia</h2>
             <div class="acoes-guarda">
-              <button type="button" id="btnAbrirAcessoOficial" class="botao-trocar" aria-expanded="false" aria-controls="areaAcessoPainelOficial" onclick="alternarAcessoPainelOficial()">Acessar painel</button>
+              <button type="button" id="btnAbrirAcessoOficial" class="botao-trocar oculto" aria-expanded="false" aria-controls="areaAcessoPainelOficial" onclick="alternarAcessoPainelOficial()">Acessar painel</button>
               <button type="button" id="btnEditarOficialDia" class="botao-trocar oculto" aria-expanded="false" onclick="mostrarDesignacaoOficialDia()">Informar</button>
             </div>
           </div>
@@ -410,16 +410,6 @@
             </div>
           </div>
 
-          <div id="acaoLancamentoRetroativo" class="acao-lancamento-retroativo oculto">
-            <div>
-              <strong>Ficou algum lançamento para trás?</strong>
-              <span>O Comandante pode registrar uma movimentação individual no horário em que ela realmente ocorreu.</span>
-            </div>
-            <button type="button" id="btnAbrirLancamentoRetroativo" onclick="abrirLancamentoRetroativo()">
-              Lançar horário anterior
-            </button>
-          </div>
-
           <div class="secao-painel-comandante" id="secaoPainelDentro">
             <button type="button" class="botao-alternar-secao-painel" aria-expanded="true" aria-controls="conteudoPainelDentro" onclick="alternarSecaoPainel('dentro')">
               <span>Dentro do quartel</span>
@@ -442,6 +432,16 @@
                 <div class="estado-vazio-painel">Carregando...</div>
               </div>
             </div>
+          </div>
+
+          <div id="acaoLancamentoRetroativo" class="acao-lancamento-retroativo oculto">
+            <div>
+              <strong>Ação exclusiva do Comandante</strong>
+              <span>Corrigir uma movimentação individual que ocorreu dentro do ciclo atual.</span>
+            </div>
+            <button type="button" id="btnAbrirLancamentoRetroativo" onclick="abrirLancamentoRetroativo()">
+              Lançar horário anterior
+            </button>
           </div>
 
           <div id="atualizadoEmPainelComandante" class="rodape-painel-comandante"></div>
@@ -843,6 +843,6 @@
       </div>
     </div>
 
-  <script src="app.js?v=26.8.0"></script>
+  <script src="app.js?v=26.9.0"></script>
   </body>
 </html>
