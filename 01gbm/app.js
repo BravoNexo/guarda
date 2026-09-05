@@ -4148,11 +4148,30 @@ function enviarCodigoParaEncerrarComandante() {
 
   google.script.run
     .withSuccessHandler((resposta) => {
-      emailEncerramentoComandante = resposta.email;
+      const candidatosEmail = [
+        resposta && resposta.email,
+        comandanteAtual && comandanteAtual.Email_Comandante
+      ];
+      emailEncerramentoComandante = candidatosEmail
+        .map(valor => String(valor || '').trim().toLowerCase())
+        .find(valor => valor && valor.includes('@')) || '';
+
+      if (!emailEncerramentoComandante) {
+        document.getElementById('areaCodigoEncerrarComandante').classList.add('oculto');
+        mostrarStatusAcaoComandante(
+          'O código foi solicitado, mas não foi possível identificar o e-mail do comandante atual. Atualize a página e use Sair novamente.',
+          'erro'
+        );
+        mostrarMensagem('Não foi possível identificar o e-mail do comandante atual.', 'erro');
+        botao.disabled = false;
+        botao.textContent = 'Sair';
+        return;
+      }
+
       expandirPerfilServico('perfilComandante', true);
       document.getElementById('areaCodigoEncerrarComandante').classList.remove('oculto');
       mostrarStatusAcaoComandante(
-        `Código enviado para ${mascararEmailComandante(resposta.email)}. Informe-o abaixo para encerrar.`,
+        `Código enviado para ${mascararEmailComandante(emailEncerramentoComandante)}. Informe-o abaixo para encerrar.`,
         'sucesso'
       );
       botao.disabled = false;
@@ -4170,14 +4189,32 @@ function enviarCodigoParaEncerrarComandante() {
 function validarCodigoEEncerrarComandante() {
   const codigo = document.getElementById('codigoEncerrarComandante').value.trim();
   const observacoesServico = document.getElementById('observacoesEncerramentoComandante').value.trim();
+  const botao = document.getElementById('btnConfirmarEncerramentoComandante');
 
-  if (!emailEncerramentoComandante || !codigo) {
+  if (!emailEncerramentoComandante) {
+    mostrarStatusAcaoComandante('Não foi possível identificar o e-mail. Use Sair para solicitar um novo código.', 'erro');
+    mostrarMensagem('Solicite um novo código de encerramento.', 'erro');
+    return;
+  }
+
+  if (!codigo) {
+    mostrarStatusAcaoComandante('Digite o código enviado ao comandante atual.', 'erro');
     mostrarMensagem('Informe o código enviado ao comandante atual.', 'erro');
     return;
   }
 
+  if (botao) {
+    botao.disabled = true;
+    botao.textContent = 'Encerrando...';
+  }
+  mostrarStatusAcaoComandante('Encerrando o serviço e gerando o relatório...', '');
+
   google.script.run
     .withSuccessHandler((resposta) => {
+      if (botao) {
+        botao.disabled = false;
+        botao.textContent = 'Encerrar serviço';
+      }
       mostrarMensagem(resposta.mensagem || 'Comandante da Guarda encerrado. Relatório aguardando as 08h.', 'sucesso');
       comandanteAtual = null;
       emailEncerramentoComandante = null;
@@ -4187,7 +4224,13 @@ function validarCodigoEEncerrarComandante() {
       carregarIdentidadesEquipeServico(true);
     })
     .withFailureHandler((erro) => {
-      mostrarMensagem('Erro ao encerrar comandante: ' + erro.message, 'erro');
+      const mensagemErro = 'Erro ao encerrar comandante: ' + erro.message;
+      if (botao) {
+        botao.disabled = false;
+        botao.textContent = 'Encerrar serviço';
+      }
+      mostrarStatusAcaoComandante(mensagemErro, 'erro');
+      mostrarMensagem(mensagemErro, 'erro');
     })
     .validarCodigoEEncerrarComandante(emailEncerramentoComandante, codigo, observacoesServico);
 }
