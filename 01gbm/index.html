@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=26.9.0">
+  <link rel="stylesheet" href="style.css?v=26.9.1">
   </head>
 
   <body>
@@ -439,7 +439,8 @@
               <strong>Ação exclusiva do Comandante</strong>
               <span>Corrigir uma movimentação individual que ocorreu dentro do ciclo atual.</span>
             </div>
-            <button type="button" id="btnAbrirLancamentoRetroativo" onclick="abrirLancamentoRetroativo()">
+            <button type="button" id="btnAbrirLancamentoRetroativo" onclick="abrirLancamentoRetroativo()"
+              aria-controls="blocoLancamentoRetroativo" aria-expanded="false">
               Lançar horário anterior
             </button>
           </div>
@@ -584,7 +585,14 @@
 
           <div id="blocoLancamentoRetroativo" class="bloco-lancamento-retroativo oculto">
             <div class="cabecalho-lancamento-retroativo">
-              <span class="selo-modo-retroativo">MODO RETROATIVO</span>
+              <div class="linha-cabecalho-lancamento-retroativo">
+                <span class="selo-modo-retroativo">MODO RETROATIVO</span>
+                <button type="button" class="botao-fechar-retroativo" data-fechar-lancamento-retroativo
+                  onclick="encerrarLancamentoRetroativo()"
+                  aria-label="Fechar o lançamento em horário anterior">
+                  Fechar <span aria-hidden="true">×</span>
+                </button>
+              </div>
               <strong>Exclusivo do Comandante da Guarda</strong>
               <p>Informe quando a movimentação realmente ocorreu. A hora deste lançamento será registrada automaticamente para auditoria.</p>
             </div>
@@ -620,8 +628,9 @@
                 placeholder="Explique resumidamente o que ocorreu">
             </div>
 
-            <button type="button" class="botao-cancelar-retroativo" onclick="encerrarLancamentoRetroativo()">
-              Concluir e fechar modo retroativo
+            <button type="button" class="botao-cancelar-retroativo" data-fechar-lancamento-retroativo
+              onclick="encerrarLancamentoRetroativo()">
+              Cancelar preenchimento e voltar ao painel
             </button>
           </div>
 
@@ -843,6 +852,6 @@
       </div>
     </div>
 
-  <script src="app.js?v=26.9.0"></script>
+  <script src="app.js?v=26.9.1"></script>
   </body>
 </html>

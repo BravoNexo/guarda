@@ -643,6 +643,47 @@
     margin-bottom: 15px;
   }
 
+  .linha-cabecalho-lancamento-retroativo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .botao-fechar-retroativo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: auto;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid #f59e0b;
+    border-radius: 999px;
+    background: #fff;
+    color: #92400e;
+    font-size: 11px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .botao-fechar-retroativo span {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 0.8;
+  }
+
+  .botao-fechar-retroativo:hover,
+  .botao-fechar-retroativo:focus-visible {
+    background: #fef3c7;
+  }
+
+  .botao-fechar-retroativo:disabled,
+  .botao-cancelar-retroativo:disabled {
+    cursor: wait;
+    opacity: 0.55;
+  }
+
   .cabecalho-lancamento-retroativo strong {
     display: block;
     margin: 7px 0 4px;
@@ -701,7 +742,7 @@
 
   .botao-cancelar-retroativo {
     width: 100%;
-    min-height: 42px;
+    min-height: 44px;
     padding: 9px 12px;
     border: 1px solid #f59e0b;
     border-radius: 11px;

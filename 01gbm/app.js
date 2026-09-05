@@ -2221,10 +2221,12 @@ let tipoMovimentacaoAtual = 'Entrada';
     const campoForma = document.getElementById('campoFormaRegistro');
     const titulo = document.getElementById('tituloCardMovimentacao');
     const botao = document.getElementById('btnRegistrarMovimentacao');
+    const botaoAbrir = document.getElementById('btnAbrirLancamentoRetroativo');
 
     if (card) card.classList.toggle('modo-retroativo', modoLancamentoRetroativoAtivo);
     if (bloco) bloco.classList.toggle('oculto', !modoLancamentoRetroativoAtivo);
     if (campoForma) campoForma.classList.toggle('oculto', modoLancamentoRetroativoAtivo);
+    if (botaoAbrir) botaoAbrir.setAttribute('aria-expanded', String(modoLancamentoRetroativoAtivo));
     if (titulo) titulo.textContent = modoLancamentoRetroativoAtivo
       ? 'Lançamento individual em horário anterior'
       : 'Registrar Movimentação';
@@ -2272,8 +2274,23 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function encerrarLancamentoRetroativo() {
+    const botaoAbrir = document.getElementById('btnAbrirLancamentoRetroativo');
+    const acaoAbrir = document.getElementById('acaoLancamentoRetroativo');
     cancelarLancamentoRetroativoPendente();
     atualizarPermissaoLancamento();
+
+    if (botaoAbrir && acaoAbrir && !acaoAbrir.classList.contains('oculto')) {
+      requestAnimationFrame(() => {
+        botaoAbrir.focus({ preventScroll: true });
+        botaoAbrir.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+  }
+
+  function definirControlesFechamentoRetroativoBloqueados(bloqueados) {
+    document.querySelectorAll('[data-fechar-lancamento-retroativo]').forEach(botao => {
+      botao.disabled = bloqueados === true;
+    });
   }
 
   function cancelarLancamentoRetroativoPendente() {
@@ -2396,6 +2413,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     const botao = document.getElementById('btnRegistrarMovimentacao');
     botao.disabled = true;
     botao.textContent = 'Registrando...';
+    if (retroativa) definirControlesFechamentoRetroativoBloqueados(true);
 
     const executor = google.script.run
       .withSuccessHandler((resposta) => {
@@ -2415,11 +2433,13 @@ let tipoMovimentacaoAtual = 'Entrada';
         }
 
         botao.disabled = false;
+        if (retroativa) definirControlesFechamentoRetroativoBloqueados(false);
         atualizarInterfaceLancamentoRetroativo();
       })
       .withFailureHandler((erro) => {
         mostrarMensagem('Erro ao registrar movimentação: ' + erro.message, 'erro');
         botao.disabled = false;
+        if (retroativa) definirControlesFechamentoRetroativoBloqueados(false);
         atualizarInterfaceLancamentoRetroativo();
       });
 
