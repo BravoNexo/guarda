@@ -1218,6 +1218,34 @@ let tipoMovimentacaoAtual = 'Entrada';
     return aparelhoPodeOperarGuardaAtual() || aparelhoAssumiuComandanteAtual();
   }
 
+  function definirEditorGuarnicoesServicoRecolhido(recolhido) {
+    const bloco = document.getElementById('blocoEditorGuarnicoesServico');
+    const conteudo = document.getElementById('conteudoEditorGuarnicoesServico');
+    const botao = document.getElementById('btnAlternarEditorGuarnicoesServico');
+    const titulo = document.getElementById('textoAlternarEditorGuarnicoesServico');
+    const descricao = document.getElementById('descricaoAlternarEditorGuarnicoesServico');
+
+    if (!bloco || !conteudo || !botao) return;
+
+    if (recolhido && conteudo.contains(document.activeElement)) botao.focus();
+    conteudo.hidden = recolhido;
+    bloco.classList.toggle('recolhido', recolhido);
+    botao.setAttribute('aria-expanded', recolhido ? 'false' : 'true');
+
+    if (titulo) titulo.textContent = recolhido
+      ? 'Lançar ou alterar guarnição'
+      : 'Fechar lançamento';
+    if (descricao) descricao.textContent = recolhido
+      ? 'Abra somente quando precisar incluir ou editar uma VTR'
+      : 'Selecione a VTR, o condutor e os integrantes';
+  }
+
+  function alternarEditorGuarnicoesServico() {
+    const conteudo = document.getElementById('conteudoEditorGuarnicoesServico');
+    if (!conteudo) return;
+    definirEditorGuarnicoesServicoRecolhido(!conteudo.hidden);
+  }
+
   function definirGuarnicoesServicoRecolhido(recolhido) {
     const card = document.getElementById('cardGuarnicoesServico');
     const conteudo = document.getElementById('conteudoGuarnicoesServico');
@@ -1225,6 +1253,8 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     if (!card || !conteudo || !botao) return;
 
+    if (recolhido) definirEditorGuarnicoesServicoRecolhido(true);
+    if (recolhido && conteudo.contains(document.activeElement)) botao.focus();
     conteudo.hidden = recolhido;
     card.classList.toggle('recolhido', recolhido);
     botao.setAttribute('aria-expanded', recolhido ? 'false' : 'true');
@@ -1250,6 +1280,11 @@ let tipoMovimentacaoAtual = 'Entrada';
     const estavaOculto = card.classList.contains('oculto');
     const podeConfigurar = aparelhoPodeConfigurarGuarnicoesServico();
     card.classList.toggle('oculto', !podeConfigurar);
+
+    if (!podeConfigurar) {
+      definirEditorGuarnicoesServicoRecolhido(true);
+      return;
+    }
 
     if (podeConfigurar && !guarnicoesServicoCarregadas) {
       restaurarEstadoGuarnicoesServico();
@@ -1367,6 +1402,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       const chip = document.createElement('button');
       chip.type = 'button';
       chip.textContent = militar.Nome + ' ×';
+      chip.setAttribute('aria-label', 'Remover ' + militar.Nome + ' da guarnição');
       chip.onclick = () => {
         idsGuarnicaoServicoEdicao = idsGuarnicaoServicoEdicao.filter(item => item !== id);
         renderizarIntegrantesGuarnicaoServico();
@@ -1571,6 +1607,7 @@ let tipoMovimentacaoAtual = 'Entrada';
         cicloGuarnicoesServico = dados.ciclo || cicloGuarnicoesServico;
         document.getElementById('motivoGuarnicaoServico').value = '';
         renderizarEditorGuarnicoesServico();
+        definirEditorGuarnicoesServicoRecolhido(true);
         botao.disabled = false;
         botao.textContent = 'Salvar para o serviço';
         mostrarMensagem(resposta.mensagem || 'Guarnição atualizada.', 'sucesso');

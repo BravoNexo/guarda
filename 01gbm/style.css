@@ -938,6 +938,14 @@
     font-weight: 700;
   }
 
+  .cabecalho-guarnicoes-servico .botao-alternar-guarnicoes-servico {
+    flex: 1 1 auto;
+  }
+
+  .botao-alternar-guarnicoes-servico > span:first-child {
+    min-width: 0;
+  }
+
   .descricao-guarnicoes-servico {
     margin: 0 0 12px;
   }
@@ -965,11 +973,111 @@
     font-size: 13px;
   }
 
+  .bloco-editor-guarnicao-servico {
+    overflow: hidden;
+    border: 1px solid #c4b5fd;
+    border-radius: 13px;
+    background: #faf5ff;
+    box-shadow: 0 3px 10px rgba(109, 40, 217, 0.08);
+  }
+
+  .botao-alternar-editor-guarnicao {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 58px;
+    padding: 11px 12px;
+    border: none;
+    border-radius: 0;
+    background: #f5f3ff;
+    color: #4c1d95;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .botao-alternar-editor-guarnicao:hover,
+  .botao-alternar-editor-guarnicao[aria-expanded="true"] {
+    background: #ede9fe;
+    color: #5b21b6;
+  }
+
+  .botao-alternar-editor-guarnicao:focus-visible {
+    outline: 3px solid rgba(124, 58, 237, 0.22);
+    outline-offset: -3px;
+  }
+
+  .texto-alternar-editor-guarnicao {
+    min-width: 0;
+  }
+
+  .texto-alternar-editor-guarnicao strong,
+  .texto-alternar-editor-guarnicao small {
+    display: block;
+  }
+
+  .texto-alternar-editor-guarnicao strong {
+    font-size: 14px;
+    line-height: 1.25;
+  }
+
+  .texto-alternar-editor-guarnicao small {
+    margin-top: 3px;
+    color: #6d28d9;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .icone-alternar-editor-guarnicao {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    border: 1px solid #c4b5fd;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #6d28d9;
+    box-shadow: 0 1px 2px rgba(76, 29, 149, 0.1);
+  }
+
+  .icone-alternar-editor-guarnicao::before {
+    content: '';
+    display: block;
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: translateY(-2px) rotate(45deg);
+    transform-origin: center;
+    transition: transform 0.2s ease;
+  }
+
+  .botao-alternar-editor-guarnicao[aria-expanded="true"] .icone-alternar-editor-guarnicao::before {
+    transform: translateY(2px) rotate(225deg);
+  }
+
+  .conteudo-editor-guarnicao-servico {
+    padding: 12px;
+    border-top: 1px solid #ddd6fe;
+    background: #faf5ff;
+  }
+
   .editor-guarnicao-servico {
     padding: 13px;
     border: 1px solid #ddd6fe;
     border-radius: 13px;
     background: #faf5ff;
+  }
+
+  .conteudo-editor-guarnicao-servico .editor-guarnicao-servico {
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
   }
 
   .editor-guarnicao-servico > label {

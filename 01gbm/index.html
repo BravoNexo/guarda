@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=26.1.0">
+  <link rel="stylesheet" href="style.css?v=26.5.0">
   </head>
 
   <body>
@@ -500,45 +500,59 @@
           </div>
           <div id="conteudoGuarnicoesServico">
           <p class="descricao-guarnicoes-servico">
-            Defina a composição padrão de cada VTR. No SOS, ela será preenchida automaticamente e ainda poderá ser alterada.
+            Viaturas já lançadas para este serviço. No SOS, a composição será preenchida automaticamente e ainda poderá ser alterada.
           </p>
           <div id="resumoGuarnicoesServico" class="lista-guarnicoes-servico"></div>
-          <div class="editor-guarnicao-servico">
-            <div class="campo">
-              <label>VTR</label>
-              <select id="viaturaGuarnicaoServico" onchange="selecionarViaturaGuarnicaoServico()"></select>
-            </div>
-            <div class="campo">
-              <label for="btnCondutorGuarnicaoServico">Condutor</label>
-              <div class="seletor-militar-guarnicao">
-                <button type="button" id="btnCondutorGuarnicaoServico" class="botao-seletor-militar"
-                  aria-haspopup="dialog" onclick="abrirSeletorMilitarGuarnicaoServico('condutor')">
-                  <span id="textoCondutorGuarnicaoServico">Selecione o condutor</span>
-                  <span class="seta-seletor-militar" aria-hidden="true">⌄</span>
-                </button>
-                <select id="condutorGuarnicaoServico" class="select-dados-guarnicao" tabindex="-1" aria-hidden="true"></select>
-              </div>
-            </div>
-            <label for="btnIntegranteGuarnicaoServico">Guarnição (opcional)</label>
-            <div class="linha-adicionar-guarnicao">
-              <div class="seletor-militar-guarnicao">
-                <button type="button" id="btnIntegranteGuarnicaoServico" class="botao-seletor-militar"
-                  aria-haspopup="dialog" onclick="abrirSeletorMilitarGuarnicaoServico('integrante')">
-                  <span id="textoIntegranteGuarnicaoServico">Selecione um integrante</span>
-                  <span class="seta-seletor-militar" aria-hidden="true">⌄</span>
-                </button>
-                <select id="integranteGuarnicaoServico" class="select-dados-guarnicao" tabindex="-1" aria-hidden="true"></select>
-              </div>
-              <button type="button" onclick="adicionarIntegranteGuarnicaoServico()">Adicionar</button>
-            </div>
-            <div id="chipsGuarnicaoServico" class="chips-guarnicao"></div>
-            <div class="campo campo-motivo-guarnicao">
-              <label>Motivo da alteração</label>
-              <input type="text" id="motivoGuarnicaoServico" placeholder="Opcional. Ex.: determinação do Oficial de Dia">
-            </div>
-            <button type="button" id="btnSalvarGuarnicaoServico" class="botao-secundario" onclick="salvarGuarnicaoServico()">
-              Salvar para o serviço
+          <div class="bloco-editor-guarnicao-servico recolhido" id="blocoEditorGuarnicoesServico">
+            <button type="button" id="btnAlternarEditorGuarnicoesServico" class="botao-alternar-editor-guarnicao"
+              aria-expanded="false" aria-controls="conteudoEditorGuarnicoesServico"
+              onclick="alternarEditorGuarnicoesServico()">
+              <span class="texto-alternar-editor-guarnicao">
+                <strong id="textoAlternarEditorGuarnicoesServico">Lançar ou alterar guarnição</strong>
+                <small id="descricaoAlternarEditorGuarnicoesServico">Abra somente quando precisar incluir ou editar uma VTR</small>
+              </span>
+              <span class="icone-alternar-editor-guarnicao" aria-hidden="true"></span>
             </button>
+            <div id="conteudoEditorGuarnicoesServico" class="conteudo-editor-guarnicao-servico"
+              role="region" aria-labelledby="textoAlternarEditorGuarnicoesServico" hidden>
+              <div class="editor-guarnicao-servico">
+                <div class="campo">
+                  <label for="viaturaGuarnicaoServico">VTR</label>
+                  <select id="viaturaGuarnicaoServico" onchange="selecionarViaturaGuarnicaoServico()"></select>
+                </div>
+                <div class="campo">
+                  <label for="btnCondutorGuarnicaoServico">Condutor</label>
+                  <div class="seletor-militar-guarnicao">
+                    <button type="button" id="btnCondutorGuarnicaoServico" class="botao-seletor-militar"
+                      aria-haspopup="dialog" onclick="abrirSeletorMilitarGuarnicaoServico('condutor')">
+                      <span id="textoCondutorGuarnicaoServico">Selecione o condutor</span>
+                      <span class="seta-seletor-militar" aria-hidden="true">⌄</span>
+                    </button>
+                    <select id="condutorGuarnicaoServico" class="select-dados-guarnicao" tabindex="-1" aria-hidden="true"></select>
+                  </div>
+                </div>
+                <label for="btnIntegranteGuarnicaoServico">Guarnição (opcional)</label>
+                <div class="linha-adicionar-guarnicao">
+                  <div class="seletor-militar-guarnicao">
+                    <button type="button" id="btnIntegranteGuarnicaoServico" class="botao-seletor-militar"
+                      aria-haspopup="dialog" onclick="abrirSeletorMilitarGuarnicaoServico('integrante')">
+                      <span id="textoIntegranteGuarnicaoServico">Selecione um integrante</span>
+                      <span class="seta-seletor-militar" aria-hidden="true">⌄</span>
+                    </button>
+                    <select id="integranteGuarnicaoServico" class="select-dados-guarnicao" tabindex="-1" aria-hidden="true"></select>
+                  </div>
+                  <button type="button" onclick="adicionarIntegranteGuarnicaoServico()">Adicionar</button>
+                </div>
+                <div id="chipsGuarnicaoServico" class="chips-guarnicao"></div>
+                <div class="campo campo-motivo-guarnicao">
+                  <label for="motivoGuarnicaoServico">Motivo da alteração</label>
+                  <input type="text" id="motivoGuarnicaoServico" placeholder="Opcional. Ex.: determinação do Oficial de Dia">
+                </div>
+                <button type="button" id="btnSalvarGuarnicaoServico" class="botao-secundario" onclick="salvarGuarnicaoServico()">
+                  Salvar para o serviço
+                </button>
+              </div>
+            </div>
           </div>
           </div>
         </section>
@@ -762,6 +776,6 @@
       </div>
     </div>
 
-  <script src="app.js?v=26.4.0"></script>
+  <script src="app.js?v=26.5.0"></script>
   </body>
 </html>
