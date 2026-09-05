@@ -1048,6 +1048,29 @@ let tipoMovimentacaoAtual = 'Entrada';
     renderizarConfiguracoesSOS();
   }
 
+  function ordemAntiguidadeMilitarSOS(militar) {
+    const ordem = Number(militar && militar.Ordem_Antiguidade);
+    return Number.isFinite(ordem) && ordem > 0 ? ordem : Number.MAX_SAFE_INTEGER;
+  }
+
+  function compararMilitaresSOSPorAntiguidade(a, b) {
+    const diferencaOrdem = ordemAntiguidadeMilitarSOS(a) - ordemAntiguidadeMilitarSOS(b);
+    if (diferencaOrdem) return diferencaOrdem;
+
+    const diferencaNome = String(a && a.Nome || '').localeCompare(
+      String(b && b.Nome || ''),
+      'pt-BR',
+      { sensitivity: 'base' }
+    );
+    if (diferencaNome) return diferencaNome;
+
+    return String(a && a.RG_CPF || '').localeCompare(String(b && b.RG_CPF || ''), 'pt-BR');
+  }
+
+  function ordenarMilitaresSOSPorAntiguidade(lista) {
+    return (lista || []).slice().sort(compararMilitaresSOSPorAntiguidade);
+  }
+
   function criarSelectMilitaresSOS(valorAtual, textoInicial) {
     const select = document.createElement('select');
     const inicial = document.createElement('option');
@@ -1055,7 +1078,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     inicial.textContent = textoInicial;
     select.appendChild(inicial);
 
-    militaresSOS.forEach(militar => {
+    ordenarMilitaresSOSPorAntiguidade(militaresSOS).forEach(militar => {
       const option = document.createElement('option');
       option.value = militar.ID_Pessoa;
       option.textContent = militar.Nome + (militar.RG_CPF ? ' — ' + militar.RG_CPF : '');
@@ -1456,14 +1479,29 @@ let tipoMovimentacaoAtual = 'Entrada';
     return String(valor || '').replace(/\D/g, '');
   }
 
-  function militaresDisponiveisNoSeletorGuarnicaoServico() {
-    if (tipoSeletorMilitarGuarnicaoServico !== 'integrante') return militaresSOS.slice();
+  function normalizarTextoSeletorGuarnicao(valor) {
+    return String(valor || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleUpperCase('pt-BR')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
 
-    const idCondutor = String(document.getElementById('condutorGuarnicaoServico').value || '');
-    const idsIndisponiveis = new Set(
-      [idCondutor].concat(idsGuarnicaoServicoEdicao).filter(Boolean).map(String)
-    );
-    return militaresSOS.filter(militar => !idsIndisponiveis.has(String(militar.ID_Pessoa || '')));
+  function militaresDisponiveisNoSeletorGuarnicaoServico() {
+    let militaresDisponiveis = militaresSOS.slice();
+
+    if (tipoSeletorMilitarGuarnicaoServico === 'integrante') {
+      const idCondutor = String(document.getElementById('condutorGuarnicaoServico').value || '');
+      const idsIndisponiveis = new Set(
+        [idCondutor].concat(idsGuarnicaoServicoEdicao).filter(Boolean).map(String)
+      );
+      militaresDisponiveis = militaresDisponiveis.filter(
+        militar => !idsIndisponiveis.has(String(militar.ID_Pessoa || ''))
+      );
+    }
+
+    return ordenarMilitaresSOSPorAntiguidade(militaresDisponiveis);
   }
 
   function abrirSeletorMilitarGuarnicaoServico(tipo) {
@@ -1506,10 +1544,15 @@ let tipoMovimentacaoAtual = 'Entrada';
     const campoBusca = document.getElementById('buscaRgSeletorMilitarGuarnicao');
     if (!lista || !resumo || !campoBusca || !tipoSeletorMilitarGuarnicaoServico) return;
 
-    const filtroRg = normalizarRgSeletorGuarnicao(campoBusca.value);
+    const termoBusca = String(campoBusca.value || '').trim();
+    const filtroNome = normalizarTextoSeletorGuarnicao(termoBusca);
+    const filtroRg = normalizarRgSeletorGuarnicao(termoBusca);
     const militares = militaresDisponiveisNoSeletorGuarnicaoServico().filter(militar => {
-      if (!filtroRg) return true;
-      return normalizarRgSeletorGuarnicao(militar.RG_CPF).includes(filtroRg);
+      if (!termoBusca) return true;
+
+      const correspondeNome = normalizarTextoSeletorGuarnicao(militar.Nome).includes(filtroNome);
+      const correspondeRg = filtroRg && normalizarRgSeletorGuarnicao(militar.RG_CPF).includes(filtroRg);
+      return correspondeNome || correspondeRg;
     });
     const selectAtual = document.getElementById(
       tipoSeletorMilitarGuarnicaoServico === 'condutor'
@@ -1526,7 +1569,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     if (!militares.length) {
       const vazio = document.createElement('div');
       vazio.className = 'vazio-seletor-militar';
-      vazio.innerHTML = '<strong>Nenhum RG encontrado</strong><span>Confira os números digitados ou apague a busca para ver a lista completa.</span>';
+      vazio.innerHTML = '<strong>Nenhum militar encontrado</strong><span>Confira o nome ou RG digitado ou apague a busca para ver a lista completa.</span>';
       lista.appendChild(vazio);
       return;
     }
