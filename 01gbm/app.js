@@ -9,7 +9,7 @@ const DURACAO_SESSAO_LOCAL = {
   guarda: 36 * 60 * 60 * 1000,
   comandante: 36 * 60 * 60 * 1000,
   oficial: 36 * 60 * 60 * 1000,
-  toque: 16 * 60 * 60 * 1000,
+  toque: 36 * 60 * 60 * 1000,
   consultaEfetivo: 12 * 60 * 60 * 1000
 };
 
@@ -215,9 +215,9 @@ function montarDadosChamadaApi(nome, argumentos) {
     case 'registrarMovimentacaoRetroativa':
       return { movimentacao: argumentos[0], sessaoComandanteToken: sessaoComandanteToken };
     case 'enviarCodigoAssumirToqueFogo':
-      return { email: argumentos[0] };
+      return { email: argumentos[0], periodoAlvo: argumentos[1] };
     case 'validarCodigoAssumirToqueFogo':
-      return { email: argumentos[0], codigo: argumentos[1] };
+      return { email: argumentos[0], codigo: argumentos[1], periodoAlvo: argumentos[2] };
     case 'assumirToqueFogoComEmailValidado':
       return argumentos[0] || {};
     case 'retomarPostoAposSOS':
@@ -289,7 +289,9 @@ function ajustarRespostaApi(nome, resposta) {
     if (guarda) guarda.Sessao_Valida = blocoGuarda.sessaoValida === true;
     if (comandante) comandante.Sessao_Valida = blocoComandante.sessaoValida === true;
     if (oficial) oficial.Sessao_Valida = blocoOficial.sessaoValida === true;
-    if (statusToque.toque) statusToque.toque.Sessao_Valida = statusToque.sessaoValida === true;
+    if (statusToque.toque) {
+      statusToque.toque.Sessao_Valida = statusToque.sessaoPeriodoAtual === true;
+    }
 
     return {
       guarda: guarda,
@@ -327,7 +329,7 @@ function ajustarRespostaApi(nome, resposta) {
 
   if (nome === 'getStatusToqueFogo') {
     const status = resposta || {};
-    if (status.toque) status.toque.Sessao_Valida = status.sessaoValida === true;
+    if (status.toque) status.toque.Sessao_Valida = status.sessaoPeriodoAtual === true;
     return status;
   }
 
@@ -494,6 +496,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   let usarFallbackEstadoEquipeServico = false;
   let dadosCodigoToqueFogo = null;
   let loginToqueFogoAberto = false;
+  let geracaoValidacaoToqueFogo = 0;
   let consultaEfetivoAtual = null;
 
   function aparelhoTemSessaoEquipeLocal() {
@@ -511,12 +514,18 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     const toqueAtual = statusToqueFogoAtual && statusToqueFogoAtual.toque;
     const coberturaAtual = statusToqueFogoAtual && statusToqueFogoAtual.cobertura;
+    const programacaoToqueAtual = statusToqueFogoAtual &&
+      Array.isArray(statusToqueFogoAtual.programacao)
+      ? statusToqueFogoAtual.programacao
+      : [];
     const possuiIdentidadeRestrita = !!(
       (guardaAtual && guardaAtual.RG_Guarda) ||
       (comandanteAtual && (comandanteAtual.Nome_Comandante || comandanteAtual.RG_Comandante)) ||
       (oficialAtual && (oficialAtual.Nome_Oficial || oficialAtual.RG_Oficial)) ||
       (toqueAtual && (toqueAtual.Nome_Toque || toqueAtual.RG_Toque)) ||
-      (coberturaAtual && (coberturaAtual.Nome_Toque || coberturaAtual.Nome_Guarda_Titular))
+      (coberturaAtual && (coberturaAtual.Nome_Toque || coberturaAtual.Nome_Guarda_Titular)) ||
+      programacaoToqueAtual.some(item => item && item.toque &&
+        (item.toque.Nome_Toque || item.toque.RG_Toque))
     );
 
     if (!possuiIdentidadeRestrita) return;
@@ -571,7 +580,17 @@ let tipoMovimentacaoAtual = 'Entrada';
           DataHora_Inicio: coberturaAtual.DataHora_Inicio || '',
           Identidade_Visivel: false
         } : null,
-        sessaoValida: false
+        programacao: programacaoToqueAtual.map(item => ({
+          periodo: item && item.periodo ? item.periodo : null,
+          toque: item && item.toque ? {
+            ID_ToqueFogo: item.toque.ID_ToqueFogo || '',
+            Identidade_Visivel: false,
+            Sessao_Valida: false
+          } : null
+        })),
+        sessaoValida: false,
+        sessaoPeriodoAtual: false,
+        sessaoCoberturaAtiva: false
       };
     }
 
@@ -4757,7 +4776,12 @@ function aparelhoAtuaComoGuardaTitular() {
 
 function aparelhoAtuaComoToqueNaCobertura() {
   const cobertura = obterCoberturaOperacionalAtual();
-  return !!(cobertura && coberturaPertenceAoToqueAtual(cobertura) && aparelhoAssumiuToqueAtual());
+  const status = statusToqueFogoAtual || {};
+  return !!(
+    cobertura &&
+    obterSessaoTokenToqueLocal() &&
+    status.sessaoCoberturaAtiva === true
+  );
 }
 
 function podeGuardaRetomarNesteAparelho() {
@@ -4798,6 +4822,77 @@ function atualizarVisibilidadeMovimentacoesGuarda() {
   }
 }
 
+function obterProgramacaoToqueFogoExibicao() {
+  const status = statusToqueFogoAtual || {};
+  if (Array.isArray(status.programacao) && status.programacao.length) {
+    return status.programacao;
+  }
+
+  const periodoAtual = status.periodo || {};
+  return [
+    {
+      periodo: { nome: 'Diurno', faixa: '08h às 22h' },
+      toque: periodoAtual.nome === 'Diurno' ? (status.toque || null) : null
+    },
+    {
+      periodo: { nome: 'Noturno', faixa: '22h às 08h' },
+      toque: periodoAtual.nome === 'Noturno' ? (status.toque || null) : null
+    }
+  ];
+}
+
+function obterPeriodoAlvoToqueFogo() {
+  const campo = document.getElementById('periodoAlvoToqueFogo');
+  return campo && campo.value === 'Noturno' ? 'Noturno' : 'Diurno';
+}
+
+function atualizarTituloDefinicaoToqueFogo() {
+  const periodo = obterPeriodoAlvoToqueFogo();
+  const titulo = document.getElementById('tituloDefinicaoToqueFogo');
+  const botao = document.getElementById('btnAssumirToqueFogo');
+  if (titulo) titulo.textContent = 'Definir Toque de Fogo ' + periodo.toLowerCase();
+  if (botao && !botao.disabled) botao.textContent = 'Confirmar Toque ' + periodo.toLowerCase();
+}
+
+function renderizarProgramacaoToqueFogo() {
+  const container = document.getElementById('programacaoToqueFogo');
+  if (!container) return;
+  const status = statusToqueFogoAtual || {};
+  const nomePeriodoAtual = String(status.periodo && status.periodo.nome || '');
+
+  container.innerHTML = obterProgramacaoToqueFogoExibicao().map(item => {
+    const periodo = item && item.periodo ? item.periodo : {};
+    const toque = item && item.toque ? item.toque : null;
+    const nomePeriodo = String(periodo.nome || '').toLowerCase() === 'noturno'
+      ? 'Noturno'
+      : 'Diurno';
+    const periodoAtual = nomePeriodo === nomePeriodoAtual;
+    const periodoEncerrado = nomePeriodoAtual === 'Noturno' && nomePeriodo === 'Diurno';
+    let situacao = 'A definir';
+    if (!toque && periodoEncerrado) situacao = 'Não definido';
+    else if (toque && periodoAtual) situacao = 'Em serviço';
+    else if (toque && nomePeriodoAtual === 'Diurno' && nomePeriodo === 'Noturno') situacao = 'Programado';
+    else if (toque && periodoEncerrado) situacao = 'Concluído';
+
+    const identificacao = toque
+      ? (toque.Nome_Toque
+          ? escaparHtml(toque.Nome_Toque) +
+            (toque.RG_Toque ? ' — RG ' + escaparHtml(toque.RG_Toque) : '')
+          : 'Militar definido')
+      : 'Ainda não definido';
+    const rotuloBotao = periodoEncerrado ? 'Encerrado' : (toque ? 'Trocar' : 'Definir');
+
+    return '<div class="periodo-programado-toque' + (periodoAtual ? ' periodo-atual' : '') + '">' +
+      '<div><strong>' + escaparHtml(nomePeriodo) + ' • ' + escaparHtml(periodo.faixa || '') +
+      '<span class="selo-periodo-toque">' + escaparHtml(situacao) + '</span></strong>' +
+      '<small>' + identificacao + '</small></div>' +
+      '<button type="button" class="botao-periodo-toque"' +
+      (periodoEncerrado ? ' disabled' : '') +
+      ' onclick="mostrarAreaTrocaToqueFogo(\'' + escaparHtml(nomePeriodo) + '\')">' +
+      rotuloBotao + '</button></div>';
+  }).join('');
+}
+
 function atualizarTelaToqueFogo() {
   const status = statusToqueFogoAtual || {};
   const periodo = status.periodo || {};
@@ -4812,30 +4907,45 @@ function atualizarTelaToqueFogo() {
   periodoEl.textContent = (periodo.nome || 'Período atual') + ' • ' + (periodo.faixa || '');
   statusEl.classList.remove('sem-guarda', 'com-guarda');
 
-  if (toque) {
-    const esteAparelhoAssumiuToque = aparelhoAssumiuToqueAtual();
-    const idToqueLocal = localStorage.getItem('toque_fogo_id_local') || '';
-    if (!esteAparelhoAssumiuToque && obterSessaoTokenToqueLocal() &&
-        (toque.Sessao_Valida === false || idToqueLocal !== toque.ID_ToqueFogo)) {
-      limparToqueFogoLocal();
-    }
+  const seletorPeriodo = document.getElementById('periodoAlvoToqueFogo');
+  const opcaoDiurna = seletorPeriodo && seletorPeriodo.querySelector('option[value="Diurno"]');
+  if (opcaoDiurna) opcaoDiurna.disabled = periodo.nome === 'Noturno';
+  if (opcaoDiurna && opcaoDiurna.disabled && seletorPeriodo.value === 'Diurno') {
+    seletorPeriodo.value = 'Noturno';
+    alterarPeriodoAlvoToqueFogo();
+  }
 
-    statusEl.classList.add('com-guarda');
-    statusEl.innerHTML = toque.Nome_Toque && toque.RG_Toque
-      ? 'Toque de Fogo atual:<br>' + escaparHtml(toque.Nome_Toque) +
-        ' — RG ' + escaparHtml(toque.RG_Toque)
-      : 'O período atual do Toque de Fogo já está assumido.<br><small>Entre para consultar ou realizar a troca.</small>';
-    areaAssumir.classList.toggle('oculto', !loginToqueFogoAberto);
-    btnTrocar.classList.toggle('oculto', esteAparelhoAssumiuToque);
-    btnTrocar.textContent = 'Assumir / Trocar';
-  } else {
-    statusEl.classList.add('sem-guarda');
-    statusEl.textContent = 'Nenhum Toque de Fogo assumiu o período ' + (periodo.faixa || 'atual') + '.';
-    areaAssumir.classList.toggle('oculto', !loginToqueFogoAberto);
-    btnTrocar.classList.remove('oculto');
-    btnTrocar.textContent = 'Entrar';
+  if (obterSessaoTokenToqueLocal() && status.sessaoValida === false) {
     limparToqueFogoLocal();
   }
+
+  if (toque) {
+    statusEl.classList.add('com-guarda');
+    statusEl.innerHTML = toque.Nome_Toque && toque.RG_Toque
+      ? 'Em serviço agora:<br>' + escaparHtml(toque.Nome_Toque) +
+        ' — RG ' + escaparHtml(toque.RG_Toque)
+      : 'O Toque de Fogo do período atual já está definido.<br><small>Entre para consultar a programação.</small>';
+  } else {
+    statusEl.classList.add('sem-guarda');
+    statusEl.textContent = 'Nenhum Toque de Fogo foi definido para o período ' +
+      (periodo.faixa || 'atual') + '.';
+  }
+
+  if (status.sessaoValida === true && status.sessaoPeriodoAtual !== true) {
+    const idLocal = localStorage.getItem('toque_fogo_id_local') || '';
+    const itemLocal = obterProgramacaoToqueFogoExibicao().find(item =>
+      item && item.toque && String(item.toque.ID_ToqueFogo || '') === idLocal
+    );
+    const nomeLocal = itemLocal && itemLocal.periodo ? itemLocal.periodo.nome : '';
+    statusEl.innerHTML += '<br><small>' + (nomeLocal === 'Noturno'
+      ? 'Este celular está validado para o período noturno e será habilitado automaticamente às 22h.'
+      : 'Este celular está validado para outro período deste ciclo.') + '</small>';
+  }
+
+  areaAssumir.classList.toggle('oculto', !loginToqueFogoAberto);
+  btnTrocar.classList.remove('oculto');
+  btnTrocar.textContent = 'Definir / Trocar';
+  renderizarProgramacaoToqueFogo();
 
   if (cobertura) {
     coberturaEl.classList.remove('oculto');
@@ -4853,48 +4963,111 @@ function atualizarTelaToqueFogo() {
   atualizarAcoesCoberturaEPermissoes();
 }
 
-function mostrarAreaTrocaToqueFogo() {
+function escolherPeriodoPadraoToqueFogo() {
+  const atual = String(statusToqueFogoAtual && statusToqueFogoAtual.periodo &&
+    statusToqueFogoAtual.periodo.nome || 'Diurno');
+  const programacao = obterProgramacaoToqueFogoExibicao().filter(item =>
+    !(atual === 'Noturno' && item && item.periodo && item.periodo.nome === 'Diurno')
+  );
+  const faltanteAtual = programacao.find(item => item && item.periodo &&
+    item.periodo.nome === atual && !item.toque);
+  const faltante = faltanteAtual || programacao.find(item => item && !item.toque);
+  return faltante && faltante.periodo ? faltante.periodo.nome : atual;
+}
+
+function mostrarAreaTrocaToqueFogo(periodoAlvo) {
+  const periodoAtual = String(statusToqueFogoAtual && statusToqueFogoAtual.periodo &&
+    statusToqueFogoAtual.periodo.nome || '');
+  if (periodoAtual === 'Noturno' && periodoAlvo === 'Diurno') {
+    mostrarMensagem('O período diurno deste ciclo já foi encerrado.', 'erro');
+    return;
+  }
   loginToqueFogoAberto = true;
   expandirPerfilServico('cardToqueFogo', true);
+  const campoPeriodo = document.getElementById('periodoAlvoToqueFogo');
+  if (campoPeriodo) {
+    campoPeriodo.value = periodoAlvo === 'Noturno' || periodoAlvo === 'Diurno'
+      ? periodoAlvo
+      : escolherPeriodoPadraoToqueFogo();
+  }
+  atualizarTituloDefinicaoToqueFogo();
   document.getElementById('areaAssumirToqueFogo').classList.remove('oculto');
-  mostrarMensagem('Valide o e-mail do militar que assumirá o Toque de Fogo neste período.', 'sucesso');
+  mostrarMensagem(
+    'Valide o e-mail do militar que ficará como Toque de Fogo ' +
+      obterPeriodoAlvoToqueFogo().toLowerCase() + '.',
+    'sucesso'
+  );
+}
+
+function alterarPeriodoAlvoToqueFogo() {
+  const haviaValidacao = !!dadosCodigoToqueFogo ||
+    !document.getElementById('areaCodigoToqueFogo').classList.contains('oculto');
+  geracaoValidacaoToqueFogo += 1;
+  dadosCodigoToqueFogo = null;
+  const codigo = document.getElementById('codigoToqueFogo');
+  if (codigo) codigo.value = '';
+  ['areaCodigoToqueFogo', 'areaToqueFogoIdentificado', 'areaToqueFogoManual', 'btnAssumirToqueFogo']
+    .forEach(id => {
+      const elemento = document.getElementById(id);
+      if (elemento) elemento.classList.add('oculto');
+    });
+  atualizarTituloDefinicaoToqueFogo();
+  if (haviaValidacao) {
+    mostrarMensagem('O período foi alterado. Solicite um novo código para continuar.', 'erro');
+  }
 }
 
 function enviarCodigoToqueFogo() {
   const email = document.getElementById('emailToqueFogo').value.trim().toLowerCase();
+  const periodoAlvo = obterPeriodoAlvoToqueFogo();
   if (!email || !email.includes('@')) {
     mostrarMensagem('Informe um e-mail válido.', 'erro');
     return;
   }
+  const geracao = ++geracaoValidacaoToqueFogo;
   google.script.run
     .withSuccessHandler((resposta) => {
+      if (geracao !== geracaoValidacaoToqueFogo) return;
       dadosCodigoToqueFogo = {
         email: email,
         encontradoNoEfetivo: false,
         militar: null,
-        ticketAssuncao: ''
+        ticketAssuncao: '',
+        periodoAlvo: resposta.periodo || periodoAlvo
       };
       document.getElementById('areaCodigoToqueFogo').classList.remove('oculto');
-      mostrarMensagem('Se o e-mail estiver autorizado, o código será enviado.', 'sucesso');
+      mostrarMensagem(
+        'Se o e-mail estiver autorizado, o código do período ' +
+          periodoAlvo.toLowerCase() + ' será enviado.',
+        'sucesso'
+      );
     })
     .withFailureHandler((erro) => mostrarMensagem('Erro ao enviar código: ' + erro.message, 'erro'))
-    .enviarCodigoAssumirToqueFogo(email);
+    .enviarCodigoAssumirToqueFogo(email, periodoAlvo);
 }
 
 function validarCodigoToqueFogo() {
   const email = document.getElementById('emailToqueFogo').value.trim().toLowerCase();
   const codigo = document.getElementById('codigoToqueFogo').value.trim();
+  const periodoAlvo = obterPeriodoAlvoToqueFogo();
   if (!email || !codigo) {
     mostrarMensagem('Informe o e-mail e o código.', 'erro');
     return;
   }
+  if (!dadosCodigoToqueFogo || dadosCodigoToqueFogo.periodoAlvo !== periodoAlvo) {
+    mostrarMensagem('Solicite primeiro o código para este período.', 'erro');
+    return;
+  }
+  const geracao = geracaoValidacaoToqueFogo;
   google.script.run
     .withSuccessHandler((resposta) => {
+      if (geracao !== geracaoValidacaoToqueFogo) return;
       dadosCodigoToqueFogo = {
         email: resposta.email,
         encontradoNoEfetivo: resposta.encontradoNoEfetivo,
         militar: resposta.militar || null,
-        ticketAssuncao: resposta.ticketAssuncao || ''
+        ticketAssuncao: resposta.ticketAssuncao || '',
+        periodoAlvo: resposta.periodo || periodoAlvo
       };
       const area = document.getElementById('areaToqueFogoIdentificado');
       const manual = document.getElementById('areaToqueFogoManual');
@@ -4908,20 +5081,21 @@ function validarCodigoToqueFogo() {
         area.textContent = 'E-mail validado. Informe RG e nome do militar.';
         manual.classList.remove('oculto');
       }
-      mostrarMensagem('Código validado com sucesso.', 'sucesso');
+      atualizarTituloDefinicaoToqueFogo();
+      mostrarMensagem('Código validado para o período ' + periodoAlvo.toLowerCase() + '.', 'sucesso');
     })
     .withFailureHandler((erro) => mostrarMensagem('Erro ao validar código: ' + erro.message, 'erro'))
-    .validarCodigoAssumirToqueFogo(email, codigo);
+    .validarCodigoAssumirToqueFogo(email, codigo, periodoAlvo);
 }
 
-function assumirToqueFogo(encerrarAnterior = false) {
+function assumirToqueFogo(encerrarAnterior = false, idToqueAnteriorEsperado = '') {
   if (!dadosCodigoToqueFogo) {
     mostrarMensagem('Valide o e-mail antes de assumir o Toque de Fogo.', 'erro');
     return;
   }
   const botao = document.getElementById('btnAssumirToqueFogo');
   botao.disabled = true;
-  botao.textContent = 'Assumindo...';
+  botao.textContent = 'Definindo...';
   const dados = {
     email: dadosCodigoToqueFogo.email,
     origemIdentificacao: dadosCodigoToqueFogo.encontradoNoEfetivo ? 'Efetivo' : 'Manual',
@@ -4929,20 +5103,28 @@ function assumirToqueFogo(encerrarAnterior = false) {
     rgManual: document.getElementById('rgToqueFogoManual').value.trim(),
     nomeManual: document.getElementById('nomeToqueFogoManual').value.trim(),
     ticketAssuncao: dadosCodigoToqueFogo.ticketAssuncao || '',
-    encerrarAnterior: encerrarAnterior
+    periodoAlvo: dadosCodigoToqueFogo.periodoAlvo || obterPeriodoAlvoToqueFogo(),
+    encerrarAnterior: encerrarAnterior,
+    idToqueAnteriorEsperado: idToqueAnteriorEsperado
   };
   google.script.run
     .withSuccessHandler((resposta) => {
       botao.disabled = false;
-      botao.textContent = 'Assumir Toque de Fogo';
+      atualizarTituloDefinicaoToqueFogo();
       if (resposta.requerConfirmacaoTroca && resposta.toqueAtivo) {
         abrirModalConfirmacao(
-          'Toque de Fogo já assumido',
-          'O período está assumido por <strong>' + escaparHtml(resposta.toqueAtivo.Nome_Toque) +
+          'Toque de Fogo já definido',
+          'O período ' + escaparHtml(dados.periodoAlvo.toLowerCase()) +
+            ' está definido para <strong>' + escaparHtml(resposta.toqueAtivo.Nome_Toque) +
             '</strong>.<br><br>Deseja realizar a troca?',
-          () => assumirToqueFogo(true),
+          () => assumirToqueFogo(true, resposta.toqueAtivo.ID_ToqueFogo || ''),
           true
         );
+        return;
+      }
+      if (resposta.sucesso === false) {
+        carregarIdentidadesEquipeServico(true);
+        mostrarMensagem(resposta.mensagem || 'A programação mudou. Tente novamente.', 'erro');
         return;
       }
       if (resposta.toque) salvarToqueFogoLocal(resposta.toque);
@@ -4950,17 +5132,18 @@ function assumirToqueFogo(encerrarAnterior = false) {
       statusToqueFogoAtual = resposta.statusToque || statusToqueFogoAtual;
       limparAreaToqueFogo();
       carregarIdentidadesEquipeServico(true);
-      mostrarMensagem(resposta.mensagem || 'Toque de Fogo assumido.', 'sucesso');
+      mostrarMensagem(resposta.mensagem || 'Toque de Fogo definido.', 'sucesso');
     })
     .withFailureHandler((erro) => {
       botao.disabled = false;
-      botao.textContent = 'Assumir Toque de Fogo';
-      mostrarMensagem('Erro ao assumir Toque de Fogo: ' + erro.message, 'erro');
+      atualizarTituloDefinicaoToqueFogo();
+      mostrarMensagem('Erro ao definir Toque de Fogo: ' + erro.message, 'erro');
     })
     .assumirToqueFogoComEmailValidado(dados);
 }
 
 function limparAreaToqueFogo() {
+  geracaoValidacaoToqueFogo += 1;
   dadosCodigoToqueFogo = null;
   loginToqueFogoAberto = false;
   ['emailToqueFogo', 'codigoToqueFogo', 'rgToqueFogoManual', 'nomeToqueFogoManual'].forEach(id => {
@@ -4971,6 +5154,7 @@ function limparAreaToqueFogo() {
     const elemento = document.getElementById(id);
     if (elemento) elemento.classList.add('oculto');
   });
+  atualizarTituloDefinicaoToqueFogo();
 }
 
 function salvarToqueFogoLocal(toque) {
@@ -4989,10 +5173,14 @@ function limparToqueFogoLocal() {
 function aparelhoAssumiuToqueAtual() {
   const toque = statusToqueFogoAtual && statusToqueFogoAtual.toque;
   if (!toque || !toque.ID_ToqueFogo) return false;
-  const idLocal = localStorage.getItem('toque_fogo_id_local');
   const token = obterSessaoTokenToqueLocal();
+  if (!token) return false;
+  if (typeof statusToqueFogoAtual.sessaoPeriodoAtual === 'boolean') {
+    return statusToqueFogoAtual.sessaoPeriodoAtual;
+  }
+  const idLocal = localStorage.getItem('toque_fogo_id_local');
   const sessaoAceita = toque.Sessao_Valida === undefined || toque.Sessao_Valida === true;
-  return !!(idLocal && token && idLocal === toque.ID_ToqueFogo && sessaoAceita);
+  return !!(idLocal && idLocal === toque.ID_ToqueFogo && sessaoAceita);
 }
 
 function aparelhoPodeOperarGuardaAtual() {
@@ -5086,6 +5274,9 @@ function assumirHoraToqueFogo() {
       }
       geracaoConsultaToque += 1;
       statusToqueFogoAtual = resposta.statusToque || statusToqueFogoAtual || {};
+      statusToqueFogoAtual.sessaoValida = true;
+      statusToqueFogoAtual.sessaoPeriodoAtual = true;
+      statusToqueFogoAtual.sessaoCoberturaAtiva = true;
       estadoToqueFogoCarregado = true;
       atualizarTelaToqueFogo();
       carregarIdentidadesEquipeServico(true);
