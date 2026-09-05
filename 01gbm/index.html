@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=26.5.0">
+  <link rel="stylesheet" href="style.css?v=26.7.0">
   </head>
 
   <body>
@@ -398,6 +398,16 @@
             </div>
           </div>
 
+          <div id="acaoLancamentoRetroativo" class="acao-lancamento-retroativo oculto">
+            <div>
+              <strong>Ficou algum lançamento para trás?</strong>
+              <span>O Comandante pode registrar uma movimentação individual no horário em que ela realmente ocorreu.</span>
+            </div>
+            <button type="button" id="btnAbrirLancamentoRetroativo" onclick="abrirLancamentoRetroativo()">
+              Lançar horário anterior
+            </button>
+          </div>
+
           <div class="secao-painel-comandante" id="secaoPainelDentro">
             <button type="button" class="botao-alternar-secao-painel" aria-expanded="true" aria-controls="conteudoPainelDentro" onclick="alternarSecaoPainel('dentro')">
               <span>Dentro do quartel</span>
@@ -558,9 +568,52 @@
         </section>
 
         <section class="card oculto" id="cardMovimentacao">
-          <h2>Registrar Movimentação</h2>
+          <h2 id="tituloCardMovimentacao">Registrar Movimentação</h2>
 
-          <div class="campo">
+          <div id="blocoLancamentoRetroativo" class="bloco-lancamento-retroativo oculto">
+            <div class="cabecalho-lancamento-retroativo">
+              <span class="selo-modo-retroativo">MODO RETROATIVO</span>
+              <strong>Exclusivo do Comandante da Guarda</strong>
+              <p>Informe quando a movimentação realmente ocorreu. A hora deste lançamento será registrada automaticamente para auditoria.</p>
+            </div>
+
+            <div class="grade-data-hora-retroativa">
+              <div class="campo">
+                <label for="dataMovimentacaoRetroativa">Data em que ocorreu *</label>
+                <input type="date" id="dataMovimentacaoRetroativa">
+              </div>
+              <div class="campo">
+                <label for="horaMovimentacaoRetroativa">Hora em que ocorreu *</label>
+                <input type="time" id="horaMovimentacaoRetroativa" step="60">
+              </div>
+            </div>
+
+            <div class="campo">
+              <label for="motivoMovimentacaoRetroativa">Motivo do lançamento posterior *</label>
+              <select id="motivoMovimentacaoRetroativa" onchange="atualizarDetalheMotivoRetroativo()">
+                <option value="">Selecione o motivo</option>
+                <option value="Falta de energia">Falta de energia</option>
+                <option value="Celular sem carga">Celular sem carga</option>
+                <option value="Falha de conexão">Falha de conexão</option>
+                <option value="Falha ou correção do aplicativo">Falha ou correção do aplicativo</option>
+                <option value="Ajuste do período de implantação/teste">Ajuste do período de implantação/teste</option>
+                <option value="Registro não realizado no momento">Registro não realizado no momento</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+
+            <div class="campo oculto" id="campoDetalheMotivoRetroativo">
+              <label for="detalheMotivoRetroativo">Detalhe do motivo *</label>
+              <input type="text" id="detalheMotivoRetroativo" maxlength="240"
+                placeholder="Explique resumidamente o que ocorreu">
+            </div>
+
+            <button type="button" class="botao-cancelar-retroativo" onclick="encerrarLancamentoRetroativo()">
+              Concluir e fechar modo retroativo
+            </button>
+          </div>
+
+          <div class="campo" id="campoFormaRegistro">
             <label>Forma do registro</label>
             <div class="botoes-segmentados" id="botoesModoRegistro">
               <button type="button" class="ativo" id="btnModoIndividual" onclick="selecionarModoRegistro('Individual')">Individual</button>
@@ -729,18 +782,20 @@
             Registrar
           </button>
 
-          <div id="mensagemSistema" class="mensagem-sistema oculto"></div>
+          <div id="mensagemSistema" class="mensagem-sistema oculto" role="status"
+            aria-live="polite" aria-atomic="true"></div>
         </section>
       </main>
     </div>
 
-    <div id="modalConfirmacao" class="modal-fundo oculto">
-      <div class="modal-card">
+    <div id="modalConfirmacao" class="modal-fundo oculto" role="dialog" aria-modal="true"
+      aria-labelledby="modalTitulo" aria-describedby="modalTexto">
+      <div class="modal-card" tabindex="-1">
         <h3 id="modalTitulo">Confirmar ação</h3>
         <p id="modalTexto">Deseja continuar?</p>
 
         <div class="modal-botoes">
-          <button type="button" class="modal-cancelar" onclick="fecharModalConfirmacao()">
+          <button type="button" class="modal-cancelar" id="btnModalCancelar" onclick="fecharModalConfirmacao()">
             Cancelar
           </button>
 
@@ -776,6 +831,6 @@
       </div>
     </div>
 
-  <script src="app.js?v=26.6.0"></script>
+  <script src="app.js?v=26.7.0"></script>
   </body>
 </html>

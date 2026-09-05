@@ -320,6 +320,46 @@
     margin-bottom: 20px;
   }
 
+  .acao-lancamento-retroativo {
+    display: grid;
+    gap: 11px;
+    margin: 0 0 20px;
+    padding: 14px;
+    border: 1px solid #fbbf24;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    color: #78350f;
+  }
+
+  .acao-lancamento-retroativo strong,
+  .acao-lancamento-retroativo span {
+    display: block;
+  }
+
+  .acao-lancamento-retroativo strong {
+    margin-bottom: 4px;
+    font-size: 14px;
+  }
+
+  .acao-lancamento-retroativo span {
+    color: #92400e;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .acao-lancamento-retroativo button {
+    width: 100%;
+    min-height: 46px;
+    padding: 11px 14px;
+    border: 1px solid #d97706;
+    border-radius: 12px;
+    background: #b45309;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
   .indicador-painel {
     min-width: 0;
     padding: 12px 8px;
@@ -442,10 +482,12 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 10px;
   }
 
   .cabecalho-item-painel strong {
+    flex: 1 1 145px;
     color: #0f172a;
     font-size: 14px;
     line-height: 1.25;
@@ -486,6 +528,103 @@
     margin: 0 0 18px;
     font-size: 21px;
     line-height: 1.2;
+  }
+
+  #cardMovimentacao.modo-retroativo {
+    border-color: #f59e0b;
+    box-shadow: 0 12px 30px rgba(180, 83, 9, 0.14);
+  }
+
+  .bloco-lancamento-retroativo {
+    margin: -3px 0 18px;
+    padding: 14px;
+    border: 1px solid #fbbf24;
+    border-radius: 15px;
+    background: #fffbeb;
+    color: #78350f;
+  }
+
+  .cabecalho-lancamento-retroativo {
+    margin-bottom: 15px;
+  }
+
+  .cabecalho-lancamento-retroativo strong {
+    display: block;
+    margin: 7px 0 4px;
+    font-size: 15px;
+  }
+
+  .cabecalho-lancamento-retroativo p {
+    margin: 0;
+    color: #92400e;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .selo-modo-retroativo,
+  .selo-movimentacao-retroativa {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 4px 8px;
+    border: 1px solid #f59e0b;
+    border-radius: 999px;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.045em;
+    line-height: 1.1;
+  }
+
+  .cabecalho-item-painel .selo-movimentacao-retroativa {
+    color: #92400e;
+    font-size: 10px;
+    text-align: center;
+  }
+
+  .grade-data-hora-retroativa {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+    gap: 10px;
+  }
+
+  .grade-data-hora-retroativa .campo {
+    min-width: 0;
+  }
+
+  .bloco-lancamento-retroativo label {
+    color: #78350f;
+    font-size: 13px;
+  }
+
+  .bloco-lancamento-retroativo input,
+  .bloco-lancamento-retroativo select {
+    border-color: #fcd34d;
+    background: #fff;
+  }
+
+  .botao-cancelar-retroativo {
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 12px;
+    border: 1px solid #f59e0b;
+    border-radius: 11px;
+    background: transparent;
+    color: #92400e;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  #cardMovimentacao.modo-retroativo #btnRegistrarMovimentacao {
+    background: #b45309;
+  }
+
+  .item-painel.movimentacao-retroativa,
+  .item-historico.movimentacao-retroativa {
+    border-left-color: #f59e0b;
+    background: #fffbeb;
   }
 
   .campo {
@@ -1457,6 +1596,16 @@
 
 .modal-confirmar.perigo {
   background: #991b1b;
+}
+
+.modal-confirmar.retroativo {
+  background: #b45309;
+}
+
+@media (max-width: 360px) {
+  .grade-data-hora-retroativa {
+    grid-template-columns: 1fr;
+  }
 }
 
 .modal-selecao-militar {

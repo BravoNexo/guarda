@@ -207,10 +207,13 @@ function montarDadosChamadaApi(nome, argumentos) {
         rgCpf: argumentos[0],
         categoriaPessoa: argumentos[1],
         sessaoToken: sessaoToken,
-        sessaoToqueToken: sessaoToqueToken
+        sessaoToqueToken: sessaoToqueToken,
+        sessaoComandanteToken: sessaoComandanteToken
       };
     case 'registrarMovimentacao':
       return { movimentacao: argumentos[0], sessaoToken: sessaoToken, sessaoToqueToken: sessaoToqueToken };
+    case 'registrarMovimentacaoRetroativa':
+      return { movimentacao: argumentos[0], sessaoComandanteToken: sessaoComandanteToken };
     case 'enviarCodigoAssumirToqueFogo':
       return { email: argumentos[0] };
     case 'validarCodigoAssumirToqueFogo':
@@ -401,6 +404,7 @@ function criarExecutorAppsScript() {
     'registrarMovimentacaoSOS',
     'buscarPessoasPorRgCpf',
     'registrarMovimentacao',
+    'registrarMovimentacaoRetroativa',
     'enviarCodigoAssumirToqueFogo',
     'validarCodigoAssumirToqueFogo',
     'assumirToqueFogoComEmailValidado',
@@ -458,6 +462,9 @@ let tipoMovimentacaoAtual = 'Entrada';
   let guarnicoesServicoCarregadas = false;
   let tipoSeletorMilitarGuarnicaoServico = '';
   let focoAntesDoSeletorMilitarGuarnicao = null;
+  let modoLancamentoRetroativoAtivo = false;
+  let idSolicitacaoRetroativaAtual = '';
+  let assinaturaSolicitacaoRetroativaAtual = '';
 
   let dadosCodigoGuarda = null;
   let guardaAtual = null;
@@ -736,6 +743,39 @@ let tipoMovimentacaoAtual = 'Entrada';
     });
 
     document.addEventListener('keydown', evento => {
+      const modalConfirmacao = document.getElementById('modalConfirmacao');
+      if (modalConfirmacao && !modalConfirmacao.classList.contains('oculto')) {
+        if (evento.key === 'Escape') {
+          evento.preventDefault();
+          fecharModalConfirmacao();
+          return;
+        }
+
+        if (evento.key === 'Tab') {
+          const focaveis = Array.from(modalConfirmacao.querySelectorAll(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          ));
+          if (!focaveis.length) {
+            evento.preventDefault();
+            return;
+          }
+
+          const primeiro = focaveis[0];
+          const ultimo = focaveis[focaveis.length - 1];
+          if (!modalConfirmacao.contains(document.activeElement)) {
+            evento.preventDefault();
+            (evento.shiftKey ? ultimo : primeiro).focus();
+          } else if (evento.shiftKey && document.activeElement === primeiro) {
+            evento.preventDefault();
+            ultimo.focus();
+          } else if (!evento.shiftKey && document.activeElement === ultimo) {
+            evento.preventDefault();
+            primeiro.focus();
+          }
+        }
+        return;
+      }
+
       const modal = document.getElementById('modalSeletorMilitarGuarnicao');
       if (!modal || modal.classList.contains('oculto')) return;
 
@@ -869,6 +909,11 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function selecionarModoRegistro(modo) {
+    if (modoLancamentoRetroativoAtivo && modo !== 'Individual') {
+      mostrarMensagem('O lançamento retroativo está disponível inicialmente apenas no modo Individual.', 'erro');
+      return;
+    }
+
     modoRegistroAtual = ['Viatura', 'SOS'].includes(modo) ? modo : 'Individual';
 
     document.getElementById('btnModoIndividual').classList.toggle('ativo', modoRegistroAtual === 'Individual');
@@ -1683,7 +1728,15 @@ let tipoMovimentacaoAtual = 'Entrada';
       return ativo && mesmoTipo && permitido;
     });
 
-    lista.sort((a, b) => Number(a.Ordem || 999) - Number(b.Ordem || 999));
+    lista.sort((a, b) => {
+      if (tipoMovimentacaoAtual === 'Saída' && modoRegistroAtual === 'Individual') {
+        const folgaA = normalizarTextoSeletorGuarnicao(a.Destino) === 'FOLGA';
+        const folgaB = normalizarTextoSeletorGuarnicao(b.Destino) === 'FOLGA';
+        if (folgaA !== folgaB) return folgaA ? -1 : 1;
+      }
+
+      return Number(a.Ordem || 999) - Number(b.Ordem || 999);
+    });
 
     lista.forEach(item => {
       const option = document.createElement('option');
@@ -2102,8 +2155,256 @@ let tipoMovimentacaoAtual = 'Entrada';
     });
   }
 
+  function formatarHoraInputLocal(data) {
+    return String(data.getHours()).padStart(2, '0') + ':' +
+      String(data.getMinutes()).padStart(2, '0');
+  }
+
+  function interpretarDataHoraPainelLocal(valor) {
+    const correspondencia = /^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/.exec(String(valor || '').trim());
+    if (!correspondencia) return null;
+
+    const data = new Date(
+      Number(correspondencia[3]),
+      Number(correspondencia[2]) - 1,
+      Number(correspondencia[1]),
+      Number(correspondencia[4]),
+      Number(correspondencia[5]),
+      0,
+      0
+    );
+    return isNaN(data.getTime()) ? null : data;
+  }
+
+  function obterLimitesLancamentoRetroativo() {
+    return {
+      inicio: interpretarDataHoraPainelLocal(comandanteAtual && comandanteAtual.DataHora_Inicio_Ciclo),
+      fim: interpretarDataHoraPainelLocal(comandanteAtual && comandanteAtual.DataHora_Fim_Ciclo)
+    };
+  }
+
+  function atualizarInterfaceLancamentoRetroativo() {
+    const card = document.getElementById('cardMovimentacao');
+    const bloco = document.getElementById('blocoLancamentoRetroativo');
+    const campoForma = document.getElementById('campoFormaRegistro');
+    const titulo = document.getElementById('tituloCardMovimentacao');
+    const botao = document.getElementById('btnRegistrarMovimentacao');
+
+    if (card) card.classList.toggle('modo-retroativo', modoLancamentoRetroativoAtivo);
+    if (bloco) bloco.classList.toggle('oculto', !modoLancamentoRetroativoAtivo);
+    if (campoForma) campoForma.classList.toggle('oculto', modoLancamentoRetroativoAtivo);
+    if (titulo) titulo.textContent = modoLancamentoRetroativoAtivo
+      ? 'Lançamento individual em horário anterior'
+      : 'Registrar Movimentação';
+    if (botao && !botao.disabled) botao.textContent = modoLancamentoRetroativoAtivo
+      ? 'Registrar horário anterior'
+      : (modoRegistroAtual === 'Viatura' ? 'Registrar Auto/VTR' : 'Registrar');
+  }
+
+  function abrirLancamentoRetroativo() {
+    if (!aparelhoAssumiuComandanteAtual()) {
+      atualizarVisibilidadePainelComandante();
+      mostrarMensagem('Somente o Comandante da Guarda autenticado pode lançar um horário anterior.', 'erro');
+      return;
+    }
+
+    modoLancamentoRetroativoAtivo = true;
+    idSolicitacaoRetroativaAtual = '';
+    assinaturaSolicitacaoRetroativaAtual = '';
+    limparFormulario();
+    selecionarMovimentacao('Entrada');
+    atualizarInterfaceLancamentoRetroativo();
+
+    const agora = new Date();
+    const limites = obterLimitesLancamentoRetroativo();
+    const limiteFinal = limites.fim && limites.fim < agora
+      ? new Date(limites.fim.getTime() - 60000)
+      : agora;
+    const data = document.getElementById('dataMovimentacaoRetroativa');
+    const hora = document.getElementById('horaMovimentacaoRetroativa');
+    const motivo = document.getElementById('motivoMovimentacaoRetroativa');
+    const detalhe = document.getElementById('detalheMotivoRetroativo');
+
+    data.value = formatarDataInputLocal(limiteFinal);
+    data.min = limites.inicio ? formatarDataInputLocal(limites.inicio) : '';
+    data.max = formatarDataInputLocal(limiteFinal);
+    hora.value = '';
+    motivo.value = '';
+    detalhe.value = '';
+    atualizarDetalheMotivoRetroativo();
+    atualizarPermissaoLancamento();
+
+    const card = document.getElementById('cardMovimentacao');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => hora.focus(), 350);
+  }
+
+  function encerrarLancamentoRetroativo() {
+    cancelarLancamentoRetroativoPendente();
+    atualizarPermissaoLancamento();
+  }
+
+  function cancelarLancamentoRetroativoPendente() {
+    fecharModalConfirmacao();
+    modoLancamentoRetroativoAtivo = false;
+    idSolicitacaoRetroativaAtual = '';
+    assinaturaSolicitacaoRetroativaAtual = '';
+    limparFormulario();
+    selecionarMovimentacao('Entrada');
+    ['dataMovimentacaoRetroativa', 'horaMovimentacaoRetroativa',
+      'motivoMovimentacaoRetroativa', 'detalheMotivoRetroativo'].forEach(id => {
+      const campo = document.getElementById(id);
+      if (campo) campo.value = '';
+    });
+    atualizarDetalheMotivoRetroativo();
+    atualizarInterfaceLancamentoRetroativo();
+  }
+
+  function atualizarDetalheMotivoRetroativo() {
+    const motivo = document.getElementById('motivoMovimentacaoRetroativa');
+    const campoDetalhe = document.getElementById('campoDetalheMotivoRetroativo');
+    if (!motivo || !campoDetalhe) return;
+
+    const outro = motivo.value === 'Outro';
+    campoDetalhe.classList.toggle('oculto', !outro);
+    if (!outro) document.getElementById('detalheMotivoRetroativo').value = '';
+  }
+
+  function gerarIdSolicitacaoRetroativa() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return window.crypto.randomUUID();
+    }
+    return 'RETRO-' + Date.now() + '-' + Math.random().toString(36).slice(2, 12);
+  }
+
+  function prepararDadosLancamentoRetroativo(dados) {
+    if (!aparelhoAssumiuComandanteAtual()) {
+      mostrarMensagem('A sessão do Comandante expirou. Entre novamente antes de lançar.', 'erro');
+      atualizarPermissaoLancamento();
+      return null;
+    }
+
+    if (modoRegistroAtual !== 'Individual') {
+      mostrarMensagem('O lançamento retroativo está disponível inicialmente apenas no modo Individual.', 'erro');
+      return null;
+    }
+
+    const valorData = document.getElementById('dataMovimentacaoRetroativa').value;
+    const valorHora = document.getElementById('horaMovimentacaoRetroativa').value;
+    const motivoSelecionado = document.getElementById('motivoMovimentacaoRetroativa').value;
+    const detalhe = document.getElementById('detalheMotivoRetroativo').value.trim();
+
+    if (!valorData || !valorHora) {
+      mostrarMensagem('Informe a data e a hora em que a movimentação ocorreu.', 'erro');
+      focarCampoComErroRetroativo(!valorData ? 'dataMovimentacaoRetroativa' : 'horaMovimentacaoRetroativa');
+      return null;
+    }
+    if (!motivoSelecionado) {
+      mostrarMensagem('Selecione o motivo do lançamento posterior.', 'erro');
+      focarCampoComErroRetroativo('motivoMovimentacaoRetroativa');
+      return null;
+    }
+    if (motivoSelecionado === 'Outro' && !detalhe) {
+      mostrarMensagem('Informe o detalhe do motivo do lançamento posterior.', 'erro');
+      document.getElementById('detalheMotivoRetroativo').focus();
+      return null;
+    }
+
+    const dataHora = new Date(valorData + 'T' + valorHora + ':00');
+    if (isNaN(dataHora.getTime()) || formatarDataInputLocal(dataHora) !== valorData ||
+        formatarHoraInputLocal(dataHora) !== valorHora) {
+      mostrarMensagem('A data ou a hora informada não é válida.', 'erro');
+      focarCampoComErroRetroativo('dataMovimentacaoRetroativa');
+      return null;
+    }
+
+    const agora = new Date();
+    const limites = obterLimitesLancamentoRetroativo();
+    if (dataHora > agora) {
+      mostrarMensagem('O horário informado não pode estar no futuro.', 'erro');
+      focarCampoComErroRetroativo('horaMovimentacaoRetroativa');
+      return null;
+    }
+    if ((limites.inicio && dataHora < limites.inicio) || (limites.fim && dataHora >= limites.fim)) {
+      mostrarMensagem('O horário precisa pertencer ao ciclo deste Comandante da Guarda.', 'erro');
+      focarCampoComErroRetroativo('dataMovimentacaoRetroativa');
+      return null;
+    }
+
+    const motivoRetroativo = motivoSelecionado === 'Outro'
+      ? 'Outro — ' + detalhe
+      : motivoSelecionado;
+    const dadosRetroativos = Object.assign({}, dados, {
+      modoRegistro: 'Individual',
+      dataHoraEventoIso: dataHora.toISOString(),
+      motivoRetroativo: motivoRetroativo
+    });
+    const assinatura = JSON.stringify(dadosRetroativos);
+    if (!idSolicitacaoRetroativaAtual || assinaturaSolicitacaoRetroativaAtual !== assinatura) {
+      idSolicitacaoRetroativaAtual = gerarIdSolicitacaoRetroativa();
+      assinaturaSolicitacaoRetroativaAtual = assinatura;
+    }
+    dadosRetroativos.idSolicitacao = idSolicitacaoRetroativaAtual;
+
+    return {
+      dados: dadosRetroativos,
+      dataHora: dataHora,
+      motivo: motivoRetroativo
+    };
+  }
+
+  function focarCampoComErroRetroativo(idCampo) {
+    const campo = document.getElementById(idCampo);
+    if (!campo) return;
+    campo.focus();
+    campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function enviarMovimentacao(dados, retroativa) {
+    const botao = document.getElementById('btnRegistrarMovimentacao');
+    botao.disabled = true;
+    botao.textContent = 'Registrando...';
+
+    const executor = google.script.run
+      .withSuccessHandler((resposta) => {
+        mostrarMensagem(resposta.mensagem || 'Movimentação registrada com sucesso.', 'sucesso');
+        limparFormulario();
+        carregarPessoasDentroGuarda(true);
+        carregarMovimentacoesGuarda(true);
+
+        if (aparelhoAssumiuComandanteAtual() || aparelhoAssumiuOficialAtual()) {
+          carregarPainelComandante(true);
+        }
+
+        if (retroativa) {
+          idSolicitacaoRetroativaAtual = '';
+          assinaturaSolicitacaoRetroativaAtual = '';
+          document.getElementById('horaMovimentacaoRetroativa').value = '';
+        }
+
+        botao.disabled = false;
+        atualizarInterfaceLancamentoRetroativo();
+      })
+      .withFailureHandler((erro) => {
+        mostrarMensagem('Erro ao registrar movimentação: ' + erro.message, 'erro');
+        botao.disabled = false;
+        atualizarInterfaceLancamentoRetroativo();
+      });
+
+    if (retroativa) executor.registrarMovimentacaoRetroativa(dados);
+    else executor.registrarMovimentacao(dados);
+  }
+
   function registrarMovimentacao() {
-    if (!garantirPermissaoOperacionalAtual()) return;
+    if (modoLancamentoRetroativoAtivo) {
+      if (!aparelhoAssumiuComandanteAtual()) {
+        atualizarPermissaoLancamento();
+        mostrarMensagem('A sessão do Comandante expirou. Entre novamente antes de lançar.', 'erro');
+        return;
+      }
+    } else if (!garantirPermissaoOperacionalAtual()) {
+      return;
+    }
 
     if (modoRegistroAtual === 'SOS') {
       registrarSOS();
@@ -2184,31 +2485,31 @@ let tipoMovimentacaoAtual = 'Entrada';
       return;
     }
 
-    const botao = document.getElementById('btnRegistrarMovimentacao');
-    botao.disabled = true;
-    botao.textContent = 'Registrando...';
+    if (modoLancamentoRetroativoAtivo) {
+      const retroativo = prepararDadosLancamentoRetroativo(dados);
+      if (!retroativo) return;
 
-    google.script.run
-      .withSuccessHandler((resposta) => {
-        mostrarMensagem(resposta.mensagem || 'Movimentação registrada com sucesso.', 'sucesso');
-        limparFormulario();
-        carregarPessoasDentroGuarda(true);
-        carregarMovimentacoesGuarda(true);
+      const nomePessoa = pessoaSelecionada && pessoaSelecionada.Nome
+        ? pessoaSelecionada.Nome
+        : dados.nomePessoaNaoEncontrada;
+      const quando = retroativo.dataHora.toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+      abrirModalConfirmacao(
+        'Confirmar lançamento retroativo',
+        'Você está registrando a <strong>' + escaparHtml(dados.tipoMovimentacao) +
+          '</strong> de <strong>' + escaparHtml(nomePessoa || 'pessoa não identificada') +
+          '</strong> como ocorrida em <strong>' + escaparHtml(quando) +
+          '</strong>.<br><br>Motivo: <strong>' + escaparHtml(retroativo.motivo) +
+          '</strong>.<br><br>O lançamento ficará identificado como retroativo no histórico e na auditoria.',
+        () => enviarMovimentacao(retroativo.dados, true),
+        'retroativo'
+      );
+      return;
+    }
 
-        if (aparelhoAssumiuComandanteAtual() || aparelhoAssumiuOficialAtual()) {
-          carregarPainelComandante(true);
-        }
-
-        botao.disabled = false;
-        botao.textContent = modoRegistroAtual === 'Viatura' ? 'Registrar Auto/VTR' : 'Registrar';
-      })
-      .withFailureHandler((erro) => {
-        mostrarMensagem('Erro ao registrar movimentação: ' + erro.message, 'erro');
-
-        botao.disabled = false;
-        botao.textContent = modoRegistroAtual === 'Viatura' ? 'Registrar Auto/VTR' : 'Registrar';
-      })
-      .registrarMovimentacao(dados);
+    enviarMovimentacao(dados, false);
   }
 
   function limparFormulario() {
@@ -2251,6 +2552,8 @@ let tipoMovimentacaoAtual = 'Entrada';
     }
 
     mensagem.textContent = texto;
+    mensagem.setAttribute('role', tipo === 'erro' ? 'alert' : 'status');
+    mensagem.setAttribute('aria-live', tipo === 'erro' ? 'assertive' : 'polite');
     mensagem.classList.remove('oculto', 'sucesso', 'erro');
     mensagem.classList.add(tipo);
 
@@ -3131,10 +3434,18 @@ function atualizarTelaComandante() {
 function atualizarVisibilidadePainelComandante() {
   const painel = document.getElementById('cardPainelComandante');
   const historico = document.getElementById('cardConsultaHistorico');
+  const acaoRetroativa = document.getElementById('acaoLancamentoRetroativo');
 
   if (!painel) return;
 
-  if (aparelhoAssumiuComandanteAtual() || aparelhoAssumiuOficialAtual()) {
+  const comandanteNesteAparelho = aparelhoAssumiuComandanteAtual();
+  if (acaoRetroativa) acaoRetroativa.classList.toggle('oculto', !comandanteNesteAparelho);
+  if (!comandanteNesteAparelho && modoLancamentoRetroativoAtivo) {
+    cancelarLancamentoRetroativoPendente();
+    atualizarPermissaoLancamento();
+  }
+
+  if (comandanteNesteAparelho || aparelhoAssumiuOficialAtual()) {
     painel.classList.remove('oculto');
     if (historico) historico.classList.remove('oculto');
 
@@ -3247,6 +3558,7 @@ function renderizarHistorico(resultado) {
   registros.forEach(registro => {
     const item = document.createElement('div');
     item.className = 'item-painel item-historico';
+    if (movimentacaoEhRetroativa(registro)) item.classList.add('movimentacao-retroativa');
 
     const cabecalho = document.createElement('div');
     cabecalho.className = 'cabecalho-item-painel';
@@ -3258,6 +3570,7 @@ function renderizarHistorico(resultado) {
     tipo.textContent = [registro.tipoMovimentacao, registro.dataHora].filter(Boolean).join(' • ');
     cabecalho.appendChild(nome);
     cabecalho.appendChild(tipo);
+    adicionarSeloMovimentacaoRetroativa(cabecalho, registro);
     item.appendChild(cabecalho);
 
     const detalhes = [
@@ -3282,6 +3595,10 @@ function renderizarHistorico(resultado) {
         ? 'Lançado por: ' + nomeOperador + (perfilOperador ? ' (' + perfilOperador + ')' : '')
         : (registro.guarda ? 'Guarda: ' + registro.guarda : ''),
       registro.comandante ? 'Comandante: ' + registro.comandante : '',
+      movimentacaoEhRetroativa(registro) && registro.dataHoraRegistroReal
+        ? 'Registrado em: ' + registro.dataHoraRegistroReal : '',
+      movimentacaoEhRetroativa(registro) && registro.motivoRetroativo
+        ? 'Motivo retroativo: ' + registro.motivoRetroativo : '',
       registro.observacoes ? 'Obs.: ' + registro.observacoes : ''
     ].filter(Boolean);
     if (responsaveis.length) {
@@ -3402,6 +3719,7 @@ function renderizarListaPessoasDentro(pessoas) {
   pessoas.forEach(pessoa => {
     const item = document.createElement('div');
     item.className = 'item-painel item-dentro';
+    if (movimentacaoEhRetroativa(pessoa)) item.classList.add('movimentacao-retroativa');
 
     const cabecalho = document.createElement('div');
     cabecalho.className = 'cabecalho-item-painel';
@@ -3414,6 +3732,7 @@ function renderizarListaPessoasDentro(pessoas) {
 
     cabecalho.appendChild(nome);
     cabecalho.appendChild(horario);
+    adicionarSeloMovimentacaoRetroativa(cabecalho, pessoa);
     item.appendChild(cabecalho);
     item.appendChild(criarDetalhesPessoaPainel(pessoa));
     lista.appendChild(item);
@@ -3434,6 +3753,7 @@ function renderizarListaMovimentacoesRecentes(movimentacoes, idLista = 'listaMov
     const item = document.createElement('div');
     const tipo = movimentacao.tipoMovimentacao === 'Saída' ? 'saida' : 'entrada';
     item.className = 'item-painel movimentacao-' + tipo;
+    if (movimentacaoEhRetroativa(movimentacao)) item.classList.add('movimentacao-retroativa');
 
     const cabecalho = document.createElement('div');
     cabecalho.className = 'cabecalho-item-painel';
@@ -3446,6 +3766,7 @@ function renderizarListaMovimentacoesRecentes(movimentacoes, idLista = 'listaMov
 
     cabecalho.appendChild(nome);
     cabecalho.appendChild(tipoHorario);
+    adicionarSeloMovimentacaoRetroativa(cabecalho, movimentacao);
     item.appendChild(cabecalho);
     item.appendChild(criarDetalhesPessoaPainel(movimentacao));
     lista.appendChild(item);
@@ -3473,8 +3794,32 @@ function criarDetalhesPessoaPainel(pessoa) {
     partes.push('Lançado por: ' + nomeOperador + (perfilOperador ? ' (' + perfilOperador + ')' : ''));
   }
 
+  if (movimentacaoEhRetroativa(pessoa)) {
+    if (pessoa.dataHoraRegistroReal) partes.push('Registrado em: ' + pessoa.dataHoraRegistroReal);
+    if (pessoa.motivoRetroativo) partes.push('Motivo retroativo: ' + pessoa.motivoRetroativo);
+  }
+
   detalhes.textContent = partes.join(' • ') || 'Sem detalhes adicionais';
   return detalhes;
+}
+
+function movimentacaoEhRetroativa(movimentacao) {
+  const valor = String(
+    movimentacao && (
+      movimentacao.lancamentoRetroativo ||
+      movimentacao.Lancamento_Retroativo ||
+      movimentacao.retroativo
+    ) || ''
+  ).trim().toLowerCase();
+  return valor === 'sim' || valor === 'true' || valor === 'retroativo';
+}
+
+function adicionarSeloMovimentacaoRetroativa(conteiner, movimentacao) {
+  if (!conteiner || !movimentacaoEhRetroativa(movimentacao)) return;
+  const selo = document.createElement('span');
+  selo.className = 'selo-movimentacao-retroativa';
+  selo.textContent = 'RETROATIVO';
+  conteiner.appendChild(selo);
 }
 
 function criarEstadoVazioPainel(texto) {
@@ -3970,26 +4315,52 @@ function aparelhoReconheceComandanteAtual() {
 
 
 let acaoConfirmadaModal = null;
+let focoAntesModalConfirmacao = null;
 
-function abrirModalConfirmacao(titulo, texto, callback, modoPerigo = false) {
+function abrirModalConfirmacao(titulo, texto, callback, estilo = false) {
   document.getElementById('modalTitulo').textContent = titulo;
   document.getElementById('modalTexto').innerHTML = texto;
 
   const botaoConfirmar = document.getElementById('btnModalConfirmar');
-  botaoConfirmar.classList.toggle('perigo', modoPerigo);
-  botaoConfirmar.onclick = () => {
-    fecharModalConfirmacao();
+  const botaoCancelar = document.getElementById('btnModalCancelar');
+  const estiloModal = estilo === true ? 'perigo' : String(estilo || '');
+  botaoConfirmar.classList.toggle('perigo', estiloModal === 'perigo');
+  botaoConfirmar.classList.toggle('retroativo', estiloModal === 'retroativo');
+  botaoConfirmar.textContent = estiloModal === 'retroativo'
+    ? 'Confirmar lançamento'
+    : 'Confirmar';
+  if (botaoCancelar) botaoCancelar.textContent = estiloModal === 'retroativo'
+    ? 'Voltar e revisar'
+    : 'Cancelar';
+  acaoConfirmadaModal = typeof callback === 'function' ? callback : null;
+  botaoConfirmar.onclick = confirmarAcaoModal;
 
-    if (typeof callback === 'function') {
-      callback();
-    }
-  };
+  focoAntesModalConfirmacao = document.activeElement;
+  const modal = document.getElementById('modalConfirmacao');
+  const app = document.querySelector('.app');
+  if (app) app.setAttribute('inert', '');
+  modal.classList.remove('oculto');
+  setTimeout(() => {
+    if (botaoCancelar) botaoCancelar.focus();
+  }, 30);
+}
 
-  document.getElementById('modalConfirmacao').classList.remove('oculto');
+function confirmarAcaoModal() {
+  const callback = acaoConfirmadaModal;
+  fecharModalConfirmacao();
+  if (typeof callback === 'function') callback();
 }
 
 function fecharModalConfirmacao() {
-  document.getElementById('modalConfirmacao').classList.add('oculto');
+  const modal = document.getElementById('modalConfirmacao');
+  const app = document.querySelector('.app');
+  acaoConfirmadaModal = null;
+  if (modal) modal.classList.add('oculto');
+  if (app) app.removeAttribute('inert');
+  if (focoAntesModalConfirmacao && typeof focoAntesModalConfirmacao.focus === 'function') {
+    focoAntesModalConfirmacao.focus();
+  }
+  focoAntesModalConfirmacao = null;
 }
 
 function enviarCodigoParaEncerrarGuarda() {
@@ -4733,13 +5104,18 @@ function atualizarPermissaoLancamento() {
   }
 
   const podeLancar = guardaAtual && aparelhoPodeOperarGuardaAtual();
+  const podeLancarRetroativo = modoLancamentoRetroativoAtivo && aparelhoAssumiuComandanteAtual();
   const cobertura = obterCoberturaOperacionalAtual();
+
+  if (modoLancamentoRetroativoAtivo && !podeLancarRetroativo) {
+    cancelarLancamentoRetroativoPendente();
+  }
 
   atualizarVisibilidadePessoasDentroGuarda();
   atualizarVisibilidadeMovimentacoesGuarda();
   atualizarVisibilidadeGuarnicoesServico();
 
-  if (podeLancar) {
+  if (podeLancar || podeLancarRetroativo) {
     cardMovimentacao.classList.remove('oculto');
     aviso.classList.add('oculto');
   } else {
