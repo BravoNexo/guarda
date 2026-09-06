@@ -6062,6 +6062,11 @@ function fecharModalConfirmacao() {
   focoAntesModalConfirmacao = null;
 }
 
+// Mantém os controles do modal disponíveis para eventos inline e fluxos de troca.
+window.abrirModalConfirmacao = abrirModalConfirmacao;
+window.fecharModalConfirmacao = fecharModalConfirmacao;
+window.confirmarAcaoModal = confirmarAcaoModal;
+
 function enviarCodigoParaEncerrarGuarda() {
   const botao = document.getElementById('btnEncerrarGuarda');
   botao.disabled = true;
