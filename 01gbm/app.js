@@ -602,9 +602,9 @@ let tipoMovimentacaoAtual = 'Entrada';
     },
     administrativa: {
       titulo: 'Viaturas administrativas',
-      descricao: 'Entradas e saídas das viaturas administrativas da unidade.',
+      descricao: 'Entradas e saídas registradas automaticamente pelo Controle de Acesso da Guarda.',
       tipo: 'MOV_ADMINISTRATIVA',
-      acao: 'Lançar movimento'
+      automatico: true
     },
     manutencao: {
       titulo: 'Manutenção',
@@ -4717,8 +4717,9 @@ function selecionarAbaPainelMotoristas(aba, salvar = true) {
   const podeEditar = !!(painelMotoristasAtual && painelMotoristasAtual.permissoes &&
     painelMotoristasAtual.permissoes.podeEditar === true);
   if (botaoNovo) {
-    botaoNovo.textContent = configuracao.acao;
-    botaoNovo.classList.toggle('oculto', !podeEditar);
+    botaoNovo.textContent = configuracao.acao || '';
+    botaoNovo.disabled = configuracao.automatico === true;
+    botaoNovo.classList.toggle('oculto', !podeEditar || configuracao.automatico === true);
   }
   renderizarConteudoAbaPainelMotoristas();
 }
@@ -4732,7 +4733,9 @@ function renderizarConteudoAbaPainelMotoristas() {
     return;
   }
   if (abaPainelMotoristasAtual === 'frota') renderizarFrotaPainelMotoristas(lista);
-  else renderizarRegistrosPainelMotoristas(lista, abaPainelMotoristasAtual);
+  else if (abaPainelMotoristasAtual === 'administrativa') {
+    renderizarMovimentacoesAdministrativasMotoristas(lista);
+  } else renderizarRegistrosPainelMotoristas(lista, abaPainelMotoristasAtual);
 }
 
 function obterIdViaturaMotoristas(viatura) {
@@ -4829,6 +4832,151 @@ function rotuloTipoRegistroMotoristas(tipo) {
 function formatarValorMonetarioMotoristas(valor) {
   const numero = Number(String(valor === undefined || valor === null ? '' : valor).replace(',', '.'));
   return Number.isFinite(numero) ? numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+}
+
+function registroAdministrativoVeioDaGuardaMotoristas(registro) {
+  const origem = normalizarTextoMotoristas(valorCampoMotoristas(
+    registro, 'origemRegistro', 'Origem_Registro', 'origem', 'Origem'
+  ));
+  const somenteLeitura = valorCampoMotoristas(registro, 'somenteLeitura', 'Somente_Leitura');
+  return origem === 'CONTROLE_ACESSO' || normalizarBooleanoMotoristas(somenteLeitura, false);
+}
+
+function renderizarMovimentacoesAdministrativasMotoristas(lista) {
+  const todos = Array.isArray(painelMotoristasAtual.registros) ? painelMotoristasAtual.registros : [];
+  const registros = todos.filter(registro => registroPertenceAbaMotoristas(registro, 'administrativa'));
+  if (!registros.length) {
+    lista.appendChild(criarEstadoVazioPainel(
+      'Nenhuma entrada ou saída de viatura administrativa foi registrada pela Guarda neste ciclo.'
+    ));
+    return;
+  }
+
+  registros.slice(0, 30).forEach(registro => {
+    const integrado = registroAdministrativoVeioDaGuardaMotoristas(registro);
+    const movimento = String(valorCampoMotoristas(
+      registro, 'tipoMovimentacao', 'movimentoResultado', 'resultado', 'movimento',
+      'Tipo_Movimentacao', 'Movimento_Resultado'
+    ) || '').trim();
+    const movimentoNormalizado = normalizarTextoMotoristas(movimento);
+    const prefixo = String(valorCampoMotoristas(
+      registro, 'prefixo', 'prefixoPlaca', 'prefixoNoMomento',
+      'Prefixo', 'Prefixo_Placa', 'Prefixo_no_Momento'
+    ) || '').trim();
+    const dataHora = String(valorCampoMotoristas(
+      registro, 'dataHoraEvento', 'dataHora', 'DataHora_Evento', 'DataHora'
+    ) || '').trim();
+    const nomeCondutor = String(valorCampoMotoristas(
+      registro, 'nomeCondutor', 'condutorNome', 'nome', 'Nome_Condutor'
+    ) || '').trim();
+    const rgCondutor = String(valorCampoMotoristas(
+      registro, 'rgCondutor', 'documento', 'RG_Condutor', 'RG_CPF_Condutor'
+    ) || '').trim();
+    const destino = String(valorCampoMotoristas(
+      registro, 'destino', 'Destino', 'destinoFornecedor', 'Destino_Fornecedor'
+    ) || '').trim();
+    const procedencia = String(valorCampoMotoristas(
+      registro, 'procedencia', 'Procedência', 'Procedencia'
+    ) || '').trim();
+    const complementoProcedencia = String(valorCampoMotoristas(
+      registro, 'complementoProcedencia', 'Complemento_Procedência', 'Complemento_Procedencia'
+    ) || '').trim();
+    const localConsolidado = String(valorCampoMotoristas(
+      registro, 'destinoFornecedor', 'Destino_Fornecedor'
+    ) || '').trim();
+    const nomeGuarda = String(valorCampoMotoristas(
+      registro, 'nomeGuardaHorario', 'Nome_Guarda_Horario'
+    ) || '').trim();
+    const nomeOperador = String(valorCampoMotoristas(
+      registro, 'nomeOperador', 'Nome_Operador'
+    ) || '').trim();
+    const perfilOperador = String(valorCampoMotoristas(
+      registro, 'perfilOperador', 'Perfil_Operador'
+    ) || '').trim();
+    const quantidadeOcupantes = Number(valorCampoMotoristas(
+      registro, 'quantidadeOcupantes', 'Quantidade_Ocupantes'
+    ));
+    const observacoes = String(valorCampoMotoristas(registro, 'observacoes', 'Observacoes') || '').trim();
+    const retroativo = normalizarBooleanoMotoristas(
+      valorCampoMotoristas(registro, 'lancamentoRetroativo', 'Lancamento_Retroativo'), false
+    );
+    const motivoRetroativo = String(valorCampoMotoristas(
+      registro, 'motivoRetroativo', 'Motivo_Retroativo'
+    ) || '').trim();
+    const dataHoraRegistro = String(valorCampoMotoristas(
+      registro, 'dataHoraRegistro', 'DataHora_Registro_Real'
+    ) || '').trim();
+    const retroativoJaDescrito = normalizarTextoMotoristas(observacoes)
+      .includes('LANCAMENTO_RETROATIVO');
+
+    const item = document.createElement('div');
+    item.className = 'item-painel item-registro-motoristas item-movimento-administrativo';
+
+    const linha = document.createElement('div');
+    linha.className = 'linha-principal-registro-motoristas';
+    const identidade = document.createElement('div');
+    const titulo = document.createElement('strong');
+    titulo.textContent = [prefixo || 'Viatura administrativa', movimento].filter(Boolean).join(' — ');
+    const horario = document.createElement('small');
+    horario.textContent = dataHora || 'Horário não informado';
+    identidade.appendChild(titulo);
+    identidade.appendChild(horario);
+
+    const selo = document.createElement('span');
+    selo.className = 'selo-tipo-registro-motoristas' + (integrado ? ' selo-integracao-guarda' : '');
+    selo.textContent = integrado ? 'Controle de Acesso' : 'Registro anterior';
+    linha.appendChild(identidade);
+    linha.appendChild(selo);
+    item.appendChild(linha);
+
+    const procedenciaCompleta = [procedencia, complementoProcedencia].filter(Boolean).join(' — ');
+    const local = movimentoNormalizado === 'ENTRADA'
+      ? (procedenciaCompleta || localConsolidado || destino)
+      : (destino || localConsolidado || procedencia);
+    const rotuloLocal = movimentoNormalizado === 'ENTRADA' ? 'Procedência' : 'Destino';
+    const detalhes = [
+      nomeCondutor ? 'Condutor: ' + nomeCondutor + (rgCondutor ? ' — RG ' + rgCondutor : '') : '',
+      local ? rotuloLocal + ': ' + local : '',
+      Number.isFinite(quantidadeOcupantes) && quantidadeOcupantes > 0
+        ? (quantidadeOcupantes === 1 ? '1 ocupante' : quantidadeOcupantes + ' ocupantes') : '',
+      retroativo && !retroativoJaDescrito
+        ? 'Lançamento retroativo' + (motivoRetroativo ? ': ' + motivoRetroativo : '') : '',
+      retroativo && !retroativoJaDescrito && dataHoraRegistro
+        ? 'Registrado em: ' + dataHoraRegistro : ''
+    ].filter(Boolean);
+    if (detalhes.length) {
+      const detalhe = document.createElement('div');
+      detalhe.className = 'detalhes-registro-motoristas';
+      detalhe.textContent = detalhes.join(' • ');
+      item.appendChild(detalhe);
+    }
+
+    if (observacoes) {
+      const observacao = document.createElement('div');
+      observacao.className = 'observacao-registro-motoristas';
+      observacao.textContent = observacoes;
+      item.appendChild(observacao);
+    }
+
+    const auditoria = document.createElement('div');
+    auditoria.className = 'detalhes-registro-motoristas' +
+      (integrado ? ' origem-automatica-motoristas' : '');
+    const dadosAuditoria = integrado
+      ? ['Sincronizado automaticamente do Controle de Acesso',
+          nomeGuarda ? 'Guarda no horário: ' + nomeGuarda : '',
+          nomeOperador && nomeOperador !== nomeGuarda
+            ? 'Registrado por: ' + nomeOperador + (perfilOperador ? ' (' + perfilOperador + ')' : '') : '']
+      : ['Registro anterior do livro de motoristas',
+          nomeOperador ? 'Lançado por: ' + nomeOperador +
+            (perfilOperador ? ' (' + perfilOperador + ')' : '') : ''];
+    auditoria.textContent = dadosAuditoria.filter(Boolean).join(' • ');
+    item.appendChild(auditoria);
+    lista.appendChild(item);
+  });
+
+  if (registros.length > 30) {
+    lista.appendChild(criarEstadoVazioPainel('Exibindo as 30 movimentações administrativas mais recentes.'));
+  }
 }
 
 function renderizarRegistrosPainelMotoristas(lista, aba) {
@@ -5050,6 +5198,13 @@ function abrirModalEventoMotoristas(tipoForcado = '', idViatura = '') {
     return;
   }
   const tipo = tipoForcado || ABAS_PAINEL_MOTORISTAS[abaPainelMotoristasAtual].tipo;
+  if (tipo === 'MOV_ADMINISTRATIVA') {
+    mostrarMensagem(
+      'As entradas e saídas das viaturas administrativas são registradas automaticamente pela Guarda.',
+      'sucesso'
+    );
+    return;
+  }
   focoAntesDoModalMotoristas = document.activeElement;
   idSolicitacaoEventoMotoristasAtual = gerarIdSolicitacaoMotoristas('MOT');
   configurarModalEventoMotoristas(tipo, idViatura);

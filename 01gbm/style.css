@@ -2655,6 +2655,11 @@
   color: #991b1b;
 }
 
+.selo-tipo-registro-motoristas.selo-integracao-guarda {
+  background: #dcfce7;
+  color: #166534;
+}
+
 .detalhes-frota-motoristas,
 .detalhes-registro-motoristas,
 .observacao-registro-motoristas {
@@ -2669,6 +2674,11 @@
   border-radius: 7px;
   background: #f1f5f9;
   color: #334155;
+}
+
+.origem-automatica-motoristas {
+  color: #047857;
+  font-weight: 700;
 }
 
 .botao-condicao-frota-motoristas {
