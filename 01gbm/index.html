@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=26.9.1">
+  <link rel="stylesheet" href="style.css?v=27.0.0">
   </head>
 
   <body>
@@ -448,6 +448,82 @@
           <div id="atualizadoEmPainelComandante" class="rodape-painel-comandante"></div>
         </section>
 
+        <section class="card card-painel-motoristas oculto" id="cardPainelMotoristas">
+          <div class="cabecalho-painel-motoristas">
+            <div>
+              <span class="sobretitulo-painel-motoristas">Livro de serviço</span>
+              <h2>Encarregado de Motoristas</h2>
+              <span id="cicloPainelMotoristas">Ciclo das 08h às 08h</span>
+            </div>
+            <button type="button" id="btnAtualizarPainelMotoristas" class="botao-atualizar-motoristas"
+              onclick="carregarPainelMotoristas()">Atualizar</button>
+          </div>
+
+          <div class="identidade-encarregado-motoristas">
+            <div>
+              <span>Responsável pelo ciclo</span>
+              <strong id="nomeEncarregadoMotoristas">Carregando...</strong>
+              <small id="perfilAcessoMotoristas"></small>
+            </div>
+            <button type="button" id="btnDesignarEncarregadoMotoristas" class="botao-designar-motoristas oculto"
+              onclick="abrirModalDesignarEncarregadoMotoristas()">Designar</button>
+          </div>
+
+          <div id="avisoSomenteLeituraMotoristas" class="aviso-leitura-motoristas oculto">
+            Você pode consultar todo o livro. Os lançamentos ficam disponíveis ao Encarregado de Motoristas do ciclo e ao Comandante da Guarda.
+          </div>
+
+          <div class="resumo-painel-motoristas" aria-label="Resumo da frota">
+            <div class="indicador-motoristas indicador-operante">
+              <strong id="totalMotoristasOperantes">0</strong>
+              <span>Operantes</span>
+            </div>
+            <div class="indicador-motoristas indicador-inoperante">
+              <strong id="totalMotoristasInoperantes">0</strong>
+              <span>Inoperantes</span>
+            </div>
+            <div class="indicador-motoristas indicador-externo">
+              <strong id="totalMotoristasForaUnidade">0</strong>
+              <span>Fora da unidade</span>
+            </div>
+            <div class="indicador-motoristas indicador-sisgeo">
+              <strong id="totalMotoristasSisgeoPendentes">0</strong>
+              <span>SISGEO pendente</span>
+            </div>
+          </div>
+
+          <div class="abas-painel-motoristas" role="tablist" aria-label="Áreas do livro do Encarregado de Motoristas">
+            <button type="button" class="aba-motoristas ativa" role="tab" aria-selected="true"
+              data-aba-motoristas="frota" onclick="selecionarAbaPainelMotoristas('frota')">Frota</button>
+            <button type="button" class="aba-motoristas" role="tab" aria-selected="false"
+              data-aba-motoristas="abastecimento" onclick="selecionarAbaPainelMotoristas('abastecimento')">Abastecimentos</button>
+            <button type="button" class="aba-motoristas" role="tab" aria-selected="false"
+              data-aba-motoristas="alteracao" onclick="selecionarAbaPainelMotoristas('alteracao')">Alterações</button>
+            <button type="button" class="aba-motoristas" role="tab" aria-selected="false"
+              data-aba-motoristas="administrativa" onclick="selecionarAbaPainelMotoristas('administrativa')">Administrativas</button>
+            <button type="button" class="aba-motoristas" role="tab" aria-selected="false"
+              data-aba-motoristas="manutencao" onclick="selecionarAbaPainelMotoristas('manutencao')">Manutenção</button>
+            <button type="button" class="aba-motoristas" role="tab" aria-selected="false"
+              data-aba-motoristas="sisgeo" onclick="selecionarAbaPainelMotoristas('sisgeo')">SISGEO</button>
+            <button type="button" class="aba-motoristas" role="tab" aria-selected="false"
+              data-aba-motoristas="observacao" onclick="selecionarAbaPainelMotoristas('observacao')">Observações</button>
+          </div>
+
+          <div class="cabecalho-conteudo-motoristas">
+            <div>
+              <strong id="tituloAbaPainelMotoristas">Situação da frota</strong>
+              <span id="descricaoAbaPainelMotoristas">Condição operacional e localização atual das viaturas.</span>
+            </div>
+            <button type="button" id="btnNovoEventoMotoristas" class="botao-novo-evento-motoristas oculto"
+              onclick="abrirModalEventoMotoristas()">Novo lançamento</button>
+          </div>
+
+          <div id="listaPainelMotoristas" class="lista-painel lista-painel-motoristas" role="tabpanel">
+            <div class="estado-vazio-painel">Carregando...</div>
+          </div>
+          <div id="atualizadoEmPainelMotoristas" class="rodape-painel-comandante"></div>
+        </section>
+
         <section class="card card-historico oculto" id="cardConsultaHistorico">
           <div class="cabecalho-historico">
             <div>
@@ -852,6 +928,110 @@
       </div>
     </div>
 
-  <script src="app.js?v=26.9.1"></script>
+    <div id="modalEventoMotoristas" class="modal-fundo modal-motoristas-fundo oculto" role="dialog"
+      aria-modal="true" aria-labelledby="tituloModalEventoMotoristas"
+      onclick="if (event.target === this) fecharModalEventoMotoristas()">
+      <div class="modal-card modal-card-motoristas" tabindex="-1">
+        <div class="cabecalho-modal-motoristas">
+          <div>
+            <span>Livro do Encarregado</span>
+            <h3 id="tituloModalEventoMotoristas">Novo lançamento</h3>
+          </div>
+          <button type="button" class="fechar-modal-motoristas" aria-label="Fechar lançamento"
+            onclick="fecharModalEventoMotoristas()">×</button>
+        </div>
+
+        <form id="formEventoMotoristas" onsubmit="salvarEventoMotoristas(event)">
+          <p id="descricaoModalEventoMotoristas" class="descricao-modal-motoristas"></p>
+
+          <div class="campo campo-modal-motoristas" id="campoViaturaEventoMotoristas">
+            <label for="viaturaEventoMotoristas">Viatura *</label>
+            <select id="viaturaEventoMotoristas"></select>
+          </div>
+
+          <div class="campo campo-modal-motoristas oculto" id="campoResultadoEventoMotoristas">
+            <label for="resultadoEventoMotoristas" id="labelResultadoEventoMotoristas">Situação *</label>
+            <select id="resultadoEventoMotoristas"></select>
+          </div>
+
+          <div class="campo campo-modal-motoristas oculto" id="campoDataHoraEventoMotoristas">
+            <label for="dataHoraEventoMotoristas">Data e hora *</label>
+            <input type="datetime-local" id="dataHoraEventoMotoristas" step="60">
+          </div>
+
+          <div class="campo campo-modal-motoristas oculto" id="campoCondutorEventoMotoristas">
+            <label for="condutorEventoMotoristas">Condutor — nome ou RG *</label>
+            <input type="search" id="condutorEventoMotoristas" list="listaCondutoresEventoMotoristas"
+              autocomplete="off" placeholder="Digite o nome ou RG">
+            <datalist id="listaCondutoresEventoMotoristas"></datalist>
+            <small>Selecione uma sugestão do efetivo para evitar ambiguidade.</small>
+          </div>
+
+          <div class="grade-campos-motoristas">
+            <div class="campo campo-modal-motoristas oculto" id="campoValorEventoMotoristas">
+              <label for="valorEventoMotoristas">Valor abastecido (R$) *</label>
+              <input type="number" id="valorEventoMotoristas" min="0" step="0.01" inputmode="decimal" placeholder="0,00">
+            </div>
+            <div class="campo campo-modal-motoristas oculto" id="campoKmEventoMotoristas">
+              <label for="kmEventoMotoristas" id="labelKmEventoMotoristas">Quilometragem *</label>
+              <input type="number" id="kmEventoMotoristas" min="0" step="1" inputmode="numeric" placeholder="Ex.: 34520">
+            </div>
+          </div>
+
+          <div class="campo campo-modal-motoristas oculto" id="campoJustificativaKmEventoMotoristas">
+            <label for="justificativaKmEventoMotoristas">Justificativa para KM menor</label>
+            <input type="text" id="justificativaKmEventoMotoristas" maxlength="240"
+              placeholder="Preencha somente se houver correção ou troca do hodômetro">
+          </div>
+
+          <div class="campo campo-modal-motoristas oculto" id="campoDestinoEventoMotoristas">
+            <label for="destinoEventoMotoristas" id="labelDestinoEventoMotoristas">Destino / estabelecimento *</label>
+            <input type="text" id="destinoEventoMotoristas" maxlength="180" placeholder="Informe o local">
+          </div>
+
+          <div class="campo campo-modal-motoristas campo-sem-margem" id="campoObservacoesEventoMotoristas">
+            <label for="observacoesEventoMotoristas" id="labelObservacoesEventoMotoristas">Observações</label>
+            <textarea id="observacoesEventoMotoristas" rows="4" maxlength="1000" placeholder="Informação complementar"></textarea>
+          </div>
+
+          <div id="mensagemEventoMotoristas" class="resultado oculto" role="status" aria-live="polite"></div>
+          <div class="acoes-modal-motoristas">
+            <button type="button" class="modal-cancelar" onclick="fecharModalEventoMotoristas()">Cancelar</button>
+            <button type="submit" id="btnSalvarEventoMotoristas" class="modal-confirmar botao-salvar-motoristas">Salvar lançamento</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="modalDesignarEncarregadoMotoristas" class="modal-fundo modal-motoristas-fundo oculto"
+      role="dialog" aria-modal="true" aria-labelledby="tituloModalDesignarEncarregadoMotoristas"
+      onclick="if (event.target === this) fecharModalDesignarEncarregadoMotoristas()">
+      <div class="modal-card modal-card-motoristas" tabindex="-1">
+        <div class="cabecalho-modal-motoristas">
+          <div>
+            <span>Responsável pelo ciclo</span>
+            <h3 id="tituloModalDesignarEncarregadoMotoristas">Designar encarregado</h3>
+          </div>
+          <button type="button" class="fechar-modal-motoristas" aria-label="Fechar designação"
+            onclick="fecharModalDesignarEncarregadoMotoristas()">×</button>
+        </div>
+        <form id="formDesignarEncarregadoMotoristas" onsubmit="salvarDesignacaoEncarregadoMotoristas(event)">
+          <p class="descricao-modal-motoristas">Pesquise pelo nome ou RG e selecione o militar que responderá pelo livro neste ciclo.</p>
+          <div class="campo campo-sem-margem">
+            <label for="militarDesignadoMotoristas">Militar *</label>
+            <input type="search" id="militarDesignadoMotoristas" list="listaMilitaresDesignacaoMotoristas"
+              autocomplete="off" placeholder="Digite o nome ou RG">
+            <datalist id="listaMilitaresDesignacaoMotoristas"></datalist>
+          </div>
+          <div id="mensagemDesignacaoMotoristas" class="resultado oculto" role="status" aria-live="polite"></div>
+          <div class="acoes-modal-motoristas">
+            <button type="button" class="modal-cancelar" onclick="fecharModalDesignarEncarregadoMotoristas()">Cancelar</button>
+            <button type="submit" id="btnSalvarDesignacaoMotoristas" class="modal-confirmar botao-salvar-motoristas">Salvar responsável</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  <script src="app.js?v=27.0.0"></script>
   </body>
 </html>

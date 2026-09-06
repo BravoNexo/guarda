@@ -2336,6 +2336,492 @@
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
 }
 
+/* Livro do Encarregado de Motoristas */
+.card-painel-motoristas {
+  margin-bottom: 14px;
+  border-top: 4px solid #1d4ed8;
+}
+
+.cabecalho-painel-motoristas {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cabecalho-painel-motoristas h2 {
+  margin: 2px 0 3px;
+  font-size: 20px;
+}
+
+.cabecalho-painel-motoristas > div > span,
+.sobretitulo-painel-motoristas {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.sobretitulo-painel-motoristas {
+  color: #1d4ed8 !important;
+  font-size: 10px !important;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.botao-atualizar-motoristas,
+.botao-designar-motoristas,
+.botao-novo-evento-motoristas {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 8px 11px;
+  border: 0;
+  border-radius: 10px;
+  background: #1d4ed8;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.botao-atualizar-motoristas {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.botao-designar-motoristas {
+  min-height: 32px;
+  padding: 6px 10px;
+  background: #fff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.identidade-encarregado-motoristas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 10px 11px;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: #eff6ff;
+}
+
+.identidade-encarregado-motoristas > div {
+  min-width: 0;
+}
+
+.identidade-encarregado-motoristas span,
+.identidade-encarregado-motoristas strong,
+.identidade-encarregado-motoristas small {
+  display: block;
+}
+
+.identidade-encarregado-motoristas span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.identidade-encarregado-motoristas strong {
+  margin-top: 2px;
+  color: #172554;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.identidade-encarregado-motoristas small {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.aviso-leitura-motoristas {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.resumo-painel-motoristas {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.indicador-motoristas {
+  min-width: 0;
+  padding: 8px 4px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #f8fafc;
+  text-align: center;
+}
+
+.indicador-motoristas strong,
+.indicador-motoristas span {
+  display: block;
+}
+
+.indicador-motoristas strong {
+  color: #1e3a8a;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.indicador-motoristas span {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 9px;
+  line-height: 1.15;
+}
+
+.indicador-motoristas.indicador-operante {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.indicador-motoristas.indicador-operante strong {
+  color: #15803d;
+}
+
+.indicador-motoristas.indicador-inoperante {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.indicador-motoristas.indicador-inoperante strong {
+  color: #b91c1c;
+}
+
+.indicador-motoristas.indicador-sisgeo {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.indicador-motoristas.indicador-sisgeo strong {
+  color: #b45309;
+}
+
+.abas-painel-motoristas {
+  display: flex;
+  gap: 6px;
+  margin: 0 -4px 12px;
+  padding: 0 4px 4px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.aba-motoristas {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid #dbe3ef;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.aba-motoristas.ativa {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.cabecalho-conteudo-motoristas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.cabecalho-conteudo-motoristas > div {
+  min-width: 0;
+}
+
+.cabecalho-conteudo-motoristas strong,
+.cabecalho-conteudo-motoristas span {
+  display: block;
+}
+
+.cabecalho-conteudo-motoristas strong {
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.cabecalho-conteudo-motoristas span {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.botao-novo-evento-motoristas {
+  min-height: 34px;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
+.lista-painel-motoristas {
+  gap: 6px;
+}
+
+.item-frota-motoristas,
+.item-registro-motoristas {
+  padding: 9px 10px;
+  border-left-color: #94a3b8;
+  background: #fff;
+}
+
+.item-frota-motoristas.operante {
+  border-left-color: #16a34a;
+}
+
+.item-frota-motoristas.inoperante {
+  border-left-color: #dc2626;
+  background: #fff7f7;
+}
+
+.linha-principal-frota-motoristas,
+.linha-principal-registro-motoristas {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.linha-principal-frota-motoristas > div,
+.linha-principal-registro-motoristas > div {
+  min-width: 0;
+}
+
+.linha-principal-frota-motoristas strong,
+.linha-principal-registro-motoristas strong {
+  display: block;
+  color: #0f172a;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.linha-principal-frota-motoristas small,
+.linha-principal-registro-motoristas small {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.selos-frota-motoristas {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: 48%;
+}
+
+.selo-frota-motoristas,
+.selo-tipo-registro-motoristas {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.selo-frota-motoristas.operante {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.selo-frota-motoristas.inoperante {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.detalhes-frota-motoristas,
+.detalhes-registro-motoristas,
+.observacao-registro-motoristas {
+  margin-top: 5px;
+  color: #475569;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.observacao-registro-motoristas {
+  padding: 5px 7px;
+  border-radius: 7px;
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.botao-condicao-frota-motoristas {
+  width: 100%;
+  min-height: 30px;
+  margin-top: 7px;
+  padding: 5px 8px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.modal-motoristas-fundo {
+  align-items: center;
+}
+
+body.modal-motoristas-aberto {
+  overflow: hidden;
+}
+
+.modal-card-motoristas {
+  display: flex;
+  flex-direction: column;
+  max-width: 430px;
+  max-height: min(90vh, 760px);
+  padding: 0;
+  overflow: hidden;
+}
+
+.cabecalho-modal-motoristas {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 17px 18px 13px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.cabecalho-modal-motoristas span {
+  display: block;
+  margin-bottom: 2px;
+  color: #1d4ed8;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.cabecalho-modal-motoristas h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.fechar-modal-motoristas {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 23px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-card-motoristas form {
+  padding: 14px 18px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.descricao-modal-motoristas {
+  margin: 0 0 13px !important;
+  color: #64748b !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+}
+
+.campo-modal-motoristas {
+  margin-bottom: 12px;
+}
+
+.campo-modal-motoristas small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 9px;
+  line-height: 1.3;
+}
+
+.grade-campos-motoristas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.acoes-modal-motoristas {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+  gap: 8px;
+  margin: 14px -18px 0;
+  padding: 11px 18px max(14px, env(safe-area-inset-bottom));
+  border-top: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, .97);
+  backdrop-filter: blur(8px);
+}
+
+.botao-salvar-motoristas {
+  background: #1d4ed8;
+}
+
+@media (max-width: 360px) {
+  .resumo-painel-motoristas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cabecalho-conteudo-motoristas {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .botao-novo-evento-motoristas {
+    width: 100%;
+  }
+
+  .grade-campos-motoristas {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
 
 .cabecalho-acesso-oficial span {
   margin-top: 3px;
