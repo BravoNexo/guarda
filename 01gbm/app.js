@@ -522,6 +522,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   let viaturasSOS = [];
   let militaresSOS = [];
   let selecoesViaturasSOS = {};
+  let edicoesViaturasSOSAbertas = new Set();
   let guarnicoesServico = [];
   let cicloGuarnicoesServico = null;
   let idsGuarnicaoServicoEdicao = [];
@@ -1116,6 +1117,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     if (isSOS) {
       tipoMovimentacaoAtual = 'Saída';
       selecoesViaturasSOS = {};
+      edicoesViaturasSOSAbertas.clear();
       document.getElementById('btnEntrada').classList.remove('ativo');
       document.getElementById('btnSaida').classList.add('ativo');
       carregarDadosSOS();
@@ -1224,6 +1226,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     Object.keys(selecoesViaturasSOS).forEach(id => {
       if (!disponiveis.some(item => item.ID_Viatura === id)) {
         delete selecoesViaturasSOS[id];
+        edicoesViaturasSOSAbertas.delete(id);
       }
     });
 
@@ -1263,6 +1266,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function alternarViaturaSOS(viatura, selecionada) {
+    const chaveEdicao = String(viatura.ID_Viatura || '');
     if (selecionada) {
       const padrao = guarnicoesServico.find(item => item.ID_Viatura === viatura.ID_Viatura);
       selecoesViaturasSOS[viatura.ID_Viatura] = {
@@ -1275,8 +1279,12 @@ let tipoMovimentacaoAtual = 'Entrada';
           : (padrao ? (padrao.IDs_Guarnicao || []).slice() : []),
         AtualizarGuarnicaoServico: false
       };
+      if (!selecoesViaturasSOS[viatura.ID_Viatura].ID_Condutor) {
+        edicoesViaturasSOSAbertas.add(chaveEdicao);
+      }
     } else {
       delete selecoesViaturasSOS[viatura.ID_Viatura];
+      edicoesViaturasSOSAbertas.delete(chaveEdicao);
     }
 
     renderizarConfiguracoesSOS();
@@ -1327,15 +1335,75 @@ let tipoMovimentacaoAtual = 'Entrada';
     const area = document.getElementById('configuracoesViaturasSOS');
     area.innerHTML = '';
 
-    Object.values(selecoesViaturasSOS).forEach(selecao => {
+    Object.values(selecoesViaturasSOS).forEach((selecao, indice) => {
       const viatura = viaturasSOS.find(item => item.ID_Viatura === selecao.ID_Viatura);
       if (!viatura) return;
 
       const card = document.createElement('div');
       card.className = 'configuracao-viatura-sos';
+
+      const chaveEdicao = String(selecao.ID_Viatura || '');
+      const editorAberto = edicoesViaturasSOSAbertas.has(chaveEdicao);
+      const idEditor = `editorConfiguracaoSOS${indice}`;
+      const condutor = obterMilitarSOSPorId(selecao.ID_Condutor);
+      const nomeCondutorFallback = tipoMovimentacaoAtual === 'Entrada'
+        ? String(viatura.Nome_Condutor_Atual || '').trim()
+        : '';
+      const nomeCondutor = condutor ? condutor.Nome : nomeCondutorFallback;
+      const condutorPendente = !selecao.ID_Condutor;
+      const nomesGuarnicao = selecao.IDs_Guarnicao
+        .map(id => obterMilitarSOSPorId(id))
+        .filter(Boolean)
+        .map(militar => militar.Nome);
+
+      const resumo = document.createElement('button');
+      resumo.type = 'button';
+      resumo.className = 'resumo-guarnicao-servico botao-resumo-guarnicao-sos';
+      resumo.dataset.condutorPendente = condutorPendente ? 'sim' : 'nao';
+      resumo.setAttribute('aria-expanded', String(editorAberto));
+      resumo.setAttribute('aria-controls', idEditor);
+      resumo.onclick = () => {
+        const abrirEditor = !edicoesViaturasSOSAbertas.has(chaveEdicao);
+        if (abrirEditor) {
+          edicoesViaturasSOSAbertas.add(chaveEdicao);
+        } else {
+          edicoesViaturasSOSAbertas.delete(chaveEdicao);
+        }
+        resumo.setAttribute('aria-expanded', String(abrirEditor));
+        textoAcao.textContent = abrirEditor ? 'Fechar edição' : 'Toque para editar';
+        editor.hidden = !abrirEditor;
+      };
+
+      const textoResumo = document.createElement('span');
+      textoResumo.className = 'texto-resumo-guarnicao-sos';
       const titulo = document.createElement('strong');
       titulo.textContent = viatura.Prefixo + (viatura.Descricao ? ' — ' + viatura.Descricao : '');
-      card.appendChild(titulo);
+      const linhaCondutor = document.createElement('span');
+      linhaCondutor.className = condutorPendente || !nomeCondutor ? 'dado-pendente-guarnicao-sos' : '';
+      linhaCondutor.textContent = 'Condutor: ' + (nomeCondutor || 'Não informado');
+      const linhaGuarnicao = document.createElement('span');
+      linhaGuarnicao.textContent = 'Guarnição: ' + (nomesGuarnicao.join(', ') || 'Sem integrantes adicionais');
+      textoResumo.appendChild(titulo);
+      textoResumo.appendChild(linhaCondutor);
+      textoResumo.appendChild(linhaGuarnicao);
+
+      const acaoResumo = document.createElement('span');
+      acaoResumo.className = 'acao-resumo-guarnicao-sos';
+      const textoAcao = document.createElement('small');
+      textoAcao.textContent = editorAberto ? 'Fechar edição' : 'Toque para editar';
+      const iconeAcao = document.createElement('span');
+      iconeAcao.className = 'icone-resumo-guarnicao-sos';
+      iconeAcao.setAttribute('aria-hidden', 'true');
+      acaoResumo.appendChild(textoAcao);
+      acaoResumo.appendChild(iconeAcao);
+      resumo.appendChild(textoResumo);
+      resumo.appendChild(acaoResumo);
+      card.appendChild(resumo);
+
+      const editor = document.createElement('div');
+      editor.id = idEditor;
+      editor.className = 'editor-configuracao-viatura-sos';
+      editor.hidden = !editorAberto;
 
       const labelCondutor = document.createElement('label');
       labelCondutor.textContent = 'Condutor';
@@ -1346,12 +1414,18 @@ let tipoMovimentacaoAtual = 'Entrada';
         selecao.IDs_Guarnicao = selecao.IDs_Guarnicao.filter(id => id !== selectCondutor.value);
         renderizarConfiguracoesSOS();
       };
-      card.appendChild(labelCondutor);
-      card.appendChild(selectCondutor);
+      editor.appendChild(labelCondutor);
+      editor.appendChild(selectCondutor);
+      if (tipoMovimentacaoAtual === 'Entrada') {
+        const avisoCondutorRetorno = document.createElement('small');
+        avisoCondutorRetorno.className = 'aviso-condutor-retorno-sos';
+        avisoCondutorRetorno.textContent = 'No retorno, permanece o condutor registrado na saída.';
+        editor.appendChild(avisoCondutorRetorno);
+      }
 
       const labelGuarnicao = document.createElement('label');
       labelGuarnicao.textContent = 'Guarnição (opcional)';
-      card.appendChild(labelGuarnicao);
+      editor.appendChild(labelGuarnicao);
       const linhaAdicionar = document.createElement('div');
       linhaAdicionar.className = 'linha-adicionar-guarnicao';
       const selectGuarnicao = criarSelectMilitaresSOS('', 'Selecione um integrante');
@@ -1374,7 +1448,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       };
       linhaAdicionar.appendChild(selectGuarnicao);
       linhaAdicionar.appendChild(adicionar);
-      card.appendChild(linhaAdicionar);
+      editor.appendChild(linhaAdicionar);
 
       const chips = document.createElement('div');
       chips.className = 'chips-guarnicao';
@@ -1390,7 +1464,7 @@ let tipoMovimentacaoAtual = 'Entrada';
         };
         chips.appendChild(chip);
       });
-      card.appendChild(chips);
+      editor.appendChild(chips);
 
       if (tipoMovimentacaoAtual !== 'Entrada') {
         const opcaoAtualizar = document.createElement('label');
@@ -1405,8 +1479,9 @@ let tipoMovimentacaoAtual = 'Entrada';
         textoAtualizar.textContent = 'Usar esta composição também nas próximas saídas até as 08h. Desmarcado, vale somente para este SOS.';
         opcaoAtualizar.appendChild(checkboxAtualizar);
         opcaoAtualizar.appendChild(textoAtualizar);
-        card.appendChild(opcaoAtualizar);
+        editor.appendChild(opcaoAtualizar);
       }
+      card.appendChild(editor);
       area.appendChild(card);
     });
   }
@@ -1422,7 +1497,19 @@ let tipoMovimentacaoAtual = 'Entrada';
       return;
     }
 
-    if (viaturas.some(item => !item.ID_Condutor)) {
+    const viaturasSemCondutor = viaturas.filter(item => !item.ID_Condutor);
+    if (viaturasSemCondutor.length) {
+      viaturasSemCondutor.forEach(item => {
+        edicoesViaturasSOSAbertas.add(String(item.ID_Viatura || ''));
+      });
+      renderizarConfiguracoesSOS();
+      const primeiroCartaoPendente = document.querySelector(
+        '.botao-resumo-guarnicao-sos[data-condutor-pendente="sim"]'
+      );
+      if (primeiroCartaoPendente) {
+        primeiroCartaoPendente.focus({ preventScroll: true });
+        primeiroCartaoPendente.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       mostrarMensagem('Selecione o condutor de cada viatura.', 'erro');
       return;
     }
@@ -1449,6 +1536,7 @@ let tipoMovimentacaoAtual = 'Entrada';
           atualizarTelaToqueFogo();
         }
         selecoesViaturasSOS = {};
+        edicoesViaturasSOSAbertas.clear();
         document.getElementById('observacoesSOS').value = '';
         renderizarSelecaoViaturasSOS();
         renderizarEditorGuarnicoesServico();

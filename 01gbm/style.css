@@ -1000,21 +1000,137 @@
   }
 
   .configuracao-viatura-sos {
-    padding: 12px;
-    border: 1px solid #fed7aa;
+    overflow: hidden;
+    border: 1px solid #c4b5fd;
     border-radius: 12px;
-    background: white;
+    background: #faf5ff;
+    box-shadow: 0 3px 10px rgba(109, 40, 217, 0.08);
   }
 
-  .configuracao-viatura-sos > strong {
+  .configuracao-viatura-sos > .botao-resumo-guarnicao-sos {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 0;
+    padding: 11px 12px;
+    border: none;
+    border-left: 4px solid #7c3aed;
+    border-radius: 0;
+    background: #f5f3ff;
+    color: #4c1d95;
+    font: inherit;
+    line-height: 1.4;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: none;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .botao-resumo-guarnicao-sos:hover,
+  .botao-resumo-guarnicao-sos[aria-expanded="true"] {
+    background: #ede9fe;
+    color: #5b21b6;
+  }
+
+  .botao-resumo-guarnicao-sos:focus-visible {
+    outline: 3px solid rgba(124, 58, 237, 0.24);
+    outline-offset: -3px;
+  }
+
+  .texto-resumo-guarnicao-sos {
+    min-width: 0;
+  }
+
+  .texto-resumo-guarnicao-sos strong,
+  .texto-resumo-guarnicao-sos > span {
     display: block;
-    margin-bottom: 10px;
-    color: #9a3412;
   }
 
-  .configuracao-viatura-sos > label {
-    margin-top: 10px;
+  .texto-resumo-guarnicao-sos strong {
+    margin-bottom: 2px;
+    font-size: 13px;
+  }
+
+  .texto-resumo-guarnicao-sos > span {
     font-size: 12px;
+  }
+
+  .texto-resumo-guarnicao-sos .dado-pendente-guarnicao-sos {
+    color: #b45309;
+    font-weight: 800;
+  }
+
+  .acao-resumo-guarnicao-sos {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+    color: #6d28d9;
+  }
+
+  .acao-resumo-guarnicao-sos small {
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .icone-resumo-guarnicao-sos {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    border: 1px solid #c4b5fd;
+    border-radius: 999px;
+    background: #fff;
+  }
+
+  .icone-resumo-guarnicao-sos::before {
+    content: '';
+    display: block;
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: translateY(-2px) rotate(45deg);
+    transform-origin: center;
+    transition: transform 0.2s ease;
+  }
+
+  .botao-resumo-guarnicao-sos[aria-expanded="true"] .icone-resumo-guarnicao-sos::before {
+    transform: translateY(2px) rotate(225deg);
+  }
+
+  .editor-configuracao-viatura-sos {
+    padding: 12px;
+    border-top: 1px solid #ddd6fe;
+    background: #faf5ff;
+  }
+
+  .editor-configuracao-viatura-sos > label {
+    display: block;
+    margin: 10px 0 7px;
+    font-size: 12px;
+  }
+
+  .editor-configuracao-viatura-sos > label:first-child {
+    margin-top: 0;
+  }
+
+  .aviso-condutor-retorno-sos {
+    display: block;
+    margin-top: 5px;
+    color: #6d28d9;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  @media (max-width: 420px) {
+    .acao-resumo-guarnicao-sos small {
+      display: none;
+    }
   }
 
   .linha-adicionar-guarnicao {
