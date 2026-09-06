@@ -10,6 +10,7 @@ const DURACAO_SESSAO_LOCAL = {
   comandante: 36 * 60 * 60 * 1000,
   oficial: 36 * 60 * 60 * 1000,
   toque: 36 * 60 * 60 * 1000,
+  encarregadoMotoristas: 36 * 60 * 60 * 1000,
   consultaEfetivo: 12 * 60 * 60 * 1000
 };
 
@@ -102,12 +103,21 @@ function obterSessaoTokenConsultaEfetivoLocal() {
   );
 }
 
+function obterSessaoTokenEncarregadoMotoristasLocal() {
+  return obterTokenSessaoLocal(
+    'encarregado_motoristas_sessao_token',
+    'encarregado_motoristas_sessao_iniciada_em',
+    DURACAO_SESSAO_LOCAL.encarregadoMotoristas
+  );
+}
+
 function montarDadosChamadaApi(nome, argumentos) {
   const sessaoToken = obterSessaoTokenLocal();
   const sessaoComandanteToken = obterSessaoTokenComandanteLocal();
   const sessaoToqueToken = obterSessaoTokenToqueLocal();
   const sessaoOficialToken = obterSessaoTokenOficialLocal();
   const sessaoConsultaEfetivoToken = obterSessaoTokenConsultaEfetivoLocal();
+  const sessaoEncarregadoMotoristasToken = obterSessaoTokenEncarregadoMotoristasLocal();
 
   switch (nome) {
     case 'getListasFormulario':
@@ -118,6 +128,7 @@ function montarDadosChamadaApi(nome, argumentos) {
         sessaoComandanteToken: sessaoComandanteToken,
         sessaoOficialToken: sessaoOficialToken,
         sessaoToqueToken: sessaoToqueToken,
+        sessaoEncarregadoMotoristasToken: sessaoEncarregadoMotoristasToken,
         sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
       };
     case 'getGuardaAtivo':
@@ -127,6 +138,7 @@ function montarDadosChamadaApi(nome, argumentos) {
         sessaoToqueToken: sessaoToqueToken,
         sessaoComandanteToken: sessaoComandanteToken,
         sessaoOficialToken: sessaoOficialToken,
+        sessaoEncarregadoMotoristasToken: sessaoEncarregadoMotoristasToken,
         sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
       };
     case 'getComandanteAtivo':
@@ -136,6 +148,7 @@ function montarDadosChamadaApi(nome, argumentos) {
         sessaoToqueToken: sessaoToqueToken,
         sessaoComandanteToken: sessaoComandanteToken,
         sessaoOficialToken: sessaoOficialToken,
+        sessaoEncarregadoMotoristasToken: sessaoEncarregadoMotoristasToken,
         sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
       };
     case 'getOficialDiaAtivo':
@@ -144,6 +157,7 @@ function montarDadosChamadaApi(nome, argumentos) {
         sessaoToqueToken: sessaoToqueToken,
         sessaoComandanteToken: sessaoComandanteToken,
         sessaoOficialToken: sessaoOficialToken,
+        sessaoEncarregadoMotoristasToken: sessaoEncarregadoMotoristasToken,
         sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
       };
     case 'getDadosOficialDiaParaComandante':
@@ -157,6 +171,7 @@ function montarDadosChamadaApi(nome, argumentos) {
         sessaoToqueToken: sessaoToqueToken,
         sessaoComandanteToken: sessaoComandanteToken,
         sessaoOficialToken: sessaoOficialToken,
+        sessaoEncarregadoMotoristasToken: sessaoEncarregadoMotoristasToken,
         sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
       };
     case 'getPainelComandante':
@@ -166,12 +181,13 @@ function montarDadosChamadaApi(nome, argumentos) {
         sessaoGuardaToken: sessaoToken,
         sessaoToqueToken: sessaoToqueToken,
         sessaoOficialToken: sessaoOficialToken,
+        sessaoEncarregadoMotoristasToken: sessaoEncarregadoMotoristasToken,
         sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
       };
     case 'getPainelMotoristas':
       return {
-        sessaoToken: sessaoConsultaEfetivoToken,
-        sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
+        sessaoToken: sessaoEncarregadoMotoristasToken,
+        sessaoEncarregadoMotoristasToken: sessaoEncarregadoMotoristasToken
       };
     case 'getDesignacaoEncarregadoMotoristas':
       return {
@@ -181,8 +197,8 @@ function montarDadosChamadaApi(nome, argumentos) {
     case 'registrarEventoMotoristas':
       return {
         evento: argumentos[0] || {},
-        sessaoToken: sessaoConsultaEfetivoToken,
-        sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
+        sessaoToken: sessaoEncarregadoMotoristasToken,
+        sessaoEncarregadoMotoristasToken: sessaoEncarregadoMotoristasToken
       };
     case 'designarEncarregadoMotoristas':
       return Object.assign({}, argumentos[0] || {}, {
@@ -197,7 +213,17 @@ function montarDadosChamadaApi(nome, argumentos) {
         sessaoGuardaToken: sessaoToken,
         sessaoToqueToken: sessaoToqueToken,
         sessaoOficialToken: sessaoOficialToken,
+        sessaoEncarregadoMotoristasToken: sessaoEncarregadoMotoristasToken,
         sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
+      };
+    case 'enviarCodigoAcessoEncarregadoMotoristas':
+      return { email: argumentos[0] };
+    case 'validarCodigoAcessoEncarregadoMotoristas':
+      return { email: argumentos[0], codigo: argumentos[1] };
+    case 'revogarSessaoEncarregadoMotoristas':
+      return {
+        sessaoToken: argumentos[0] || sessaoEncarregadoMotoristasToken,
+        sessaoEncarregadoMotoristasToken: argumentos[0] || sessaoEncarregadoMotoristasToken
       };
     case 'getPessoasDentroGuarda':
       return { sessaoToken: sessaoToken, sessaoToqueToken: sessaoToqueToken };
@@ -313,24 +339,38 @@ function ajustarRespostaApi(nome, resposta) {
     const blocoGuarda = estado.guardaAtivo || estado.guarda || {};
     const blocoComandante = estado.comandanteAtivo || estado.comandante || {};
     const blocoOficial = estado.oficialDiaAtivo || estado.oficial || {};
+    const possuiBlocoEncarregadoMotoristas =
+      Object.prototype.hasOwnProperty.call(estado, 'encarregadoMotoristasAtivo') ||
+      Object.prototype.hasOwnProperty.call(estado, 'encarregadoMotoristas');
+    const blocoEncarregadoMotoristas = possuiBlocoEncarregadoMotoristas
+      ? (estado.encarregadoMotoristasAtivo || estado.encarregadoMotoristas || {})
+      : {};
     const statusToque = estado.statusToqueFogo || estado.statusToque || {};
     const guarda = blocoGuarda.guarda || null;
     const comandante = blocoComandante.comandante || null;
     const oficial = blocoOficial.oficial || null;
+    const encarregadoMotoristas = blocoEncarregadoMotoristas.encarregado || null;
 
     if (guarda) guarda.Sessao_Valida = blocoGuarda.sessaoValida === true;
     if (comandante) comandante.Sessao_Valida = blocoComandante.sessaoValida === true;
     if (oficial) oficial.Sessao_Valida = blocoOficial.sessaoValida === true;
+    if (encarregadoMotoristas) {
+      encarregadoMotoristas.Sessao_Valida = blocoEncarregadoMotoristas.sessaoValida === true;
+    }
     if (statusToque.toque) {
       statusToque.toque.Sessao_Valida = statusToque.sessaoPeriodoAtual === true;
     }
 
-    return {
+    const estadoAjustado = {
       guarda: guarda,
       comandante: comandante,
       oficial: oficial,
       statusToque: statusToque
     };
+    if (possuiBlocoEncarregadoMotoristas) {
+      estadoAjustado.encarregadoMotoristas = encarregadoMotoristas;
+    }
+    return estadoAjustado;
   }
 
   if (nome === 'getGuardaAtivo') {
@@ -428,6 +468,9 @@ function criarExecutorAppsScript() {
     'getPainelComandante',
     'getPainelMotoristas',
     'getDesignacaoEncarregadoMotoristas',
+    'enviarCodigoAcessoEncarregadoMotoristas',
+    'validarCodigoAcessoEncarregadoMotoristas',
+    'revogarSessaoEncarregadoMotoristas',
     'registrarEventoMotoristas',
     'designarEncarregadoMotoristas',
     'consultarHistoricoMovimentacoes',
@@ -523,6 +566,8 @@ let tipoMovimentacaoAtual = 'Entrada';
   let designacaoEncarregadoMotoristasEmCarregamento = false;
   let assinaturaDesignacaoEncarregadoMotoristas = '';
   let militaresDesignacaoEncarregadoMotoristas = [];
+  let dadosCodigoEncarregadoMotoristas = null;
+  let encarregadoMotoristasEquipeAtual = null;
   let abaPainelMotoristasAtual = 'frota';
   let tipoEventoMotoristasAtual = '';
   let viaturaPreselecionadaMotoristas = '';
@@ -606,6 +651,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       obterSessaoTokenToqueLocal() ||
       obterSessaoTokenComandanteLocal() ||
       obterSessaoTokenOficialLocal() ||
+      obterSessaoTokenEncarregadoMotoristasLocal() ||
       obterSessaoTokenConsultaEfetivoLocal()
     );
   }
@@ -623,6 +669,8 @@ let tipoMovimentacaoAtual = 'Entrada';
       (guardaAtual && guardaAtual.RG_Guarda) ||
       (comandanteAtual && (comandanteAtual.Nome_Comandante || comandanteAtual.RG_Comandante)) ||
       (oficialAtual && (oficialAtual.Nome_Oficial || oficialAtual.RG_Oficial)) ||
+      (encarregadoMotoristasEquipeAtual &&
+        (encarregadoMotoristasEquipeAtual.nome || encarregadoMotoristasEquipeAtual.rg)) ||
       (toqueAtual && (toqueAtual.Nome_Toque || toqueAtual.RG_Toque)) ||
       (coberturaAtual && (coberturaAtual.Nome_Toque || coberturaAtual.Nome_Guarda_Titular)) ||
       programacaoToqueAtual.some(item => item && item.toque &&
@@ -666,6 +714,15 @@ let tipoMovimentacaoAtual = 'Entrada';
       };
     }
 
+    if (encarregadoMotoristasEquipeAtual) {
+      encarregadoMotoristasEquipeAtual = {
+        idServico: encarregadoMotoristasEquipeAtual.idServico || '',
+        origem: encarregadoMotoristasEquipeAtual.origem || '',
+        Identidade_Visivel: false,
+        Sessao_Valida: false
+      };
+    }
+
     if (statusToqueFogoAtual) {
       statusToqueFogoAtual = {
         periodo: statusToqueFogoAtual.periodo || null,
@@ -698,6 +755,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     atualizarTelaGuarda();
     atualizarTelaComandante();
     atualizarTelaOficial();
+    atualizarTelaEncarregadoMotoristas();
     atualizarTelaToqueFogo();
   }
 
@@ -711,6 +769,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       obterSessaoTokenComandanteLocal(),
       obterSessaoTokenOficialLocal(),
       obterSessaoTokenToqueLocal(),
+      obterSessaoTokenEncarregadoMotoristasLocal(),
       obterSessaoTokenConsultaEfetivoLocal()
     ].join('|');
   }
@@ -782,13 +841,19 @@ let tipoMovimentacaoAtual = 'Entrada';
     oficialAtual = estado && Object.prototype.hasOwnProperty.call(estado, 'oficial')
       ? estado.oficial
       : null;
+    const recebeuEstadoEncarregadoMotoristas = estado &&
+      Object.prototype.hasOwnProperty.call(estado, 'encarregadoMotoristas');
+    if (recebeuEstadoEncarregadoMotoristas) {
+      encarregadoMotoristasEquipeAtual = estado.encarregadoMotoristas;
+    }
     statusToqueFogoAtual = estado && estado.statusToque ? estado.statusToque : {};
     estadoToqueFogoCarregado = true;
 
-    // As quatro referências já foram substituídas antes de qualquer renderização.
+    // As referências da equipe já foram substituídas antes de qualquer renderização.
     // Guarda atualiza também o Toque; Comandante atualiza também o Oficial.
     atualizarTelaGuarda();
     atualizarTelaComandante();
+    if (recebeuEstadoEncarregadoMotoristas) atualizarTelaEncarregadoMotoristas();
   }
 
   function carregarIdentidadesEquipeServico(silencioso = false, invalidarEmAndamento = true) {
@@ -847,6 +912,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     restaurarCodigoComandantePendente();
     restaurarCodigoOficialPendente();
     restaurarAcessoOficial();
+    restaurarCodigoEncarregadoMotoristasPendente();
     aplicarCodigoDoLink();
     inicializarFiltrosHistorico();
   inicializarSecoesPainelComandante();
@@ -949,7 +1015,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       }
 
       atualizarVisibilidadePainelMotoristas();
-      if (obterSessaoTokenConsultaEfetivoLocal() && consultaEfetivoAtual) {
+      if (obterSessaoTokenEncarregadoMotoristasLocal()) {
         carregarPainelMotoristas(true);
       }
 
@@ -3064,6 +3130,13 @@ let tipoMovimentacaoAtual = 'Entrada';
     mostrarMensagem('Código pendente restaurado. Digite o código recebido por e-mail.', 'sucesso');
   }
 
+function limparCodigoAcessoDaUrl() {
+  if (!window.history || typeof window.history.replaceState !== 'function') return;
+  const url = new URL(window.location.href);
+  ['perfil', 'email', 'codigo'].forEach(parametro => url.searchParams.delete(parametro));
+  window.history.replaceState(null, document.title, url.pathname + url.search + url.hash);
+}
+
 function aplicarCodigoDoLink() {
   const email = window.PARAM_EMAIL_GUARDA || '';
   const codigo = window.PARAM_CODIGO_GUARDA || '';
@@ -3079,6 +3152,17 @@ function aplicarCodigoDoLink() {
     document.getElementById('areaCodigoConsultaEfetivo').classList.remove('oculto');
     mostrarMensagem('Código da consulta recebido pelo link. Validando...', 'sucesso');
     setTimeout(() => validarCodigoConsultaEfetivo(), 500);
+    return;
+  }
+
+  if (perfil === 'encarregado-motoristas' || perfil === 'encarregado') {
+    expandirPerfilServico('perfilEncarregadoMotoristas', true);
+    document.getElementById('emailEncarregadoMotoristas').value = email;
+    document.getElementById('codigoEncarregadoMotoristas').value = codigo;
+    document.getElementById('areaCodigoEncarregadoMotoristas').classList.remove('oculto');
+    dadosCodigoEncarregadoMotoristas = { email: email };
+    mostrarMensagem('Código do Encarregado de Motoristas recebido pelo link. Validando...', 'sucesso');
+    setTimeout(() => validarCodigoEncarregadoMotoristas(), 500);
     return;
   }
 
@@ -3383,7 +3467,8 @@ function limparAreaOficial() {
 }
 
   function inicializarEquipeServico() {
-    const perfis = ['perfilGuarda', 'cardToqueFogo', 'perfilComandante', 'perfilOficial']
+    const perfis = ['perfilGuarda', 'cardToqueFogo', 'perfilComandante', 'perfilOficial',
+      'perfilEncarregadoMotoristas']
       .map(id => document.getElementById(id))
       .filter(Boolean);
     if (!perfis.length || document.getElementById('cardEquipeServico')) return;
@@ -3403,7 +3488,7 @@ function limparAreaOficial() {
     const tituloEquipe = document.createElement('strong');
     tituloEquipe.textContent = 'Equipe de Serviço';
     const subtituloEquipe = document.createElement('small');
-    subtituloEquipe.textContent = 'Guarda, Toque de Fogo, Comandante e Oficial de Dia';
+    subtituloEquipe.textContent = 'Guarda, Toque de Fogo, Comandante, Oficial de Dia e Encarregado de Motoristas';
     resumoEquipe.appendChild(tituloEquipe);
     resumoEquipe.appendChild(subtituloEquipe);
 
@@ -3451,6 +3536,196 @@ function limparAreaOficial() {
     card.classList.toggle('equipe-recolhida', recolher);
     botao.setAttribute('aria-expanded', String(!recolher));
   }
+
+function salvarCodigoEncarregadoMotoristasPendente(email) {
+  localStorage.setItem('encarregado_motoristas_email_pendente', email);
+  localStorage.setItem('encarregado_motoristas_codigo_pendente_em', new Date().toISOString());
+}
+
+function limparCodigoEncarregadoMotoristasPendente() {
+  localStorage.removeItem('encarregado_motoristas_email_pendente');
+  localStorage.removeItem('encarregado_motoristas_codigo_pendente_em');
+}
+
+function restaurarCodigoEncarregadoMotoristasPendente() {
+  const email = localStorage.getItem('encarregado_motoristas_email_pendente');
+  const geradoEm = localStorage.getItem('encarregado_motoristas_codigo_pendente_em');
+  const dataGeracao = geradoEm ? new Date(geradoEm) : null;
+  if (!email || !dataGeracao || isNaN(dataGeracao.getTime()) ||
+      Date.now() - dataGeracao.getTime() > 10 * 60 * 1000) {
+    limparCodigoEncarregadoMotoristasPendente();
+    return;
+  }
+  const campoEmail = document.getElementById('emailEncarregadoMotoristas');
+  const areaCodigo = document.getElementById('areaCodigoEncarregadoMotoristas');
+  if (campoEmail) campoEmail.value = email;
+  if (areaCodigo) areaCodigo.classList.remove('oculto');
+  dadosCodigoEncarregadoMotoristas = { email: email };
+  expandirPerfilServico('perfilEncarregadoMotoristas', true);
+}
+
+function limparAcessoEncarregadoMotoristasLocal() {
+  localStorage.removeItem('encarregado_motoristas_sessao_token');
+  localStorage.removeItem('encarregado_motoristas_sessao_iniciada_em');
+}
+
+function aparelhoAssumiuEncarregadoMotoristasAtual() {
+  return !!obterSessaoTokenEncarregadoMotoristasLocal() &&
+    !!encarregadoMotoristasEquipeAtual &&
+    encarregadoMotoristasEquipeAtual.Sessao_Valida === true;
+}
+
+function invalidarPainelMotoristasLocal() {
+  painelMotoristasAtual = null;
+  painelMotoristasCarregado = false;
+  painelMotoristasAutorizado = false;
+  assinaturaPainelMotoristasCarregado = '';
+  limparConteudoPainelMotoristas();
+  fecharModalEventoMotoristas(false);
+}
+
+function atualizarTelaEncarregadoMotoristas() {
+  const status = document.getElementById('statusEncarregadoMotoristas');
+  const areaAcesso = document.getElementById('areaAssumirEncarregadoMotoristas');
+  const botaoEntrar = document.getElementById('btnAbrirAcessoEncarregadoMotoristas');
+  const botaoSair = document.getElementById('btnSairAcessoEncarregadoMotoristas');
+  if (!status || !areaAcesso || !botaoEntrar || !botaoSair) return;
+
+  const tokenLocal = obterSessaoTokenEncarregadoMotoristasLocal();
+  if (tokenLocal && (!encarregadoMotoristasEquipeAtual ||
+      encarregadoMotoristasEquipeAtual.Sessao_Valida !== true)) {
+    limparAcessoEncarregadoMotoristasLocal();
+    invalidarPainelMotoristasLocal();
+  }
+
+  const autenticado = aparelhoAssumiuEncarregadoMotoristasAtual();
+  const encarregado = encarregadoMotoristasEquipeAtual;
+  status.classList.remove('sem-guarda', 'com-guarda');
+  if (encarregado) {
+    status.classList.add('com-guarda');
+    const nome = valorCampoMotoristas(encarregado, 'nome', 'Nome', 'Nome_Encarregado');
+    const rg = valorCampoMotoristas(encarregado, 'rg', 'RG', 'RG_CPF', 'RG_Encarregado');
+    status.innerHTML = nome
+      ? 'Responsável pelo ciclo:<br>' + escaparHtml(nome) +
+        (rg ? ' — RG ' + escaparHtml(rg) : '') +
+        (autenticado ? '<br><small>Acesso ao livro ativo neste aparelho.</small>' : '')
+      : 'O Encarregado de Motoristas já está definido para este ciclo.';
+  } else {
+    status.classList.add('sem-guarda');
+    status.textContent = 'Nenhum Encarregado de Motoristas foi definido para este ciclo.';
+  }
+
+  areaAcesso.classList.toggle('oculto', autenticado);
+  botaoEntrar.classList.toggle('oculto', autenticado);
+  botaoSair.classList.toggle('oculto', !autenticado);
+  if (!autenticado) botaoEntrar.textContent = 'Entrar';
+  atualizarVisibilidadePainelComandante();
+}
+
+function mostrarAreaAcessoEncarregadoMotoristas() {
+  expandirPerfilServico('perfilEncarregadoMotoristas', true);
+  const area = document.getElementById('areaAssumirEncarregadoMotoristas');
+  if (area) area.classList.remove('oculto');
+  const campoEmail = document.getElementById('emailEncarregadoMotoristas');
+  if (campoEmail) campoEmail.focus();
+}
+
+function enviarCodigoEncarregadoMotoristas() {
+  const campoEmail = document.getElementById('emailEncarregadoMotoristas');
+  const email = String(campoEmail && campoEmail.value || '').trim().toLowerCase();
+  if (!email || !email.includes('@')) {
+    mostrarMensagem('Informe um e-mail válido.', 'erro');
+    return;
+  }
+  const botao = document.getElementById('btnEnviarCodigoEncarregadoMotoristas');
+  botao.disabled = true;
+  botao.textContent = 'Enviando...';
+  google.script.run
+    .withSuccessHandler(resposta => {
+      dadosCodigoEncarregadoMotoristas = { email: email };
+      salvarCodigoEncarregadoMotoristasPendente(email);
+      document.getElementById('areaCodigoEncarregadoMotoristas').classList.remove('oculto');
+      document.getElementById('codigoEncarregadoMotoristas').focus();
+      botao.disabled = false;
+      botao.textContent = 'Reenviar código';
+      mostrarMensagem((resposta && resposta.mensagem) ||
+        'Se o e-mail estiver autorizado, o código de acesso será enviado.', 'sucesso');
+    })
+    .withFailureHandler(erro => {
+      botao.disabled = false;
+      botao.textContent = 'Enviar código';
+      mostrarMensagem('Não foi possível enviar o código: ' + erro.message, 'erro');
+    })
+    .enviarCodigoAcessoEncarregadoMotoristas(email);
+}
+
+function validarCodigoEncarregadoMotoristas() {
+  const email = String(document.getElementById('emailEncarregadoMotoristas').value || '')
+    .trim().toLowerCase();
+  const codigo = String(document.getElementById('codigoEncarregadoMotoristas').value || '').trim();
+  if (!email || !codigo) {
+    mostrarMensagem('Informe o e-mail e o código recebido.', 'erro');
+    return;
+  }
+  const botao = document.getElementById('btnValidarCodigoEncarregadoMotoristas');
+  botao.disabled = true;
+  botao.textContent = 'Validando...';
+  google.script.run
+    .withSuccessHandler(resposta => {
+      const token = String(resposta && resposta.sessaoToken || '');
+      if (!token || !resposta || !resposta.encarregado) {
+        botao.disabled = false;
+        botao.textContent = 'Entrar';
+        mostrarMensagem('O servidor não devolveu uma sessão válida. Tente novamente.', 'erro');
+        return;
+      }
+      localStorage.setItem('encarregado_motoristas_sessao_token', token);
+      marcarInicioSessaoLocal('encarregado_motoristas_sessao_iniciada_em');
+      encarregadoMotoristasEquipeAtual = resposta.encarregado;
+      encarregadoMotoristasEquipeAtual.Sessao_Valida = true;
+      dadosCodigoEncarregadoMotoristas = null;
+      limparCodigoEncarregadoMotoristasPendente();
+      limparCodigoAcessoDaUrl();
+      document.getElementById('codigoEncarregadoMotoristas').value = '';
+      document.getElementById('areaCodigoEncarregadoMotoristas').classList.add('oculto');
+      botao.disabled = false;
+      botao.textContent = 'Entrar';
+      invalidarPainelMotoristasLocal();
+      atualizarTelaEncarregadoMotoristas();
+      carregarIdentidadesEquipeServico(true);
+      carregarPainelMotoristas();
+      mostrarMensagem((resposta && resposta.mensagem) ||
+        'Acesso do Encarregado de Motoristas liberado neste aparelho.', 'sucesso');
+    })
+    .withFailureHandler(erro => {
+      botao.disabled = false;
+      botao.textContent = 'Entrar';
+      mostrarMensagem('Não foi possível validar o acesso: ' + erro.message, 'erro');
+    })
+    .validarCodigoAcessoEncarregadoMotoristas(email, codigo);
+}
+
+function sairAcessoEncarregadoMotoristas(exibirMensagem = true) {
+  const token = obterSessaoTokenEncarregadoMotoristasLocal();
+  limparAcessoEncarregadoMotoristasLocal();
+  dadosCodigoEncarregadoMotoristas = null;
+  limparCodigoEncarregadoMotoristasPendente();
+  if (encarregadoMotoristasEquipeAtual) {
+    encarregadoMotoristasEquipeAtual.Sessao_Valida = false;
+  }
+  invalidarPainelMotoristasLocal();
+  atualizarTelaEncarregadoMotoristas();
+  carregarIdentidadesEquipeServico(true);
+  if (token) {
+    google.script.run
+      .withFailureHandler(() => {})
+      .revogarSessaoEncarregadoMotoristas(token);
+  }
+  if (exibirMensagem) {
+    mostrarMensagem('Acesso do Encarregado de Motoristas encerrado neste aparelho.', 'sucesso');
+  }
+}
+
 function salvarCodigoOficialPendente(email) {
   localStorage.setItem('oficial_dia_email_pendente', email);
   localStorage.setItem('oficial_dia_codigo_pendente_em', new Date().toISOString());
@@ -3563,9 +3838,11 @@ function aparelhoTemAcessoPainelGestao() {
     statusToqueFogoAtual &&
     statusToqueFogoAtual.sessaoValida === true
   );
+  const encarregadoMotoristasAutenticado = aparelhoAssumiuEncarregadoMotoristasAtual();
 
   return aparelhoAssumiuComandanteAtual() ||
     aparelhoAssumiuOficialAtual() ||
+    encarregadoMotoristasAutenticado ||
     militarDoEfetivoAutenticado ||
     guardaAutenticado ||
     toqueAutenticado;
@@ -3577,6 +3854,7 @@ function obterAssinaturaCredenciaisPainelGestao() {
     obterSessaoTokenLocal() || '',
     obterSessaoTokenToqueLocal() || '',
     obterSessaoTokenOficialLocal() || '',
+    obterSessaoTokenEncarregadoMotoristasLocal() || '',
     obterSessaoTokenConsultaEfetivoLocal() || ''
   ].join('|');
 }
@@ -4326,10 +4604,7 @@ function inicializarPainelMotoristas() {
 }
 
 function obterAssinaturaSessaoPessoalMotoristas() {
-  const token = obterSessaoTokenConsultaEfetivoLocal();
-  if (!token || !consultaEfetivoAtual) return '';
-  const rg = String(valorCampoMotoristas(consultaEfetivoAtual, 'RG_CPF', 'rg', 'RG') || '');
-  return token + '|' + rg;
+  return obterSessaoTokenEncarregadoMotoristasLocal() || '';
 }
 
 function limparConteudoPainelMotoristas() {
@@ -4442,6 +4717,10 @@ function carregarPainelMotoristas(silencioso = false) {
         if (card) card.classList.add('oculto');
         limparConteudoPainelMotoristas();
         fecharModalEventoMotoristas(false);
+        const mensagemErro = String(erro && erro.message || erro || '').toLowerCase();
+        if (/sess[aã]o|valide seu e-mail|encarregado de motoristas deste ciclo/.test(mensagemErro)) {
+          carregarIdentidadesEquipeServico(true);
+        }
         if (!silencioso) {
           mostrarMensagem('Erro ao atualizar o livro do Encarregado de Motoristas: ' + erro.message, 'erro');
         }
@@ -5130,6 +5409,7 @@ function salvarDesignacaoEncarregadoMotoristas(eventoSubmit) {
       painelMotoristasAutorizado = false;
       assinaturaPainelMotoristasCarregado = '';
       atualizarVisibilidadePainelMotoristas();
+      carregarIdentidadesEquipeServico(true);
       mostrarMensagem((resposta && resposta.mensagem) || 'Encarregado de Motoristas designado para o ciclo.', 'sucesso');
     })
     .withFailureHandler(erro => {

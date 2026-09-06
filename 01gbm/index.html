@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.0.1">
+  <link rel="stylesheet" href="style.css?v=27.0.2">
   </head>
 
   <body>
@@ -360,6 +360,46 @@
                     <input type="text" id="codigoOficial" inputmode="numeric" maxlength="6" placeholder="000000">
                     <button type="button" id="btnValidarCodigoOficial" onclick="validarCodigoOficial()">Entrar</button>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card card-guarda card-comandante perfil-servico" id="perfilEncarregadoMotoristas">
+          <div class="cabecalho-card-guarda">
+            <h2>Encarregado de Motoristas</h2>
+            <div class="acoes-guarda">
+              <button type="button" id="btnAbrirAcessoEncarregadoMotoristas" class="botao-trocar"
+                onclick="mostrarAreaAcessoEncarregadoMotoristas()">Entrar</button>
+              <button type="button" id="btnSairAcessoEncarregadoMotoristas" class="botao-sair oculto"
+                onclick="sairAcessoEncarregadoMotoristas()">Sair</button>
+            </div>
+          </div>
+
+          <div id="statusEncarregadoMotoristas" class="status-guarda">
+            Carregando Encarregado de Motoristas...
+          </div>
+
+          <div id="areaAssumirEncarregadoMotoristas">
+            <div class="campo">
+              <label>E-mail do militar designado</label>
+              <div class="linha-busca">
+                <input type="email" id="emailEncarregadoMotoristas" placeholder="Digite o e-mail cadastrado"
+                  autocomplete="email">
+                <button type="button" id="btnEnviarCodigoEncarregadoMotoristas"
+                  onclick="enviarCodigoEncarregadoMotoristas()">Enviar código</button>
+              </div>
+            </div>
+
+            <div id="areaCodigoEncarregadoMotoristas" class="oculto">
+              <div class="campo campo-sem-margem">
+                <label>Código recebido por e-mail</label>
+                <div class="linha-busca">
+                  <input type="text" id="codigoEncarregadoMotoristas" inputmode="numeric" maxlength="6"
+                    placeholder="000000">
+                  <button type="button" id="btnValidarCodigoEncarregadoMotoristas"
+                    onclick="validarCodigoEncarregadoMotoristas()">Entrar</button>
                 </div>
               </div>
             </div>
@@ -1040,6 +1080,6 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.0.1"></script>
+  <script src="app.js?v=27.0.2"></script>
   </body>
 </html>
