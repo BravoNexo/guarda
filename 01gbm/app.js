@@ -223,8 +223,6 @@ function montarDadosChamadaApi(nome, argumentos) {
       return { email: argumentos[0] };
     case 'validarCodigoConsultaEfetivo':
       return { email: argumentos[0], codigo: argumentos[1] };
-    case 'getMovimentacoesConsultaEfetivo':
-      return { sessaoToken: obterSessaoTokenConsultaEfetivoLocal() };
     case 'registrarSaidaRapidaPessoa':
       return { idMovimentacaoEntrada: argumentos[0], sessaoToken: sessaoToken, sessaoToqueToken: sessaoToqueToken };
     case 'getDadosSOS':
@@ -466,7 +464,6 @@ function criarExecutorAppsScript() {
     'getMovimentacoesRecentesGuarda',
     'enviarCodigoConsultaEfetivo',
     'validarCodigoConsultaEfetivo',
-    'getMovimentacoesConsultaEfetivo',
     'registrarSaidaRapidaPessoa',
     'getDadosSOS',
     'salvarGuarnicoesServico',
@@ -983,6 +980,8 @@ let tipoMovimentacaoAtual = 'Entrada';
     });
 
     setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+
       carregarIdentidadesEquipeServico(true, false);
 
       if (aparelhoPodeOperarGuardaAtual()) {
@@ -999,13 +998,15 @@ let tipoMovimentacaoAtual = 'Entrada';
         carregarPainelMotoristas(true);
       }
 
-      if (obterSessaoConsultaEfetivo()) carregarMovimentacoesConsultaEfetivo(true);
     }, 60000);
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         atualizarVisibilidadePainelMotoristas();
         carregarIdentidadesEquipeServico(true, true);
+        if (aparelhoTemAcessoPainelGestao()) {
+          carregarPainelComandante(true);
+        }
       }
     });
 
@@ -3831,6 +3832,22 @@ function aparelhoTemAcessoPainelGestao() {
     toqueAutenticado;
 }
 
+function aparelhoTemOutroAcessoPainelGestao() {
+  const guardaAutenticado = typeof aparelhoAssumiuGuardaAtual === 'function' &&
+    aparelhoAssumiuGuardaAtual();
+  const toqueAutenticado = !!(
+    obterSessaoTokenToqueLocal() &&
+    statusToqueFogoAtual &&
+    statusToqueFogoAtual.sessaoValida === true
+  );
+
+  return aparelhoAssumiuComandanteAtual() ||
+    aparelhoAssumiuOficialAtual() ||
+    aparelhoAssumiuEncarregadoMotoristasAtual() ||
+    guardaAutenticado ||
+    toqueAutenticado;
+}
+
 function obterAssinaturaCredenciaisPainelGestao() {
   return [
     obterSessaoTokenComandanteLocal() || '',
@@ -3891,27 +3908,34 @@ function atualizarVisibilidadePainelComandante() {
   const painel = document.getElementById('cardPainelComandante');
   const historico = document.getElementById('cardConsultaHistorico');
   const acaoRetroativa = document.getElementById('acaoLancamentoRetroativo');
+  const login = document.getElementById('areaLoginConsultaEfetivo');
+  const conteudo = document.getElementById('conteudoPainelGestao');
+  const botaoAtualizar = document.getElementById('btnAtualizarPainelComandante');
 
   if (!painel) return;
 
+  const possuiAcesso = aparelhoTemAcessoPainelGestao();
   const comandanteNesteAparelho = aparelhoAssumiuComandanteAtual();
   const podeLancarHorarioAnterior = comandanteNesteAparelho &&
     permissoesPainelGestaoAtual.podeLancarHorarioAnterior === true;
+  painel.classList.remove('oculto');
+  if (login) login.classList.toggle('oculto', possuiAcesso);
+  if (conteudo) conteudo.classList.toggle('oculto', !possuiAcesso);
+  if (botaoAtualizar) botaoAtualizar.classList.toggle('oculto', !possuiAcesso);
+  atualizarTelaConsultaEfetivo();
   if (acaoRetroativa) acaoRetroativa.classList.toggle('oculto', !podeLancarHorarioAnterior);
   if (!comandanteNesteAparelho && modoLancamentoRetroativoAtivo) {
     cancelarLancamentoRetroativoPendente();
     atualizarPermissaoLancamento();
   }
 
-  if (aparelhoTemAcessoPainelGestao()) {
-    painel.classList.remove('oculto');
+  if (possuiAcesso) {
     if (historico) historico.classList.remove('oculto');
 
     if (!painelComandanteCarregado) {
       carregarPainelComandante(true);
     }
   } else {
-    painel.classList.add('oculto');
     if (historico) historico.classList.add('oculto');
     painelComandanteCarregado = false;
     permissoesPainelGestaoAtual = { podeLancarHorarioAnterior: false };
@@ -4081,6 +4105,11 @@ function carregarPainelComandante(silencioso = false) {
 
   const botao = document.getElementById('btnAtualizarPainelComandante');
   const assinaturaRequisicao = obterAssinaturaCredenciaisPainelGestao();
+  const consultaEfetivoEraUnicoAcesso = !!(
+    obterSessaoConsultaEfetivo() &&
+    consultaEfetivoAtual &&
+    !aparelhoTemOutroAcessoPainelGestao()
+  );
   painelComandanteEmCarregamento = true;
 
   if (botao) {
@@ -4111,9 +4140,18 @@ function carregarPainelComandante(silencioso = false) {
     .withFailureHandler((erro) => {
       painelComandanteEmCarregamento = false;
       const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaCredenciaisPainelGestao();
+      const mensagemErro = String(erro && erro.message || erro || '');
+      const sessaoConsultaInvalida = !respostaObsoleta &&
+        consultaEfetivoEraUnicoAcesso &&
+        /valide o e-mail de um militar do 1º gbm para acessar o painel de gestão/i.test(mensagemErro);
 
       if (!silencioso && !respostaObsoleta) {
-        mostrarMensagem('Erro ao atualizar painel: ' + erro.message, 'erro');
+        mostrarMensagem(
+          sessaoConsultaInvalida
+            ? 'Sua sessão do Painel de Gestão expirou. Entre novamente com seu e-mail.'
+            : 'Erro ao atualizar painel: ' + mensagemErro,
+          'erro'
+        );
       }
 
       if (!respostaObsoleta && !aparelhoAssumiuComandanteAtual() && aparelhoAssumiuOficialAtual()) {
@@ -4125,6 +4163,11 @@ function carregarPainelComandante(silencioso = false) {
       if (botao) {
         botao.disabled = false;
         botao.textContent = 'Atualizar';
+      }
+
+      if (sessaoConsultaInvalida) {
+        sairConsultaEfetivo(false);
+        return;
       }
 
       if (respostaObsoleta && aparelhoTemAcessoPainelGestao()) {
@@ -6006,18 +6049,19 @@ function validarCodigoConsultaEfetivo() {
       localStorage.setItem('consulta_efetivo_sessao_token', resposta.sessaoToken || '');
       marcarInicioSessaoLocal('consulta_efetivo_sessao_iniciada_em');
       localStorage.setItem('consulta_efetivo_militar', JSON.stringify(consultaEfetivoAtual || {}));
+      limparCodigoAcessoDaUrl();
+      painelComandanteCarregado = false;
       atualizarTelaConsultaEfetivo();
-      carregarMovimentacoesConsultaEfetivo();
       carregarIdentidadesEquipeServico(true);
       atualizarVisibilidadePainelComandante();
-      mostrarMensagem('E-mail validado. Painel de Gestão e consulta de movimentações liberados.', 'sucesso');
+      mostrarMensagem('E-mail validado. Painel de Gestão liberado neste aparelho.', 'sucesso');
       botao.disabled = false;
-      botao.textContent = 'Validar';
+      botao.textContent = 'Entrar';
     })
     .withFailureHandler((erro) => {
       mostrarMensagem('Não foi possível validar a consulta: ' + erro.message, 'erro');
       botao.disabled = false;
-      botao.textContent = 'Validar';
+      botao.textContent = 'Entrar';
     })
     .validarCodigoConsultaEfetivo(email, codigo);
 }
@@ -6028,68 +6072,27 @@ function restaurarConsultaEfetivo() {
   } catch (erro) {
     consultaEfetivoAtual = null;
   }
-  atualizarTelaConsultaEfetivo();
-  if (obterSessaoConsultaEfetivo()) {
-    carregarMovimentacoesConsultaEfetivo(true);
-    atualizarVisibilidadePainelComandante();
+  if (!obterSessaoConsultaEfetivo()) {
+    localStorage.removeItem('consulta_efetivo_sessao_token');
+    localStorage.removeItem('consulta_efetivo_sessao_iniciada_em');
+    localStorage.removeItem('consulta_efetivo_militar');
+    consultaEfetivoAtual = null;
   }
+  atualizarTelaConsultaEfetivo();
+  if (obterSessaoConsultaEfetivo()) painelComandanteCarregado = false;
+  atualizarVisibilidadePainelComandante();
 }
 
 function atualizarTelaConsultaEfetivo() {
-  const autenticado = !!obterSessaoConsultaEfetivo();
-  const login = document.getElementById('areaLoginConsultaEfetivo');
-  const area = document.getElementById('areaMovimentacoesConsultaEfetivo');
+  const autenticado = !!obterSessaoConsultaEfetivo() && !!consultaEfetivoAtual;
   const sair = document.getElementById('btnSairConsultaEfetivo');
-  if (!login || !area || !sair) return;
-  login.classList.toggle('oculto', autenticado);
-  area.classList.toggle('oculto', !autenticado);
-  sair.classList.toggle('oculto', !autenticado);
+  const identidade = document.getElementById('identidadeConsultaEfetivo');
+  if (sair) sair.classList.toggle('oculto', !autenticado);
+  if (identidade) identidade.classList.toggle('oculto', !autenticado);
   const nome = document.getElementById('militarConsultaEfetivo');
   if (nome && consultaEfetivoAtual) {
-    nome.textContent = (consultaEfetivoAtual.Nome || 'Militar do 1º GBM') + ' • Painel de Gestão liberado';
+    nome.textContent = (consultaEfetivoAtual.Nome || 'Militar do 1º GBM') + ' • acesso ativo neste aparelho';
   }
-}
-
-function carregarMovimentacoesConsultaEfetivo(silencioso = false) {
-  const token = obterSessaoConsultaEfetivo();
-  if (!token) return;
-  const botao = document.getElementById('btnAtualizarConsultaEfetivo');
-  if (botao) {
-    botao.disabled = true;
-    botao.textContent = 'Atualizando...';
-  }
-  google.script.run
-    .withSuccessHandler((resposta) => {
-      consultaEfetivoAtual = resposta && resposta.militar ? resposta.militar : consultaEfetivoAtual;
-      localStorage.setItem('consulta_efetivo_militar', JSON.stringify(consultaEfetivoAtual || {}));
-      atualizarTelaConsultaEfetivo();
-      atualizarVisibilidadePainelComandante();
-      const movimentacoes = resposta && resposta.movimentacoes ? resposta.movimentacoes : [];
-      renderizarListaMovimentacoesRecentes(movimentacoes, 'listaMovimentacoesConsultaEfetivo');
-      const total = Number(resposta && resposta.total || 0);
-      document.getElementById('resumoConsultaEfetivo').textContent =
-        total === 1 ? '1 movimentação nas últimas 48h' : total + ' movimentações nas últimas 48h';
-      if (resposta && resposta.periodoInicio && resposta.periodoFim) {
-        document.getElementById('periodoConsultaEfetivo').textContent =
-          'Período: ' + resposta.periodoInicio + ' até ' + resposta.periodoFim + '.';
-      }
-      document.getElementById('atualizadoEmConsultaEfetivo').textContent =
-        resposta && resposta.atualizadoEm ? 'Atualizado em ' + resposta.atualizadoEm : '';
-      if (botao) {
-        botao.disabled = false;
-        botao.textContent = 'Atualizar';
-      }
-
-    })
-    .withFailureHandler((erro) => {
-      sairConsultaEfetivo(false);
-      if (!silencioso) mostrarMensagem('Erro ao consultar movimentações: ' + erro.message, 'erro');
-      if (botao) {
-        botao.disabled = false;
-        botao.textContent = 'Atualizar';
-      }
-    })
-    .getMovimentacoesConsultaEfetivo(token);
 }
 
 function sairConsultaEfetivo(exibirMensagem = true) {
@@ -6097,8 +6100,13 @@ function sairConsultaEfetivo(exibirMensagem = true) {
   localStorage.removeItem('consulta_efetivo_sessao_token');
   localStorage.removeItem('consulta_efetivo_sessao_iniciada_em');
   localStorage.removeItem('consulta_efetivo_militar');
+  painelComandanteCarregado = false;
   const codigo = document.getElementById('codigoConsultaEfetivo');
   if (codigo) codigo.value = '';
+  const areaCodigo = document.getElementById('areaCodigoConsultaEfetivo');
+  if (areaCodigo) areaCodigo.classList.add('oculto');
+  const botaoEnviar = document.getElementById('btnEnviarCodigoConsultaEfetivo');
+  if (botaoEnviar) botaoEnviar.textContent = 'Enviar código';
   atualizarTelaConsultaEfetivo();
   atualizarVisibilidadePainelComandante();
   carregarIdentidadesEquipeServico(true);

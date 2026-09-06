@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.0.5">
+  <link rel="stylesheet" href="style.css?v=27.0.6">
   </head>
 
   <body>
@@ -209,47 +209,120 @@
           </div>
         </section>
 
-        <section class="card card-consulta-efetivo" id="cardConsultaEfetivo">
-          <div class="cabecalho-consulta-efetivo">
+        <section class="card painel-comandante" id="cardPainelComandante">
+          <div class="cabecalho-painel-comandante">
             <div>
-              <h2>Acesso ao Painel de Gestão</h2>
-              <p>Todo militar do 1º GBM pode validar o e-mail cadastrado para abrir o painel e consultar as movimentações.</p>
+              <h2>Painel de Gestão do Serviço</h2>
+              <span id="cicloPainelComandante">Ciclo das 08h às 08h</span>
             </div>
-            <button type="button" id="btnSairConsultaEfetivo" class="botao-sair oculto" onclick="sairConsultaEfetivo()">Sair</button>
+            <div class="acoes-cabecalho-painel-gestao">
+              <button type="button" id="btnSairConsultaEfetivo" class="botao-sair-painel oculto"
+                onclick="sairConsultaEfetivo()">Sair do painel</button>
+              <button type="button" id="btnAtualizarPainelComandante" class="oculto"
+                onclick="carregarPainelComandante()">Atualizar</button>
+            </div>
           </div>
 
-          <div id="areaLoginConsultaEfetivo">
+          <div id="areaLoginConsultaEfetivo" class="acesso-painel-gestao">
+            <p>Todo militar do 1º GBM pode entrar com o e-mail cadastrado para consultar as informações do serviço.</p>
             <div class="campo campo-sem-margem">
-              <label>E-mail cadastrado no efetivo do 1º GBM</label>
+              <label for="emailConsultaEfetivo">E-mail cadastrado no efetivo do 1º GBM</label>
               <div class="linha-busca">
                 <input type="email" id="emailConsultaEfetivo" placeholder="seu.email@..." autocomplete="email">
-                <button type="button" id="btnEnviarCodigoConsultaEfetivo" onclick="enviarCodigoConsultaEfetivo()">Enviar código</button>
+                <button type="button" id="btnEnviarCodigoConsultaEfetivo"
+                  onclick="enviarCodigoConsultaEfetivo()">Enviar código</button>
               </div>
             </div>
             <div id="areaCodigoConsultaEfetivo" class="area-codigo-consulta oculto">
               <div class="campo campo-sem-margem">
-                <label>Código recebido por e-mail</label>
+                <label for="codigoConsultaEfetivo">Código recebido por e-mail</label>
                 <div class="linha-busca">
-                  <input type="text" id="codigoConsultaEfetivo" inputmode="numeric" maxlength="6" placeholder="000000">
-                  <button type="button" id="btnValidarConsultaEfetivo" onclick="validarCodigoConsultaEfetivo()">Validar</button>
+                  <input type="text" id="codigoConsultaEfetivo" inputmode="numeric" maxlength="6"
+                    autocomplete="one-time-code" placeholder="000000">
+                  <button type="button" id="btnValidarConsultaEfetivo"
+                    onclick="validarCodigoConsultaEfetivo()">Entrar</button>
                 </div>
               </div>
             </div>
           </div>
 
-          <div id="areaMovimentacoesConsultaEfetivo" class="oculto">
-            <div class="cabecalho-lista-consulta">
-              <div>
-                <strong id="militarConsultaEfetivo">Acesso liberado</strong>
-                <span id="resumoConsultaEfetivo">Carregando movimentações...</span>
+          <div id="conteudoPainelGestao" class="oculto">
+            <div id="identidadeConsultaEfetivo" class="identidade-acesso-painel oculto" aria-live="polite">
+              <strong id="militarConsultaEfetivo">Acesso liberado</strong>
+            </div>
+
+            <div class="resumo-painel-comandante">
+              <div class="indicador-painel">
+                <strong id="totalPessoasDentro">0</strong>
+                <span>Pessoas dentro</span>
               </div>
-              <button type="button" id="btnAtualizarConsultaEfetivo" onclick="carregarMovimentacoesConsultaEfetivo()">Atualizar</button>
+              <div class="indicador-painel">
+                <strong id="totalViaturasDisponiveis">0</strong>
+                <span>Viaturas disponíveis</span>
+              </div>
+              <div class="indicador-painel indicador-alerta">
+                <strong id="totalViaturasEmOcorrencia">0</strong>
+                <span>Viaturas em SOS</span>
+              </div>
+              <div class="indicador-painel">
+                <strong id="totalViaturasDentro">0</strong>
+                <span>Viaturas externas</span>
+              </div>
+              <div class="indicador-painel">
+                <strong id="totalMovimentacoesCiclo">0</strong>
+                <span>Movimentações</span>
+              </div>
             </div>
-            <p id="periodoConsultaEfetivo" class="descricao-pessoas-dentro-guarda">Últimas 48 horas.</p>
-            <div id="listaMovimentacoesConsultaEfetivo" class="lista-painel">
-              <div class="estado-vazio-painel">Carregando...</div>
+
+            <div class="secao-painel-comandante" id="secaoPainelViaturas">
+              <button type="button" class="botao-alternar-secao-painel" aria-expanded="true"
+                aria-controls="conteudoPainelViaturas" onclick="alternarSecaoPainel('viaturas')">
+                <span>Viaturas do quartel</span>
+                <span class="icone-alternar-secao-painel" aria-hidden="true">⌄</span>
+              </button>
+              <div id="conteudoPainelViaturas" class="conteudo-secao-painel">
+                <div id="listaViaturasQuartel" class="lista-painel"></div>
+              </div>
             </div>
-            <div id="atualizadoEmConsultaEfetivo" class="rodape-painel-comandante"></div>
+
+            <div class="secao-painel-comandante" id="secaoPainelDentro">
+              <button type="button" class="botao-alternar-secao-painel" aria-expanded="true"
+                aria-controls="conteudoPainelDentro" onclick="alternarSecaoPainel('dentro')">
+                <span>Dentro do quartel</span>
+                <span class="icone-alternar-secao-painel" aria-hidden="true">⌄</span>
+              </button>
+              <div id="conteudoPainelDentro" class="conteudo-secao-painel">
+                <div id="listaPessoasDentro" class="lista-painel">
+                  <div class="estado-vazio-painel">Carregando...</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="secao-painel-comandante" id="secaoPainelMovimentacoes">
+              <button type="button" class="botao-alternar-secao-painel" aria-expanded="false"
+                aria-controls="conteudoPainelMovimentacoes" onclick="alternarSecaoPainel('movimentacoes')">
+                <span>Movimentações das últimas 48h</span>
+                <span class="icone-alternar-secao-painel" aria-hidden="true">⌄</span>
+              </button>
+              <div id="conteudoPainelMovimentacoes" class="conteudo-secao-painel" hidden>
+                <div id="listaMovimentacoesRecentes" class="lista-painel">
+                  <div class="estado-vazio-painel">Carregando...</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="acaoLancamentoRetroativo" class="acao-lancamento-retroativo oculto">
+              <div>
+                <strong>Ação exclusiva do Comandante</strong>
+                <span>Corrigir uma movimentação individual que ocorreu dentro do ciclo atual.</span>
+              </div>
+              <button type="button" id="btnAbrirLancamentoRetroativo" onclick="abrirLancamentoRetroativo()"
+                aria-controls="blocoLancamentoRetroativo" aria-expanded="false">
+                Lançar horário anterior
+              </button>
+            </div>
+
+            <div id="atualizadoEmPainelComandante" class="rodape-painel-comandante"></div>
           </div>
         </section>
 
@@ -404,88 +477,6 @@
               </div>
             </div>
           </div>
-        </section>
-
-        <section class="card painel-comandante oculto" id="cardPainelComandante">
-          <div class="cabecalho-painel-comandante">
-            <div>
-              <h2>Painel de Gestão do Serviço</h2>
-              <span id="cicloPainelComandante">Ciclo das 08h às 08h</span>
-            </div>
-            <button type="button" id="btnAtualizarPainelComandante" onclick="carregarPainelComandante()">
-              Atualizar
-            </button>
-          </div>
-
-          <div class="resumo-painel-comandante">
-            <div class="indicador-painel">
-              <strong id="totalPessoasDentro">0</strong>
-              <span>Pessoas dentro</span>
-            </div>
-            <div class="indicador-painel">
-              <strong id="totalViaturasDisponiveis">0</strong>
-              <span>Viaturas disponíveis</span>
-            </div>
-            <div class="indicador-painel indicador-alerta">
-              <strong id="totalViaturasEmOcorrencia">0</strong>
-              <span>Viaturas em SOS</span>
-            </div>
-            <div class="indicador-painel">
-              <strong id="totalViaturasDentro">0</strong>
-              <span>Viaturas externas</span>
-            </div>
-            <div class="indicador-painel">
-              <strong id="totalMovimentacoesCiclo">0</strong>
-              <span>Movimentações</span>
-            </div>
-          </div>
-
-          <div class="secao-painel-comandante" id="secaoPainelViaturas">
-            <button type="button" class="botao-alternar-secao-painel" aria-expanded="true" aria-controls="conteudoPainelViaturas" onclick="alternarSecaoPainel('viaturas')">
-              <span>Viaturas do quartel</span>
-              <span class="icone-alternar-secao-painel" aria-hidden="true">⌄</span>
-            </button>
-            <div id="conteudoPainelViaturas" class="conteudo-secao-painel">
-              <div id="listaViaturasQuartel" class="lista-painel"></div>
-            </div>
-          </div>
-
-          <div class="secao-painel-comandante" id="secaoPainelDentro">
-            <button type="button" class="botao-alternar-secao-painel" aria-expanded="true" aria-controls="conteudoPainelDentro" onclick="alternarSecaoPainel('dentro')">
-              <span>Dentro do quartel</span>
-              <span class="icone-alternar-secao-painel" aria-hidden="true">⌄</span>
-            </button>
-            <div id="conteudoPainelDentro" class="conteudo-secao-painel">
-              <div id="listaPessoasDentro" class="lista-painel">
-                <div class="estado-vazio-painel">Carregando...</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="secao-painel-comandante" id="secaoPainelMovimentacoes">
-            <button type="button" class="botao-alternar-secao-painel" aria-expanded="false" aria-controls="conteudoPainelMovimentacoes" onclick="alternarSecaoPainel('movimentacoes')">
-              <span>Movimentações das últimas 30h</span>
-              <span class="icone-alternar-secao-painel" aria-hidden="true">⌄</span>
-            </button>
-            <div id="conteudoPainelMovimentacoes" class="conteudo-secao-painel" hidden>
-              <div id="listaMovimentacoesRecentes" class="lista-painel">
-                <div class="estado-vazio-painel">Carregando...</div>
-              </div>
-            </div>
-          </div>
-
-          <div id="acaoLancamentoRetroativo" class="acao-lancamento-retroativo oculto">
-            <div>
-              <strong>Ação exclusiva do Comandante</strong>
-              <span>Corrigir uma movimentação individual que ocorreu dentro do ciclo atual.</span>
-            </div>
-            <button type="button" id="btnAbrirLancamentoRetroativo" onclick="abrirLancamentoRetroativo()"
-              aria-controls="blocoLancamentoRetroativo" aria-expanded="false">
-              Lançar horário anterior
-            </button>
-          </div>
-
-          <div id="atualizadoEmPainelComandante" class="rodape-painel-comandante"></div>
         </section>
 
         <section class="card card-painel-motoristas oculto" id="cardPainelMotoristas">
@@ -1058,6 +1049,6 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.0.5"></script>
+  <script src="app.js?v=27.0.6"></script>
   </body>
 </html>

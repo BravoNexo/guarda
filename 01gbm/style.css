@@ -455,6 +455,44 @@
     cursor: pointer;
   }
 
+  .acoes-cabecalho-painel-gestao {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cabecalho-painel-comandante .botao-sair-painel {
+    border: 1px solid #fecaca;
+    background: #fff1f2;
+    color: #991b1b;
+  }
+
+  .acesso-painel-gestao {
+    padding: 14px;
+    border: 1px solid #99f6e4;
+    border-radius: 14px;
+    background: #f0fdfa;
+  }
+
+  .acesso-painel-gestao > p {
+    margin: 0 0 13px;
+    color: #475569;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .identidade-acesso-painel {
+    margin: -2px 0 14px;
+    padding: 9px 11px;
+    border: 1px solid #ccfbf1;
+    border-radius: 10px;
+    background: #f0fdfa;
+    color: #115e59;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
   .indicador-painel {
     min-width: 0;
     padding: 12px 8px;
@@ -1965,52 +2003,30 @@
   background: #94a3b8;
 }
 
-.card-consulta-efetivo {
-  border-top: 4px solid #0f766e;
-}
-
-.cabecalho-consulta-efetivo,
-.cabecalho-lista-consulta {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.cabecalho-consulta-efetivo h2 { margin: 0; }
-
-.cabecalho-consulta-efetivo p {
-  margin: 5px 0 14px;
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
 .area-codigo-consulta {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid #e2e8f0;
 }
 
-.cabecalho-lista-consulta {
-  margin-bottom: 8px;
-}
-
-.cabecalho-lista-consulta > div {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.cabecalho-lista-consulta span {
-  color: #64748b;
-  font-size: 12px;
-}
-
 @media (max-width: 520px) {
-  .cabecalho-consulta-efetivo { align-items: center; }
-  .card-consulta-efetivo .linha-busca { align-items: stretch; }
+  .cabecalho-painel-comandante {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .acoes-cabecalho-painel-gestao {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .acoes-cabecalho-painel-gestao button {
+    flex: 1 1 auto;
+  }
+
+  .acesso-painel-gestao .linha-busca {
+    align-items: stretch;
+  }
 }
 
 @media (max-width: 360px) {
