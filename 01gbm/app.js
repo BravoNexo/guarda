@@ -170,31 +170,24 @@ function montarDadosChamadaApi(nome, argumentos) {
       };
     case 'getPainelMotoristas':
       return {
-        sessaoToken: sessaoComandanteToken || sessaoToken || sessaoToqueToken || sessaoOficialToken || sessaoConsultaEfetivoToken,
-        sessaoComandanteToken: sessaoComandanteToken,
-        sessaoGuardaToken: sessaoToken,
-        sessaoToqueToken: sessaoToqueToken,
-        sessaoOficialToken: sessaoOficialToken,
+        sessaoToken: sessaoConsultaEfetivoToken,
         sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
+      };
+    case 'getDesignacaoEncarregadoMotoristas':
+      return {
+        sessaoToken: sessaoComandanteToken,
+        sessaoComandanteToken: sessaoComandanteToken
       };
     case 'registrarEventoMotoristas':
       return {
         evento: argumentos[0] || {},
-        sessaoToken: sessaoComandanteToken || sessaoToken || sessaoToqueToken || sessaoOficialToken || sessaoConsultaEfetivoToken,
-        sessaoComandanteToken: sessaoComandanteToken,
-        sessaoGuardaToken: sessaoToken,
-        sessaoToqueToken: sessaoToqueToken,
-        sessaoOficialToken: sessaoOficialToken,
+        sessaoToken: sessaoConsultaEfetivoToken,
         sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
       };
     case 'designarEncarregadoMotoristas':
       return Object.assign({}, argumentos[0] || {}, {
         sessaoToken: sessaoComandanteToken,
-        sessaoComandanteToken: sessaoComandanteToken,
-        sessaoGuardaToken: sessaoToken,
-        sessaoToqueToken: sessaoToqueToken,
-        sessaoOficialToken: sessaoOficialToken,
-        sessaoConsultaEfetivoToken: sessaoConsultaEfetivoToken
+        sessaoComandanteToken: sessaoComandanteToken
       });
     case 'consultarHistoricoMovimentacoes':
       return {
@@ -434,6 +427,7 @@ function criarExecutorAppsScript() {
     'getStatusToqueFogo',
     'getPainelComandante',
     'getPainelMotoristas',
+    'getDesignacaoEncarregadoMotoristas',
     'registrarEventoMotoristas',
     'designarEncarregadoMotoristas',
     'consultarHistoricoMovimentacoes',
@@ -522,7 +516,13 @@ let tipoMovimentacaoAtual = 'Entrada';
   let painelMotoristasAtual = null;
   let painelMotoristasCarregado = false;
   let painelMotoristasEmCarregamento = false;
+  let painelMotoristasAutorizado = false;
   let assinaturaPainelMotoristasCarregado = '';
+  let designacaoEncarregadoMotoristasAtual = null;
+  let designacaoEncarregadoMotoristasCarregada = false;
+  let designacaoEncarregadoMotoristasEmCarregamento = false;
+  let assinaturaDesignacaoEncarregadoMotoristas = '';
+  let militaresDesignacaoEncarregadoMotoristas = [];
   let abaPainelMotoristasAtual = 'frota';
   let tipoEventoMotoristasAtual = '';
   let viaturaPreselecionadaMotoristas = '';
@@ -946,7 +946,15 @@ let tipoMovimentacaoAtual = 'Entrada';
 
       if (aparelhoTemAcessoPainelGestao()) {
         carregarPainelComandante(true);
+      }
+
+      atualizarVisibilidadePainelMotoristas();
+      if (obterSessaoTokenConsultaEfetivoLocal() && consultaEfetivoAtual) {
         carregarPainelMotoristas(true);
+      }
+
+      if (aparelhoAssumiuComandanteAtual()) {
+        carregarDesignacaoEncarregadoMotoristas(true);
       }
 
       if (obterSessaoConsultaEfetivo()) carregarMovimentacoesConsultaEfetivo(true);
@@ -954,6 +962,7 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
+        atualizarVisibilidadePainelMotoristas();
         carregarIdentidadesEquipeServico(true, true);
       }
     });
@@ -3621,16 +3630,36 @@ function atualizarVisibilidadePainelComandante() {
   const painel = document.getElementById('cardPainelComandante');
   const historico = document.getElementById('cardConsultaHistorico');
   const acaoRetroativa = document.getElementById('acaoLancamentoRetroativo');
+  const acaoDesignacao = document.getElementById('acaoDesignacaoEncarregadoMotoristas');
 
   if (!painel) return;
 
   const comandanteNesteAparelho = aparelhoAssumiuComandanteAtual();
+  const assinaturaComandante = obterSessaoTokenComandanteLocal() || '';
   const podeLancarHorarioAnterior = comandanteNesteAparelho &&
     permissoesPainelGestaoAtual.podeLancarHorarioAnterior === true;
   if (acaoRetroativa) acaoRetroativa.classList.toggle('oculto', !podeLancarHorarioAnterior);
+  if (acaoDesignacao) acaoDesignacao.classList.toggle('oculto', !comandanteNesteAparelho);
   if (!comandanteNesteAparelho && modoLancamentoRetroativoAtivo) {
     cancelarLancamentoRetroativoPendente();
     atualizarPermissaoLancamento();
+  }
+
+  if (comandanteNesteAparelho) {
+    if (assinaturaDesignacaoEncarregadoMotoristas !== assinaturaComandante) {
+      designacaoEncarregadoMotoristasAtual = null;
+      designacaoEncarregadoMotoristasCarregada = false;
+      militaresDesignacaoEncarregadoMotoristas = [];
+    }
+    if (!designacaoEncarregadoMotoristasCarregada) {
+      carregarDesignacaoEncarregadoMotoristas(true);
+    }
+  } else {
+    designacaoEncarregadoMotoristasAtual = null;
+    designacaoEncarregadoMotoristasCarregada = false;
+    assinaturaDesignacaoEncarregadoMotoristas = '';
+    militaresDesignacaoEncarregadoMotoristas = [];
+    fecharModalDesignarEncarregadoMotoristas(false);
   }
 
   if (aparelhoTemAcessoPainelGestao()) {
@@ -3648,6 +3677,80 @@ function atualizarVisibilidadePainelComandante() {
   }
 
   atualizarVisibilidadePainelMotoristas();
+}
+
+function renderizarDesignacaoEncarregadoMotoristas(dados) {
+  designacaoEncarregadoMotoristasAtual = dados || {};
+  militaresDesignacaoEncarregadoMotoristas = Array.isArray(designacaoEncarregadoMotoristasAtual.militares)
+    ? designacaoEncarregadoMotoristasAtual.militares : [];
+  const resumo = document.getElementById('resumoDesignacaoEncarregadoMotoristas');
+  const botao = document.getElementById('btnDesignarEncarregadoMotoristas');
+  const encarregado = designacaoEncarregadoMotoristasAtual.encarregado || null;
+  if (resumo) {
+    if (encarregado) {
+      const nome = valorCampoMotoristas(encarregado, 'nome', 'Nome', 'Nome_Encarregado') || 'Militar não identificado';
+      const rg = valorCampoMotoristas(encarregado, 'rg', 'RG', 'RG_CPF', 'RG_Encarregado');
+      resumo.textContent = nome + (rg ? ' — RG ' + rg : '') + ' é o responsável deste ciclo.';
+    } else {
+      resumo.textContent = 'Nenhum encarregado foi designado para este ciclo.';
+    }
+  }
+  if (botao) botao.textContent = encarregado ? 'Trocar' : 'Designar';
+  preencherListasMilitaresMotoristas();
+}
+
+function carregarDesignacaoEncarregadoMotoristas(silencioso = false) {
+  if (!aparelhoAssumiuComandanteAtual()) return;
+  if (designacaoEncarregadoMotoristasEmCarregamento) return;
+  const assinaturaRequisicao = obterSessaoTokenComandanteLocal() || '';
+  if (!assinaturaRequisicao) return;
+  const botao = document.getElementById('btnDesignarEncarregadoMotoristas');
+  const resumo = document.getElementById('resumoDesignacaoEncarregadoMotoristas');
+  designacaoEncarregadoMotoristasEmCarregamento = true;
+  if (botao) {
+    botao.disabled = true;
+    botao.textContent = 'Consultando...';
+  }
+  if (resumo && !designacaoEncarregadoMotoristasCarregada) {
+    resumo.textContent = 'Consultando o responsável deste ciclo...';
+  }
+  google.script.run
+    .withSuccessHandler(resposta => {
+      designacaoEncarregadoMotoristasEmCarregamento = false;
+      const respostaObsoleta = !aparelhoAssumiuComandanteAtual() ||
+        assinaturaRequisicao !== (obterSessaoTokenComandanteLocal() || '');
+      if (respostaObsoleta) {
+        designacaoEncarregadoMotoristasCarregada = false;
+        if (aparelhoAssumiuComandanteAtual()) carregarDesignacaoEncarregadoMotoristas(true);
+        return;
+      }
+      assinaturaDesignacaoEncarregadoMotoristas = assinaturaRequisicao;
+      designacaoEncarregadoMotoristasCarregada = true;
+      renderizarDesignacaoEncarregadoMotoristas(resposta || {});
+      if (botao) botao.disabled = false;
+    })
+    .withFailureHandler(erro => {
+      designacaoEncarregadoMotoristasEmCarregamento = false;
+      const respostaObsoleta = !aparelhoAssumiuComandanteAtual() ||
+        assinaturaRequisicao !== (obterSessaoTokenComandanteLocal() || '');
+      if (respostaObsoleta) {
+        designacaoEncarregadoMotoristasCarregada = false;
+        if (aparelhoAssumiuComandanteAtual()) carregarDesignacaoEncarregadoMotoristas(true);
+        return;
+      }
+      designacaoEncarregadoMotoristasAtual = null;
+      designacaoEncarregadoMotoristasCarregada = false;
+      militaresDesignacaoEncarregadoMotoristas = [];
+      if (resumo) resumo.textContent = 'Não foi possível consultar o responsável deste ciclo.';
+      if (botao) {
+        botao.disabled = false;
+        botao.textContent = 'Tentar novamente';
+      }
+      if (!silencioso) {
+        mostrarMensagem('Erro ao consultar o Encarregado de Motoristas: ' + erro.message, 'erro');
+      }
+    })
+    .getDesignacaoEncarregadoMotoristas();
 }
 
 function formatarDataInputLocal(data) {
@@ -4222,35 +4325,68 @@ function inicializarPainelMotoristas() {
   selecionarAbaPainelMotoristas(abaPainelMotoristasAtual, false);
 }
 
+function obterAssinaturaSessaoPessoalMotoristas() {
+  const token = obterSessaoTokenConsultaEfetivoLocal();
+  if (!token || !consultaEfetivoAtual) return '';
+  const rg = String(valorCampoMotoristas(consultaEfetivoAtual, 'RG_CPF', 'rg', 'RG') || '');
+  return token + '|' + rg;
+}
+
+function limparConteudoPainelMotoristas() {
+  const textos = {
+    totalMotoristasOperantes: '0',
+    totalMotoristasInoperantes: '0',
+    totalMotoristasForaUnidade: '0',
+    totalMotoristasSisgeoPendentes: '0',
+    nomeEncarregadoMotoristas: '',
+    perfilAcessoMotoristas: '',
+    atualizadoEmPainelMotoristas: ''
+  };
+  Object.keys(textos).forEach(id => {
+    const elemento = document.getElementById(id);
+    if (elemento) elemento.textContent = textos[id];
+  });
+  const lista = document.getElementById('listaPainelMotoristas');
+  if (lista) lista.innerHTML = '';
+  const viaturas = document.getElementById('viaturaEventoMotoristas');
+  if (viaturas) viaturas.innerHTML = '<option value="">Selecione a viatura</option>';
+}
+
 function atualizarVisibilidadePainelMotoristas() {
   const card = document.getElementById('cardPainelMotoristas');
   if (!card) return;
-  const possuiAcesso = aparelhoTemAcessoPainelGestao();
-  card.classList.toggle('oculto', !possuiAcesso);
-  if (possuiAcesso) {
-    const assinaturaAtual = obterAssinaturaCredenciaisPainelGestao();
-    if (painelMotoristasCarregado && assinaturaPainelMotoristasCarregado !== assinaturaAtual) {
-      painelMotoristasCarregado = false;
-      painelMotoristasAtual = null;
-    }
-    if (!painelMotoristasCarregado) carregarPainelMotoristas(true);
+  const assinaturaAtual = obterAssinaturaSessaoPessoalMotoristas();
+  const possuiSessaoPessoal = !!assinaturaAtual;
+
+  if (!possuiSessaoPessoal) {
+    card.classList.add('oculto');
+    painelMotoristasAtual = null;
+    painelMotoristasCarregado = false;
+    painelMotoristasAutorizado = false;
+    assinaturaPainelMotoristasCarregado = '';
+    limparConteudoPainelMotoristas();
+    fecharModalEventoMotoristas(false);
     return;
   }
-  painelMotoristasAtual = null;
-  painelMotoristasCarregado = false;
-  assinaturaPainelMotoristasCarregado = '';
-  fecharModalEventoMotoristas(false);
-  fecharModalDesignarEncarregadoMotoristas(false);
+
+  if (assinaturaPainelMotoristasCarregado !== assinaturaAtual) {
+    painelMotoristasAtual = null;
+    painelMotoristasCarregado = false;
+    painelMotoristasAutorizado = false;
+  }
+
+  card.classList.toggle('oculto', !painelMotoristasAutorizado);
+  if (!painelMotoristasCarregado) carregarPainelMotoristas(true);
 }
 
 function carregarPainelMotoristas(silencioso = false) {
-  if (!aparelhoTemAcessoPainelGestao()) {
+  const assinaturaRequisicao = obterAssinaturaSessaoPessoalMotoristas();
+  if (!assinaturaRequisicao) {
     atualizarVisibilidadePainelMotoristas();
     return;
   }
   if (painelMotoristasEmCarregamento) return;
   const botao = document.getElementById('btnAtualizarPainelMotoristas');
-  const assinaturaRequisicao = obterAssinaturaCredenciaisPainelGestao();
   painelMotoristasEmCarregamento = true;
   if (botao) {
     botao.disabled = true;
@@ -4259,9 +4395,21 @@ function carregarPainelMotoristas(silencioso = false) {
   google.script.run
     .withSuccessHandler(resposta => {
       painelMotoristasEmCarregamento = false;
-      const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaCredenciaisPainelGestao();
+      const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaSessaoPessoalMotoristas();
       if (!respostaObsoleta) {
-        renderizarPainelMotoristas(extrairPainelMotoristasResposta(resposta));
+        const painel = extrairPainelMotoristasResposta(resposta);
+        const autorizado = painel && painel.autorizado === true &&
+          painel.permissoes && painel.permissoes.podeAcessar === true;
+        if (autorizado) {
+          renderizarPainelMotoristas(painel);
+        } else {
+          painelMotoristasAtual = null;
+          painelMotoristasAutorizado = false;
+          const card = document.getElementById('cardPainelMotoristas');
+          if (card) card.classList.add('oculto');
+          limparConteudoPainelMotoristas();
+          fecharModalEventoMotoristas(false);
+        }
         painelMotoristasCarregado = true;
         assinaturaPainelMotoristasCarregado = assinaturaRequisicao;
       }
@@ -4269,24 +4417,34 @@ function carregarPainelMotoristas(silencioso = false) {
         botao.disabled = false;
         botao.textContent = 'Atualizar';
       }
-      if (respostaObsoleta && aparelhoTemAcessoPainelGestao()) {
+      if (respostaObsoleta && obterAssinaturaSessaoPessoalMotoristas()) {
         painelMotoristasCarregado = false;
         carregarPainelMotoristas(true);
       }
     })
     .withFailureHandler(erro => {
       painelMotoristasEmCarregamento = false;
-      const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaCredenciaisPainelGestao();
+      const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaSessaoPessoalMotoristas();
       if (botao) {
         botao.disabled = false;
         botao.textContent = 'Atualizar';
       }
-      if (respostaObsoleta && aparelhoTemAcessoPainelGestao()) {
+      if (respostaObsoleta && obterAssinaturaSessaoPessoalMotoristas()) {
         painelMotoristasCarregado = false;
         assinaturaPainelMotoristasCarregado = '';
         carregarPainelMotoristas(true);
-      } else if (!silencioso) {
-        mostrarMensagem('Erro ao atualizar o livro do Encarregado de Motoristas: ' + erro.message, 'erro');
+      } else {
+        painelMotoristasAtual = null;
+        painelMotoristasCarregado = false;
+        painelMotoristasAutorizado = false;
+        assinaturaPainelMotoristasCarregado = '';
+        const card = document.getElementById('cardPainelMotoristas');
+        if (card) card.classList.add('oculto');
+        limparConteudoPainelMotoristas();
+        fecharModalEventoMotoristas(false);
+        if (!silencioso) {
+          mostrarMensagem('Erro ao atualizar o livro do Encarregado de Motoristas: ' + erro.message, 'erro');
+        }
       }
     })
     .getPainelMotoristas();
@@ -4322,16 +4480,28 @@ function normalizarBooleanoMotoristas(valor, padrao = true) {
 }
 
 function renderizarPainelMotoristas(painel) {
+  const card = document.getElementById('cardPainelMotoristas');
+  const autorizado = painel && painel.autorizado === true && painel.permissoes &&
+    painel.permissoes.podeAcessar === true;
+  if (!autorizado) {
+    painelMotoristasAtual = null;
+    painelMotoristasAutorizado = false;
+    if (card) card.classList.add('oculto');
+    limparConteudoPainelMotoristas();
+    fecharModalEventoMotoristas(false);
+    return;
+  }
+
   painelMotoristasAtual = painel || {};
+  painelMotoristasAutorizado = true;
+  if (card) card.classList.remove('oculto');
   const resumo = painelMotoristasAtual.resumo || painelMotoristasAtual.totais || {};
   const ciclo = painelMotoristasAtual.ciclo || {};
   const encarregado = painelMotoristasAtual.encarregado || null;
   const permissoes = painelMotoristasAtual.permissoes || {};
   const podeEditar = permissoes.podeEditar === true;
-  const podeDesignar = permissoes.podeDesignar === true;
 
   if (!podeEditar) fecharModalEventoMotoristas(false);
-  if (!podeDesignar) fecharModalDesignarEncarregadoMotoristas(false);
 
   document.getElementById('totalMotoristasOperantes').textContent = Number(resumo.operantes || 0);
   document.getElementById('totalMotoristasInoperantes').textContent = Number(resumo.inoperantes || 0);
@@ -4353,8 +4523,7 @@ function renderizarPainelMotoristas(painel) {
   const perfilTexto = valorCampoMotoristas(permissoes, 'perfil', 'Perfil');
   perfil.textContent = [origem ? 'Origem: ' + origem : '', perfilTexto ? 'Seu acesso: ' + perfilTexto : '']
     .filter(Boolean).join(' • ');
-  document.getElementById('btnDesignarEncarregadoMotoristas').classList.toggle('oculto', !podeDesignar);
-  document.getElementById('avisoSomenteLeituraMotoristas').classList.toggle('oculto', podeEditar);
+  document.getElementById('avisoSomenteLeituraMotoristas').classList.add('oculto');
   document.getElementById('atualizadoEmPainelMotoristas').textContent = painelMotoristasAtual.atualizadoEm
     ? 'Atualizado em ' + painelMotoristasAtual.atualizadoEm : '';
   preencherListasMilitaresMotoristas();
@@ -4559,7 +4728,9 @@ function renderizarRegistrosPainelMotoristas(lista, aba) {
 function obterMilitaresPainelMotoristas() {
   const militaresPainel = painelMotoristasAtual && Array.isArray(painelMotoristasAtual.militares)
     ? painelMotoristasAtual.militares : [];
-  return militaresPainel.length ? militaresPainel : (Array.isArray(militaresSOS) ? militaresSOS : []);
+  if (militaresPainel.length) return militaresPainel;
+  return Array.isArray(militaresDesignacaoEncarregadoMotoristas)
+    ? militaresDesignacaoEncarregadoMotoristas : [];
 }
 
 function obterDadosMilitarMotoristas(militar) {
@@ -4712,7 +4883,7 @@ function gerarIdSolicitacaoMotoristas(prefixo) {
 function abrirModalEventoMotoristas(tipoForcado = '', idViatura = '') {
   const podeEditar = painelMotoristasAtual && painelMotoristasAtual.permissoes && painelMotoristasAtual.permissoes.podeEditar === true;
   if (!podeEditar) {
-    mostrarMensagem('Somente o Encarregado de Motoristas do ciclo ou o Comandante da Guarda pode lançar.', 'erro');
+    mostrarMensagem('Somente o Encarregado de Motoristas deste ciclo pode lançar.', 'erro');
     return;
   }
   const tipo = tipoForcado || ABAS_PAINEL_MOTORISTAS[abaPainelMotoristasAtual].tipo;
@@ -4821,15 +4992,29 @@ function salvarEventoMotoristas(eventoSubmit) {
   }
   const botao = document.getElementById('btnSalvarEventoMotoristas');
   const idSolicitacaoEnviada = idSolicitacaoEventoMotoristasAtual;
+  const assinaturaSessaoEnviada = obterAssinaturaSessaoPessoalMotoristas();
   botao.disabled = true;
   botao.textContent = 'Salvando...';
   definirMensagemModalMotoristas('mensagemEventoMotoristas', '', '');
   google.script.run
     .withSuccessHandler(resposta => {
       const modalAindaCorresponde = idSolicitacaoEventoMotoristasAtual === idSolicitacaoEnviada;
+      const sessaoAindaCorresponde = assinaturaSessaoEnviada &&
+        assinaturaSessaoEnviada === obterAssinaturaSessaoPessoalMotoristas();
       if (modalAindaCorresponde) {
         botao.disabled = false;
         botao.textContent = 'Salvar lançamento';
+      }
+      if (!sessaoAindaCorresponde) {
+        if (modalAindaCorresponde) fecharModalEventoMotoristas(false);
+        painelMotoristasAtual = null;
+        painelMotoristasCarregado = false;
+        painelMotoristasAutorizado = false;
+        assinaturaPainelMotoristasCarregado = '';
+        limparConteudoPainelMotoristas();
+        atualizarVisibilidadePainelMotoristas();
+        mostrarMensagem((resposta && resposta.mensagem) || 'Lançamento registrado. O livro foi fechado porque o acesso mudou.', 'sucesso');
+        return;
       }
       const painel = resposta && resposta.painelMotoristas;
       if (modalAindaCorresponde) fecharModalEventoMotoristas();
@@ -4844,6 +5029,11 @@ function salvarEventoMotoristas(eventoSubmit) {
     })
     .withFailureHandler(erro => {
       if (idSolicitacaoEventoMotoristasAtual !== idSolicitacaoEnviada) return;
+      if (assinaturaSessaoEnviada !== obterAssinaturaSessaoPessoalMotoristas()) {
+        fecharModalEventoMotoristas(false);
+        atualizarVisibilidadePainelMotoristas();
+        return;
+      }
       botao.disabled = false;
       botao.textContent = 'Salvar lançamento';
       definirMensagemModalMotoristas('mensagemEventoMotoristas', erro.message || 'Não foi possível salvar.', 'erro');
@@ -4852,9 +5042,18 @@ function salvarEventoMotoristas(eventoSubmit) {
 }
 
 function abrirModalDesignarEncarregadoMotoristas() {
-  const podeDesignar = painelMotoristasAtual && painelMotoristasAtual.permissoes && painelMotoristasAtual.permissoes.podeDesignar === true;
-  if (!podeDesignar) {
+  if (!aparelhoAssumiuComandanteAtual()) {
     mostrarMensagem('Somente o Comandante da Guarda pode designar o Encarregado de Motoristas.', 'erro');
+    return;
+  }
+  if (!designacaoEncarregadoMotoristasCarregada) {
+    carregarDesignacaoEncarregadoMotoristas(false);
+    mostrarMensagem('Aguarde a consulta do efetivo para escolher o Encarregado de Motoristas.', 'erro');
+    return;
+  }
+  preencherListasMilitaresMotoristas();
+  if (!obterMilitaresPainelMotoristas().length) {
+    mostrarMensagem('A lista do efetivo ainda não está disponível. Tente atualizar novamente.', 'erro');
     return;
   }
   focoAntesDaDesignacaoMotoristas = document.activeElement;
@@ -4882,6 +5081,11 @@ function fecharModalDesignarEncarregadoMotoristas(devolverFoco = true) {
 
 function salvarDesignacaoEncarregadoMotoristas(eventoSubmit) {
   if (eventoSubmit) eventoSubmit.preventDefault();
+  if (!aparelhoAssumiuComandanteAtual()) {
+    fecharModalDesignarEncarregadoMotoristas(false);
+    mostrarMensagem('A sessão do Comandante da Guarda não está mais ativa.', 'erro');
+    return;
+  }
   const militar = resolverMilitarPainelMotoristas(document.getElementById('militarDesignadoMotoristas').value);
   if (!militar) {
     definirMensagemModalMotoristas('mensagemDesignacaoMotoristas', 'Selecione uma sugestão exata do efetivo pelo nome ou RG.', 'erro');
@@ -4889,28 +5093,53 @@ function salvarDesignacaoEncarregadoMotoristas(eventoSubmit) {
   }
   const botao = document.getElementById('btnSalvarDesignacaoMotoristas');
   const idSolicitacaoEnviada = idSolicitacaoDesignacaoMotoristasAtual;
+  const assinaturaComandanteEnviada = obterSessaoTokenComandanteLocal() || '';
   botao.disabled = true;
   botao.textContent = 'Salvando...';
   google.script.run
     .withSuccessHandler(resposta => {
       const modalAindaCorresponde = idSolicitacaoDesignacaoMotoristasAtual === idSolicitacaoEnviada;
+      const sessaoAindaCorresponde = aparelhoAssumiuComandanteAtual() &&
+        assinaturaComandanteEnviada === (obterSessaoTokenComandanteLocal() || '');
       if (modalAindaCorresponde) {
         botao.disabled = false;
         botao.textContent = 'Salvar responsável';
       }
-      const painel = resposta && resposta.painelMotoristas;
-      if (modalAindaCorresponde) fecharModalDesignarEncarregadoMotoristas();
-      if (painel) {
-        renderizarPainelMotoristas(painel);
-        painelMotoristasCarregado = true;
-      } else {
-        painelMotoristasCarregado = false;
-        carregarPainelMotoristas(true);
+      if (!sessaoAindaCorresponde) {
+        if (modalAindaCorresponde) fecharModalDesignarEncarregadoMotoristas(false);
+        designacaoEncarregadoMotoristasAtual = null;
+        designacaoEncarregadoMotoristasCarregada = false;
+        assinaturaDesignacaoEncarregadoMotoristas = '';
+        militaresDesignacaoEncarregadoMotoristas = [];
+        atualizarVisibilidadePainelComandante();
+        mostrarMensagem((resposta && resposta.mensagem) || 'Designação registrada. O acesso do Comandante mudou.', 'sucesso');
+        return;
       }
+      const designacao = resposta && resposta.designacaoEncarregadoMotoristas;
+      if (modalAindaCorresponde) fecharModalDesignarEncarregadoMotoristas();
+      if (designacao) {
+        assinaturaDesignacaoEncarregadoMotoristas = obterSessaoTokenComandanteLocal() || '';
+        designacaoEncarregadoMotoristasCarregada = true;
+        renderizarDesignacaoEncarregadoMotoristas(designacao);
+      } else {
+        designacaoEncarregadoMotoristasCarregada = false;
+        carregarDesignacaoEncarregadoMotoristas(true);
+      }
+      painelMotoristasAtual = null;
+      painelMotoristasCarregado = false;
+      painelMotoristasAutorizado = false;
+      assinaturaPainelMotoristasCarregado = '';
+      atualizarVisibilidadePainelMotoristas();
       mostrarMensagem((resposta && resposta.mensagem) || 'Encarregado de Motoristas designado para o ciclo.', 'sucesso');
     })
     .withFailureHandler(erro => {
       if (idSolicitacaoDesignacaoMotoristasAtual !== idSolicitacaoEnviada) return;
+      if (!aparelhoAssumiuComandanteAtual() ||
+          assinaturaComandanteEnviada !== (obterSessaoTokenComandanteLocal() || '')) {
+        fecharModalDesignarEncarregadoMotoristas(false);
+        atualizarVisibilidadePainelComandante();
+        return;
+      }
       botao.disabled = false;
       botao.textContent = 'Salvar responsável';
       definirMensagemModalMotoristas('mensagemDesignacaoMotoristas', erro.message || 'Não foi possível salvar.', 'erro');
