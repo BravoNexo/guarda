@@ -189,22 +189,12 @@ function montarDadosChamadaApi(nome, argumentos) {
         sessaoToken: sessaoEncarregadoMotoristasToken,
         sessaoEncarregadoMotoristasToken: sessaoEncarregadoMotoristasToken
       };
-    case 'getDesignacaoEncarregadoMotoristas':
-      return {
-        sessaoToken: sessaoComandanteToken,
-        sessaoComandanteToken: sessaoComandanteToken
-      };
     case 'registrarEventoMotoristas':
       return {
         evento: argumentos[0] || {},
         sessaoToken: sessaoEncarregadoMotoristasToken,
         sessaoEncarregadoMotoristasToken: sessaoEncarregadoMotoristasToken
       };
-    case 'designarEncarregadoMotoristas':
-      return Object.assign({}, argumentos[0] || {}, {
-        sessaoToken: sessaoComandanteToken,
-        sessaoComandanteToken: sessaoComandanteToken
-      });
     case 'consultarHistoricoMovimentacoes':
       return {
         filtros: argumentos[0] || {},
@@ -467,12 +457,10 @@ function criarExecutorAppsScript() {
     'getStatusToqueFogo',
     'getPainelComandante',
     'getPainelMotoristas',
-    'getDesignacaoEncarregadoMotoristas',
     'enviarCodigoAcessoEncarregadoMotoristas',
     'validarCodigoAcessoEncarregadoMotoristas',
     'revogarSessaoEncarregadoMotoristas',
     'registrarEventoMotoristas',
-    'designarEncarregadoMotoristas',
     'consultarHistoricoMovimentacoes',
     'getPessoasDentroGuarda',
     'getMovimentacoesRecentesGuarda',
@@ -561,20 +549,13 @@ let tipoMovimentacaoAtual = 'Entrada';
   let painelMotoristasEmCarregamento = false;
   let painelMotoristasAutorizado = false;
   let assinaturaPainelMotoristasCarregado = '';
-  let designacaoEncarregadoMotoristasAtual = null;
-  let designacaoEncarregadoMotoristasCarregada = false;
-  let designacaoEncarregadoMotoristasEmCarregamento = false;
-  let assinaturaDesignacaoEncarregadoMotoristas = '';
-  let militaresDesignacaoEncarregadoMotoristas = [];
   let dadosCodigoEncarregadoMotoristas = null;
   let encarregadoMotoristasEquipeAtual = null;
   let abaPainelMotoristasAtual = 'frota';
   let tipoEventoMotoristasAtual = '';
   let viaturaPreselecionadaMotoristas = '';
   let idSolicitacaoEventoMotoristasAtual = '';
-  let idSolicitacaoDesignacaoMotoristasAtual = '';
   let focoAntesDoModalMotoristas = null;
-  let focoAntesDaDesignacaoMotoristas = null;
   let historicoInicializado = false;
   let dadosCodigoOficial = null;
   let oficialAtual = null;
@@ -934,8 +915,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       if (modalMotoristasAberto) {
         if (evento.key === 'Escape') {
           evento.preventDefault();
-          if (modalMotoristasAberto.id === 'modalEventoMotoristas') fecharModalEventoMotoristas();
-          else fecharModalDesignarEncarregadoMotoristas();
+          fecharModalEventoMotoristas();
           return;
         }
 
@@ -1017,10 +997,6 @@ let tipoMovimentacaoAtual = 'Entrada';
       atualizarVisibilidadePainelMotoristas();
       if (obterSessaoTokenEncarregadoMotoristasLocal()) {
         carregarPainelMotoristas(true);
-      }
-
-      if (aparelhoAssumiuComandanteAtual()) {
-        carregarDesignacaoEncarregadoMotoristas(true);
       }
 
       if (obterSessaoConsultaEfetivo()) carregarMovimentacoesConsultaEfetivo(true);
@@ -3161,8 +3137,12 @@ function aplicarCodigoDoLink() {
     document.getElementById('codigoEncarregadoMotoristas').value = codigo;
     document.getElementById('areaCodigoEncarregadoMotoristas').classList.remove('oculto');
     dadosCodigoEncarregadoMotoristas = { email: email };
-    mostrarMensagem('Código do Encarregado de Motoristas recebido pelo link. Validando...', 'sucesso');
-    setTimeout(() => validarCodigoEncarregadoMotoristas(), 500);
+    limparCodigoAcessoDaUrl();
+    mostrarMensagem(
+      'Código preenchido. Toque em “Confirmar e assumir” para assumir como Encarregado de Motoristas.',
+      'sucesso'
+    );
+    setTimeout(() => document.getElementById('btnValidarCodigoEncarregadoMotoristas').focus(), 0);
     return;
   }
 
@@ -3606,19 +3586,19 @@ function atualizarTelaEncarregadoMotoristas() {
     const nome = valorCampoMotoristas(encarregado, 'nome', 'Nome', 'Nome_Encarregado');
     const rg = valorCampoMotoristas(encarregado, 'rg', 'RG', 'RG_CPF', 'RG_Encarregado');
     status.innerHTML = nome
-      ? 'Responsável pelo ciclo:<br>' + escaparHtml(nome) +
+      ? 'Encarregado em serviço neste ciclo:<br>' + escaparHtml(nome) +
         (rg ? ' — RG ' + escaparHtml(rg) : '') +
         (autenticado ? '<br><small>Acesso ao livro ativo neste aparelho.</small>' : '')
-      : 'O Encarregado de Motoristas já está definido para este ciclo.';
+      : 'Há um Encarregado de Motoristas em serviço neste ciclo.';
   } else {
     status.classList.add('sem-guarda');
-    status.textContent = 'Nenhum Encarregado de Motoristas foi definido para este ciclo.';
+    status.textContent = 'A função ainda não foi assumida neste ciclo. Entre com seu e-mail para assumir.';
   }
 
   areaAcesso.classList.toggle('oculto', autenticado);
   botaoEntrar.classList.toggle('oculto', autenticado);
   botaoSair.classList.toggle('oculto', !autenticado);
-  if (!autenticado) botaoEntrar.textContent = 'Entrar';
+  if (!autenticado) botaoEntrar.textContent = 'Assumir função';
   atualizarVisibilidadePainelComandante();
 }
 
@@ -3675,7 +3655,7 @@ function validarCodigoEncarregadoMotoristas() {
       const token = String(resposta && resposta.sessaoToken || '');
       if (!token || !resposta || !resposta.encarregado) {
         botao.disabled = false;
-        botao.textContent = 'Entrar';
+        botao.textContent = 'Confirmar e assumir';
         mostrarMensagem('O servidor não devolveu uma sessão válida. Tente novamente.', 'erro');
         return;
       }
@@ -3689,18 +3669,18 @@ function validarCodigoEncarregadoMotoristas() {
       document.getElementById('codigoEncarregadoMotoristas').value = '';
       document.getElementById('areaCodigoEncarregadoMotoristas').classList.add('oculto');
       botao.disabled = false;
-      botao.textContent = 'Entrar';
+      botao.textContent = 'Confirmar e assumir';
       invalidarPainelMotoristasLocal();
       atualizarTelaEncarregadoMotoristas();
       carregarIdentidadesEquipeServico(true);
       carregarPainelMotoristas();
       mostrarMensagem((resposta && resposta.mensagem) ||
-        'Acesso do Encarregado de Motoristas liberado neste aparelho.', 'sucesso');
+        'Função de Encarregado de Motoristas assumida e livro liberado neste aparelho.', 'sucesso');
     })
     .withFailureHandler(erro => {
       botao.disabled = false;
-      botao.textContent = 'Entrar';
-      mostrarMensagem('Não foi possível validar o acesso: ' + erro.message, 'erro');
+      botao.textContent = 'Confirmar e assumir';
+      mostrarMensagem('Não foi possível assumir a função: ' + erro.message, 'erro');
     })
     .validarCodigoAcessoEncarregadoMotoristas(email, codigo);
 }
@@ -3722,7 +3702,10 @@ function sairAcessoEncarregadoMotoristas(exibirMensagem = true) {
       .revogarSessaoEncarregadoMotoristas(token);
   }
   if (exibirMensagem) {
-    mostrarMensagem('Acesso do Encarregado de Motoristas encerrado neste aparelho.', 'sucesso');
+    mostrarMensagem(
+      'Acesso encerrado neste aparelho. A responsabilidade pelo ciclo permanece registrada.',
+      'sucesso'
+    );
   }
 }
 
@@ -3908,36 +3891,16 @@ function atualizarVisibilidadePainelComandante() {
   const painel = document.getElementById('cardPainelComandante');
   const historico = document.getElementById('cardConsultaHistorico');
   const acaoRetroativa = document.getElementById('acaoLancamentoRetroativo');
-  const acaoDesignacao = document.getElementById('acaoDesignacaoEncarregadoMotoristas');
 
   if (!painel) return;
 
   const comandanteNesteAparelho = aparelhoAssumiuComandanteAtual();
-  const assinaturaComandante = obterSessaoTokenComandanteLocal() || '';
   const podeLancarHorarioAnterior = comandanteNesteAparelho &&
     permissoesPainelGestaoAtual.podeLancarHorarioAnterior === true;
   if (acaoRetroativa) acaoRetroativa.classList.toggle('oculto', !podeLancarHorarioAnterior);
-  if (acaoDesignacao) acaoDesignacao.classList.toggle('oculto', !comandanteNesteAparelho);
   if (!comandanteNesteAparelho && modoLancamentoRetroativoAtivo) {
     cancelarLancamentoRetroativoPendente();
     atualizarPermissaoLancamento();
-  }
-
-  if (comandanteNesteAparelho) {
-    if (assinaturaDesignacaoEncarregadoMotoristas !== assinaturaComandante) {
-      designacaoEncarregadoMotoristasAtual = null;
-      designacaoEncarregadoMotoristasCarregada = false;
-      militaresDesignacaoEncarregadoMotoristas = [];
-    }
-    if (!designacaoEncarregadoMotoristasCarregada) {
-      carregarDesignacaoEncarregadoMotoristas(true);
-    }
-  } else {
-    designacaoEncarregadoMotoristasAtual = null;
-    designacaoEncarregadoMotoristasCarregada = false;
-    assinaturaDesignacaoEncarregadoMotoristas = '';
-    militaresDesignacaoEncarregadoMotoristas = [];
-    fecharModalDesignarEncarregadoMotoristas(false);
   }
 
   if (aparelhoTemAcessoPainelGestao()) {
@@ -3955,80 +3918,6 @@ function atualizarVisibilidadePainelComandante() {
   }
 
   atualizarVisibilidadePainelMotoristas();
-}
-
-function renderizarDesignacaoEncarregadoMotoristas(dados) {
-  designacaoEncarregadoMotoristasAtual = dados || {};
-  militaresDesignacaoEncarregadoMotoristas = Array.isArray(designacaoEncarregadoMotoristasAtual.militares)
-    ? designacaoEncarregadoMotoristasAtual.militares : [];
-  const resumo = document.getElementById('resumoDesignacaoEncarregadoMotoristas');
-  const botao = document.getElementById('btnDesignarEncarregadoMotoristas');
-  const encarregado = designacaoEncarregadoMotoristasAtual.encarregado || null;
-  if (resumo) {
-    if (encarregado) {
-      const nome = valorCampoMotoristas(encarregado, 'nome', 'Nome', 'Nome_Encarregado') || 'Militar não identificado';
-      const rg = valorCampoMotoristas(encarregado, 'rg', 'RG', 'RG_CPF', 'RG_Encarregado');
-      resumo.textContent = nome + (rg ? ' — RG ' + rg : '') + ' é o responsável deste ciclo.';
-    } else {
-      resumo.textContent = 'Nenhum encarregado foi designado para este ciclo.';
-    }
-  }
-  if (botao) botao.textContent = encarregado ? 'Trocar' : 'Designar';
-  preencherListasMilitaresMotoristas();
-}
-
-function carregarDesignacaoEncarregadoMotoristas(silencioso = false) {
-  if (!aparelhoAssumiuComandanteAtual()) return;
-  if (designacaoEncarregadoMotoristasEmCarregamento) return;
-  const assinaturaRequisicao = obterSessaoTokenComandanteLocal() || '';
-  if (!assinaturaRequisicao) return;
-  const botao = document.getElementById('btnDesignarEncarregadoMotoristas');
-  const resumo = document.getElementById('resumoDesignacaoEncarregadoMotoristas');
-  designacaoEncarregadoMotoristasEmCarregamento = true;
-  if (botao) {
-    botao.disabled = true;
-    botao.textContent = 'Consultando...';
-  }
-  if (resumo && !designacaoEncarregadoMotoristasCarregada) {
-    resumo.textContent = 'Consultando o responsável deste ciclo...';
-  }
-  google.script.run
-    .withSuccessHandler(resposta => {
-      designacaoEncarregadoMotoristasEmCarregamento = false;
-      const respostaObsoleta = !aparelhoAssumiuComandanteAtual() ||
-        assinaturaRequisicao !== (obterSessaoTokenComandanteLocal() || '');
-      if (respostaObsoleta) {
-        designacaoEncarregadoMotoristasCarregada = false;
-        if (aparelhoAssumiuComandanteAtual()) carregarDesignacaoEncarregadoMotoristas(true);
-        return;
-      }
-      assinaturaDesignacaoEncarregadoMotoristas = assinaturaRequisicao;
-      designacaoEncarregadoMotoristasCarregada = true;
-      renderizarDesignacaoEncarregadoMotoristas(resposta || {});
-      if (botao) botao.disabled = false;
-    })
-    .withFailureHandler(erro => {
-      designacaoEncarregadoMotoristasEmCarregamento = false;
-      const respostaObsoleta = !aparelhoAssumiuComandanteAtual() ||
-        assinaturaRequisicao !== (obterSessaoTokenComandanteLocal() || '');
-      if (respostaObsoleta) {
-        designacaoEncarregadoMotoristasCarregada = false;
-        if (aparelhoAssumiuComandanteAtual()) carregarDesignacaoEncarregadoMotoristas(true);
-        return;
-      }
-      designacaoEncarregadoMotoristasAtual = null;
-      designacaoEncarregadoMotoristasCarregada = false;
-      militaresDesignacaoEncarregadoMotoristas = [];
-      if (resumo) resumo.textContent = 'Não foi possível consultar o responsável deste ciclo.';
-      if (botao) {
-        botao.disabled = false;
-        botao.textContent = 'Tentar novamente';
-      }
-      if (!silencioso) {
-        mostrarMensagem('Erro ao consultar o Encarregado de Motoristas: ' + erro.message, 'erro');
-      }
-    })
-    .getDesignacaoEncarregadoMotoristas();
 }
 
 function formatarDataInputLocal(data) {
@@ -4796,7 +4685,7 @@ function renderizarPainelMotoristas(painel) {
     const rg = valorCampoMotoristas(encarregado, 'rg', 'RG', 'RG_CPF', 'RG_Encarregado');
     nomeEncarregado.textContent = nome + (rg ? ' — RG ' + rg : '');
   } else {
-    nomeEncarregado.textContent = 'Nenhum encarregado designado';
+    nomeEncarregado.textContent = 'Função ainda não assumida';
   }
   const origem = encarregado && valorCampoMotoristas(encarregado, 'origem', 'Origem');
   const perfilTexto = valorCampoMotoristas(permissoes, 'perfil', 'Perfil');
@@ -5005,11 +4894,8 @@ function renderizarRegistrosPainelMotoristas(lista, aba) {
 }
 
 function obterMilitaresPainelMotoristas() {
-  const militaresPainel = painelMotoristasAtual && Array.isArray(painelMotoristasAtual.militares)
+  return painelMotoristasAtual && Array.isArray(painelMotoristasAtual.militares)
     ? painelMotoristasAtual.militares : [];
-  if (militaresPainel.length) return militaresPainel;
-  return Array.isArray(militaresDesignacaoEncarregadoMotoristas)
-    ? militaresDesignacaoEncarregadoMotoristas : [];
 }
 
 function obterDadosMilitarMotoristas(militar) {
@@ -5024,15 +4910,13 @@ function preencherListasMilitaresMotoristas() {
   const militares = obterMilitaresPainelMotoristas().map(obterDadosMilitarMotoristas)
     .filter(militar => militar.nome || militar.rg)
     .sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }));
-  ['listaCondutoresEventoMotoristas', 'listaMilitaresDesignacaoMotoristas'].forEach(id => {
-    const lista = document.getElementById(id);
-    if (!lista) return;
-    lista.innerHTML = '';
-    militares.forEach(militar => {
-      const option = document.createElement('option');
-      option.value = militar.rotulo;
-      lista.appendChild(option);
-    });
+  const lista = document.getElementById('listaCondutoresEventoMotoristas');
+  if (!lista) return;
+  lista.innerHTML = '';
+  militares.forEach(militar => {
+    const option = document.createElement('option');
+    option.value = militar.rotulo;
+    lista.appendChild(option);
   });
 }
 
@@ -5320,116 +5204,8 @@ function salvarEventoMotoristas(eventoSubmit) {
     .registrarEventoMotoristas(validacao.evento);
 }
 
-function abrirModalDesignarEncarregadoMotoristas() {
-  if (!aparelhoAssumiuComandanteAtual()) {
-    mostrarMensagem('Somente o Comandante da Guarda pode designar o Encarregado de Motoristas.', 'erro');
-    return;
-  }
-  if (!designacaoEncarregadoMotoristasCarregada) {
-    carregarDesignacaoEncarregadoMotoristas(false);
-    mostrarMensagem('Aguarde a consulta do efetivo para escolher o Encarregado de Motoristas.', 'erro');
-    return;
-  }
-  preencherListasMilitaresMotoristas();
-  if (!obterMilitaresPainelMotoristas().length) {
-    mostrarMensagem('A lista do efetivo ainda não está disponível. Tente atualizar novamente.', 'erro');
-    return;
-  }
-  focoAntesDaDesignacaoMotoristas = document.activeElement;
-  idSolicitacaoDesignacaoMotoristasAtual = gerarIdSolicitacaoMotoristas('DES-MOT');
-  document.getElementById('militarDesignadoMotoristas').value = '';
-  definirMensagemModalMotoristas('mensagemDesignacaoMotoristas', '', '');
-  const modal = document.getElementById('modalDesignarEncarregadoMotoristas');
-  const botaoSalvar = document.getElementById('btnSalvarDesignacaoMotoristas');
-  botaoSalvar.disabled = false;
-  botaoSalvar.textContent = 'Salvar responsável';
-  modal.classList.remove('oculto');
-  document.body.classList.add('modal-motoristas-aberto');
-  setTimeout(() => document.getElementById('militarDesignadoMotoristas').focus(), 0);
-}
-
-function fecharModalDesignarEncarregadoMotoristas(devolverFoco = true) {
-  const modal = document.getElementById('modalDesignarEncarregadoMotoristas');
-  if (!modal || modal.classList.contains('oculto')) return;
-  modal.classList.add('oculto');
-  idSolicitacaoDesignacaoMotoristasAtual = '';
-  restaurarRolagemAposModalMotoristas();
-  if (devolverFoco && focoAntesDaDesignacaoMotoristas && typeof focoAntesDaDesignacaoMotoristas.focus === 'function') focoAntesDaDesignacaoMotoristas.focus({ preventScroll: true });
-  focoAntesDaDesignacaoMotoristas = null;
-}
-
-function salvarDesignacaoEncarregadoMotoristas(eventoSubmit) {
-  if (eventoSubmit) eventoSubmit.preventDefault();
-  if (!aparelhoAssumiuComandanteAtual()) {
-    fecharModalDesignarEncarregadoMotoristas(false);
-    mostrarMensagem('A sessão do Comandante da Guarda não está mais ativa.', 'erro');
-    return;
-  }
-  const militar = resolverMilitarPainelMotoristas(document.getElementById('militarDesignadoMotoristas').value);
-  if (!militar) {
-    definirMensagemModalMotoristas('mensagemDesignacaoMotoristas', 'Selecione uma sugestão exata do efetivo pelo nome ou RG.', 'erro');
-    return;
-  }
-  const botao = document.getElementById('btnSalvarDesignacaoMotoristas');
-  const idSolicitacaoEnviada = idSolicitacaoDesignacaoMotoristasAtual;
-  const assinaturaComandanteEnviada = obterSessaoTokenComandanteLocal() || '';
-  botao.disabled = true;
-  botao.textContent = 'Salvando...';
-  google.script.run
-    .withSuccessHandler(resposta => {
-      const modalAindaCorresponde = idSolicitacaoDesignacaoMotoristasAtual === idSolicitacaoEnviada;
-      const sessaoAindaCorresponde = aparelhoAssumiuComandanteAtual() &&
-        assinaturaComandanteEnviada === (obterSessaoTokenComandanteLocal() || '');
-      if (modalAindaCorresponde) {
-        botao.disabled = false;
-        botao.textContent = 'Salvar responsável';
-      }
-      if (!sessaoAindaCorresponde) {
-        if (modalAindaCorresponde) fecharModalDesignarEncarregadoMotoristas(false);
-        designacaoEncarregadoMotoristasAtual = null;
-        designacaoEncarregadoMotoristasCarregada = false;
-        assinaturaDesignacaoEncarregadoMotoristas = '';
-        militaresDesignacaoEncarregadoMotoristas = [];
-        atualizarVisibilidadePainelComandante();
-        mostrarMensagem((resposta && resposta.mensagem) || 'Designação registrada. O acesso do Comandante mudou.', 'sucesso');
-        return;
-      }
-      const designacao = resposta && resposta.designacaoEncarregadoMotoristas;
-      if (modalAindaCorresponde) fecharModalDesignarEncarregadoMotoristas();
-      if (designacao) {
-        assinaturaDesignacaoEncarregadoMotoristas = obterSessaoTokenComandanteLocal() || '';
-        designacaoEncarregadoMotoristasCarregada = true;
-        renderizarDesignacaoEncarregadoMotoristas(designacao);
-      } else {
-        designacaoEncarregadoMotoristasCarregada = false;
-        carregarDesignacaoEncarregadoMotoristas(true);
-      }
-      painelMotoristasAtual = null;
-      painelMotoristasCarregado = false;
-      painelMotoristasAutorizado = false;
-      assinaturaPainelMotoristasCarregado = '';
-      atualizarVisibilidadePainelMotoristas();
-      carregarIdentidadesEquipeServico(true);
-      mostrarMensagem((resposta && resposta.mensagem) || 'Encarregado de Motoristas designado para o ciclo.', 'sucesso');
-    })
-    .withFailureHandler(erro => {
-      if (idSolicitacaoDesignacaoMotoristasAtual !== idSolicitacaoEnviada) return;
-      if (!aparelhoAssumiuComandanteAtual() ||
-          assinaturaComandanteEnviada !== (obterSessaoTokenComandanteLocal() || '')) {
-        fecharModalDesignarEncarregadoMotoristas(false);
-        atualizarVisibilidadePainelComandante();
-        return;
-      }
-      botao.disabled = false;
-      botao.textContent = 'Salvar responsável';
-      definirMensagemModalMotoristas('mensagemDesignacaoMotoristas', erro.message || 'Não foi possível salvar.', 'erro');
-    })
-    .designarEncarregadoMotoristas({ militarId: militar.id, rgEncarregado: militar.rg, rg: militar.rg,
-      nome: militar.nome, idSolicitacao: idSolicitacaoDesignacaoMotoristasAtual });
-}
-
 function obterModalMotoristasAberto() {
-  return ['modalEventoMotoristas', 'modalDesignarEncarregadoMotoristas']
+  return ['modalEventoMotoristas']
     .map(id => document.getElementById(id))
     .find(modal => modal && !modal.classList.contains('oculto')) || null;
 }

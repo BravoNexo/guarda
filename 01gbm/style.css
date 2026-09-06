@@ -455,21 +455,6 @@
     cursor: pointer;
   }
 
-  .acao-designacao-encarregado {
-    border-color: #bfdbfe;
-    background: #eff6ff;
-    color: #1e3a8a;
-  }
-
-  .acao-designacao-encarregado span {
-    color: #1d4ed8;
-  }
-
-  .acao-designacao-encarregado button {
-    border-color: #1d4ed8;
-    background: #1d4ed8;
-  }
-
   .indicador-painel {
     min-width: 0;
     padding: 12px 8px;
@@ -2387,7 +2372,6 @@
 }
 
 .botao-atualizar-motoristas,
-.botao-designar-motoristas,
 .botao-novo-evento-motoristas {
   flex: 0 0 auto;
   min-height: 36px;
@@ -2404,14 +2388,6 @@
 .botao-atualizar-motoristas {
   background: #eff6ff;
   color: #1d4ed8;
-  border: 1px solid #bfdbfe;
-}
-
-.botao-designar-motoristas {
-  min-height: 32px;
-  padding: 6px 10px;
-  background: #fff;
-  color: #1e40af;
   border: 1px solid #bfdbfe;
 }
 

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.0.2">
+  <link rel="stylesheet" href="style.css?v=27.0.3">
   </head>
 
   <body>
@@ -371,7 +371,7 @@
             <h2>Encarregado de Motoristas</h2>
             <div class="acoes-guarda">
               <button type="button" id="btnAbrirAcessoEncarregadoMotoristas" class="botao-trocar"
-                onclick="mostrarAreaAcessoEncarregadoMotoristas()">Entrar</button>
+                onclick="mostrarAreaAcessoEncarregadoMotoristas()">Assumir função</button>
               <button type="button" id="btnSairAcessoEncarregadoMotoristas" class="botao-sair oculto"
                 onclick="sairAcessoEncarregadoMotoristas()">Sair</button>
             </div>
@@ -383,7 +383,7 @@
 
           <div id="areaAssumirEncarregadoMotoristas">
             <div class="campo">
-              <label>E-mail do militar designado</label>
+              <label>Seu e-mail institucional/cadastrado</label>
               <div class="linha-busca">
                 <input type="email" id="emailEncarregadoMotoristas" placeholder="Digite o e-mail cadastrado"
                   autocomplete="email">
@@ -399,7 +399,7 @@
                   <input type="text" id="codigoEncarregadoMotoristas" inputmode="numeric" maxlength="6"
                     placeholder="000000">
                   <button type="button" id="btnValidarCodigoEncarregadoMotoristas"
-                    onclick="validarCodigoEncarregadoMotoristas()">Entrar</button>
+                    onclick="validarCodigoEncarregadoMotoristas()">Confirmar e assumir</button>
                 </div>
               </div>
             </div>
@@ -474,16 +474,6 @@
             </div>
           </div>
 
-          <div id="acaoDesignacaoEncarregadoMotoristas"
-            class="acao-lancamento-retroativo acao-designacao-encarregado oculto">
-            <div>
-              <strong>Encarregado de Motoristas</strong>
-              <span id="resumoDesignacaoEncarregadoMotoristas">Consultando o responsável deste ciclo...</span>
-            </div>
-            <button type="button" id="btnDesignarEncarregadoMotoristas"
-              onclick="abrirModalDesignarEncarregadoMotoristas()">Designar</button>
-          </div>
-
           <div id="acaoLancamentoRetroativo" class="acao-lancamento-retroativo oculto">
             <div>
               <strong>Ação exclusiva do Comandante</strong>
@@ -511,7 +501,7 @@
 
           <div class="identidade-encarregado-motoristas">
             <div>
-              <span>Responsável pelo ciclo</span>
+              <span>Encarregado em serviço</span>
               <strong id="nomeEncarregadoMotoristas">Carregando...</strong>
               <small id="perfilAcessoMotoristas"></small>
             </div>
@@ -1051,35 +1041,6 @@
       </div>
     </div>
 
-    <div id="modalDesignarEncarregadoMotoristas" class="modal-fundo modal-motoristas-fundo oculto"
-      role="dialog" aria-modal="true" aria-labelledby="tituloModalDesignarEncarregadoMotoristas"
-      onclick="if (event.target === this) fecharModalDesignarEncarregadoMotoristas()">
-      <div class="modal-card modal-card-motoristas" tabindex="-1">
-        <div class="cabecalho-modal-motoristas">
-          <div>
-            <span>Responsável pelo ciclo</span>
-            <h3 id="tituloModalDesignarEncarregadoMotoristas">Designar encarregado</h3>
-          </div>
-          <button type="button" class="fechar-modal-motoristas" aria-label="Fechar designação"
-            onclick="fecharModalDesignarEncarregadoMotoristas()">×</button>
-        </div>
-        <form id="formDesignarEncarregadoMotoristas" onsubmit="salvarDesignacaoEncarregadoMotoristas(event)">
-          <p class="descricao-modal-motoristas">Pesquise pelo nome ou RG e selecione o militar que responderá pelo livro neste ciclo.</p>
-          <div class="campo campo-sem-margem">
-            <label for="militarDesignadoMotoristas">Militar *</label>
-            <input type="search" id="militarDesignadoMotoristas" list="listaMilitaresDesignacaoMotoristas"
-              autocomplete="off" placeholder="Digite o nome ou RG">
-            <datalist id="listaMilitaresDesignacaoMotoristas"></datalist>
-          </div>
-          <div id="mensagemDesignacaoMotoristas" class="resultado oculto" role="status" aria-live="polite"></div>
-          <div class="acoes-modal-motoristas">
-            <button type="button" class="modal-cancelar" onclick="fecharModalDesignarEncarregadoMotoristas()">Cancelar</button>
-            <button type="submit" id="btnSalvarDesignacaoMotoristas" class="modal-confirmar botao-salvar-motoristas">Salvar responsável</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-  <script src="app.js?v=27.0.2"></script>
+  <script src="app.js?v=27.0.3"></script>
   </body>
 </html>
