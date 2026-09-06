@@ -727,6 +727,7 @@ let tipoMovimentacaoAtual = 'Entrada';
         })),
         sessaoValida: false,
         sessaoPeriodoAtual: false,
+        sessaoPodeAssumirHora: false,
         sessaoCoberturaAtiva: false
       };
     }
@@ -1530,7 +1531,10 @@ let tipoMovimentacaoAtual = 'Entrada';
         militaresSOS = resposta.dadosSOS ? resposta.dadosSOS.militares || [] : militaresSOS;
         guarnicoesServico = resposta.dadosSOS ? resposta.dadosSOS.guarnicoesServico || [] : guarnicoesServico;
         cicloGuarnicoesServico = resposta.dadosSOS ? resposta.dadosSOS.ciclo || cicloGuarnicoesServico : cicloGuarnicoesServico;
-        statusToqueFogoAtual = resposta.statusToque || statusToqueFogoAtual;
+        statusToqueFogoAtual = mesclarStatusToquePreservandoSessao(
+          resposta.statusToque,
+          statusToqueFogoAtual
+        );
         if (resposta.statusToque) {
           estadoToqueFogoCarregado = true;
           atualizarTelaToqueFogo();
@@ -6268,6 +6272,24 @@ function normalizarIdOperacional(valor) {
   return String(valor || '').trim();
 }
 
+function mesclarStatusToquePreservandoSessao(statusNovo, statusAnterior) {
+  if (!statusNovo) return statusAnterior || {};
+
+  const resultado = Object.assign({}, statusNovo);
+  const anterior = statusAnterior || {};
+  [
+    'sessaoValida',
+    'sessaoPeriodoAtual',
+    'sessaoPodeAssumirHora',
+    'sessaoCoberturaAtiva'
+  ].forEach(campo => {
+    if (typeof resultado[campo] !== 'boolean' && typeof anterior[campo] === 'boolean') {
+      resultado[campo] = anterior[campo];
+    }
+  });
+  return resultado;
+}
+
 function obterCoberturaOperacionalAtual() {
   const status = statusToqueFogoAtual || {};
   const cobertura = status.cobertura || null;
@@ -6319,6 +6341,17 @@ function podeGuardaRetomarNesteAparelho() {
 function podeToqueAssumirHoraNesteAparelho() {
   const status = statusToqueFogoAtual || {};
   const cobertura = obterCoberturaOperacionalAtual();
+
+  if (typeof status.sessaoPodeAssumirHora === 'boolean') {
+    return !!(
+      estadoToqueFogoCarregado &&
+      guardaAtual &&
+      status.sessaoValida === true &&
+      status.sessaoPodeAssumirHora === true &&
+      status.sessaoCoberturaAtiva !== true
+    );
+  }
+
   return !!(
     estadoToqueFogoCarregado &&
     guardaAtual &&
@@ -6391,8 +6424,14 @@ function renderizarProgramacaoToqueFogo() {
       : 'Diurno';
     const periodoAtual = nomePeriodo === nomePeriodoAtual;
     const periodoEncerrado = nomePeriodoAtual === 'Noturno' && nomePeriodo === 'Diurno';
+    const emCobertura = !!(
+      toque && status.cobertura &&
+      String(toque.ID_ToqueFogo || '') === String(status.cobertura.ID_ToqueFogo || '')
+    );
     let situacao = 'A definir';
-    if (!toque && periodoEncerrado) situacao = 'Não definido';
+    if (emCobertura) situacao = 'Em cobertura';
+    else if (toque && periodoAtual && status.cobertura) situacao = 'Período atual';
+    else if (!toque && periodoEncerrado) situacao = 'Não definido';
     else if (toque && periodoAtual) situacao = 'Em serviço';
     else if (toque && nomePeriodoAtual === 'Diurno' && nomePeriodo === 'Noturno') situacao = 'Programado';
     else if (toque && periodoEncerrado) situacao = 'Concluído';
@@ -6444,8 +6483,13 @@ function atualizarTelaToqueFogo() {
 
   if (toque) {
     statusEl.classList.add('com-guarda');
+    const coberturaAntecipadaOutroToque = !!(
+      cobertura &&
+      String(cobertura.ID_ToqueFogo || '') !== String(toque.ID_ToqueFogo || '')
+    );
     statusEl.innerHTML = toque.Nome_Toque && toque.RG_Toque
-      ? 'Em serviço agora:<br>' + escaparHtml(toque.Nome_Toque) +
+      ? (coberturaAntecipadaOutroToque ? 'Toque do período atual:<br>' : 'Em serviço agora:<br>') +
+        escaparHtml(toque.Nome_Toque) +
         ' — RG ' + escaparHtml(toque.RG_Toque)
       : 'O Toque de Fogo do período atual já está definido.<br><small>Entre para consultar a programação.</small>';
   } else {
@@ -6460,9 +6504,22 @@ function atualizarTelaToqueFogo() {
       item && item.toque && String(item.toque.ID_ToqueFogo || '') === idLocal
     );
     const nomeLocal = itemLocal && itemLocal.periodo ? itemLocal.periodo.nome : '';
-    statusEl.innerHTML += '<br><small>' + (nomeLocal === 'Noturno'
-      ? 'Este celular está validado para o período noturno e será habilitado automaticamente às 22h.'
-      : 'Este celular está validado para outro período deste ciclo.') + '</small>';
+    let mensagemSessao = 'Este celular está validado para outro período deste ciclo.';
+    if (nomeLocal === 'Noturno') {
+      if (status.sessaoCoberturaAtiva === true) {
+        mensagemSessao = 'A cobertura do Toque noturno está ativa neste celular.';
+      } else if (status.sessaoPodeAssumirHora === true) {
+        mensagemSessao =
+          'O Toque noturno já pode usar Assumir Hora, caso seja necessário antecipar a cobertura.';
+      } else if (typeof status.sessaoPodeAssumirHora === 'boolean') {
+        mensagemSessao =
+          'Este celular está validado para o período noturno. Assumir Hora ficará disponível às 21h.';
+      } else {
+        mensagemSessao =
+          'Este celular está validado para o período noturno e será habilitado automaticamente às 22h.';
+      }
+    }
+    statusEl.innerHTML += '<br><small>' + mensagemSessao + '</small>';
   }
 
   areaAssumir.classList.toggle('oculto', !loginToqueFogoAberto);
@@ -6767,9 +6824,14 @@ function confirmarRetomadaPosto() {
 }
 
 function confirmarAssuncaoHoraToque() {
+  const status = statusToqueFogoAtual || {};
+  const assuncaoAntecipada = status.sessaoPodeAssumirHora === true &&
+    status.sessaoPeriodoAtual !== true;
   abrirModalConfirmacao(
     'Assumir Hora',
-    'Confirma que o Toque de Fogo está assumindo imediatamente o posto do militar da hora?',
+    assuncaoAntecipada
+      ? 'Confirma que o Toque de Fogo noturno está assumindo antecipadamente o posto do militar da hora?'
+      : 'Confirma que o Toque de Fogo está assumindo imediatamente o posto do militar da hora?',
     () => assumirHoraToqueFogo()
   );
 }
@@ -6797,9 +6859,15 @@ function assumirHoraToqueFogo() {
       }
       geracaoConsultaToque += 1;
       statusToqueFogoAtual = resposta.statusToque || statusToqueFogoAtual || {};
-      statusToqueFogoAtual.sessaoValida = true;
-      statusToqueFogoAtual.sessaoPeriodoAtual = true;
-      statusToqueFogoAtual.sessaoCoberturaAtiva = true;
+      if (typeof statusToqueFogoAtual.sessaoValida !== 'boolean') {
+        statusToqueFogoAtual.sessaoValida = true;
+      }
+      if (typeof statusToqueFogoAtual.sessaoPeriodoAtual !== 'boolean') {
+        statusToqueFogoAtual.sessaoPeriodoAtual = true;
+      }
+      if (typeof statusToqueFogoAtual.sessaoCoberturaAtiva !== 'boolean') {
+        statusToqueFogoAtual.sessaoCoberturaAtiva = true;
+      }
       estadoToqueFogoCarregado = true;
       atualizarTelaToqueFogo();
       carregarIdentidadesEquipeServico(true);
@@ -6808,6 +6876,7 @@ function assumirHoraToqueFogo() {
     .withFailureHandler((erro) => {
       botao.disabled = false;
       botao.textContent = 'Assumir Hora';
+      carregarIdentidadesEquipeServico(true);
       mostrarMensagem('Erro ao assumir a hora: ' + erro.message, 'erro');
     })
     .assumirHoraToqueFogo();
