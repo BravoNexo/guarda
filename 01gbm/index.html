@@ -1053,5 +1053,63 @@
     </div>
 
   <script src="app.js?v=27.0.11"></script>
+  <script>
+    (function () {
+      if (typeof window.abrirModalConfirmacao === 'function' &&
+          typeof window.fecharModalConfirmacao === 'function') return;
+
+      let acaoConfirmadaFallback = null;
+      let focoAntesModalFallback = null;
+
+      window.fecharModalConfirmacao = function () {
+        const modal = document.getElementById('modalConfirmacao');
+        const app = document.querySelector('.app');
+        acaoConfirmadaFallback = null;
+        if (modal) modal.classList.add('oculto');
+        if (app) app.removeAttribute('inert');
+        if (focoAntesModalFallback && typeof focoAntesModalFallback.focus === 'function') {
+          focoAntesModalFallback.focus();
+        }
+        focoAntesModalFallback = null;
+      };
+
+      window.confirmarAcaoModal = function () {
+        const callback = acaoConfirmadaFallback;
+        window.fecharModalConfirmacao();
+        if (typeof callback === 'function') callback();
+      };
+
+      window.abrirModalConfirmacao = function (titulo, texto, callback, estilo) {
+        const modal = document.getElementById('modalConfirmacao');
+        const tituloEl = document.getElementById('modalTitulo');
+        const textoEl = document.getElementById('modalTexto');
+        const confirmar = document.getElementById('btnModalConfirmar');
+        const cancelar = document.getElementById('btnModalCancelar');
+        if (!modal || !tituloEl || !textoEl || !confirmar) {
+          throw new Error('Modal de confirmação indisponível.');
+        }
+
+        const estiloModal = estilo === true ? 'perigo' : String(estilo || '');
+        tituloEl.textContent = titulo;
+        textoEl.innerHTML = texto;
+        confirmar.classList.toggle('perigo', estiloModal === 'perigo');
+        confirmar.classList.toggle('retroativo', estiloModal === 'retroativo');
+        confirmar.textContent = estiloModal === 'retroativo' ? 'Confirmar lançamento' : 'Confirmar';
+        if (cancelar) {
+          cancelar.textContent = estiloModal === 'retroativo' ? 'Voltar e revisar' : 'Cancelar';
+        }
+
+        acaoConfirmadaFallback = typeof callback === 'function' ? callback : null;
+        confirmar.onclick = window.confirmarAcaoModal;
+        focoAntesModalFallback = document.activeElement;
+        const app = document.querySelector('.app');
+        if (app) app.setAttribute('inert', '');
+        modal.classList.remove('oculto');
+        setTimeout(function () {
+          if (cancelar) cancelar.focus();
+        }, 30);
+      };
+    })();
+  </script>
   </body>
 </html>
