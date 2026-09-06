@@ -910,6 +910,33 @@ let tipoMovimentacaoAtual = 'Entrada';
     });
 
     document.addEventListener('keydown', evento => {
+      const modalSeletorMilitar = document.getElementById('modalSeletorMilitarGuarnicao');
+      if (modalSeletorMilitar && !modalSeletorMilitar.classList.contains('oculto')) {
+        if (evento.key === 'Escape') {
+          evento.preventDefault();
+          fecharSeletorMilitarGuarnicaoServico();
+          return;
+        }
+
+        if (evento.key === 'Tab') {
+          const focaveis = Array.from(modalSeletorMilitar.querySelectorAll(
+            'button:not([disabled]), input:not([disabled])'
+          ));
+          if (!focaveis.length) return;
+          const primeiro = focaveis[0];
+          const ultimo = focaveis[focaveis.length - 1];
+
+          if (evento.shiftKey && document.activeElement === primeiro) {
+            evento.preventDefault();
+            ultimo.focus();
+          } else if (!evento.shiftKey && document.activeElement === ultimo) {
+            evento.preventDefault();
+            primeiro.focus();
+          }
+        }
+        return;
+      }
+
       const modalMotoristasAberto = obterModalMotoristasAberto();
       if (modalMotoristasAberto) {
         if (evento.key === 'Escape') {
@@ -957,28 +984,6 @@ let tipoMovimentacaoAtual = 'Entrada';
         return;
       }
 
-      const modal = document.getElementById('modalSeletorMilitarGuarnicao');
-      if (!modal || modal.classList.contains('oculto')) return;
-
-      if (evento.key === 'Escape') {
-        fecharSeletorMilitarGuarnicaoServico();
-        return;
-      }
-
-      if (evento.key === 'Tab') {
-        const focaveis = Array.from(modal.querySelectorAll('button:not([disabled]), input:not([disabled])'));
-        if (!focaveis.length) return;
-        const primeiro = focaveis[0];
-        const ultimo = focaveis[focaveis.length - 1];
-
-        if (evento.shiftKey && document.activeElement === primeiro) {
-          evento.preventDefault();
-          ultimo.focus();
-        } else if (!evento.shiftKey && document.activeElement === ultimo) {
-          evento.preventDefault();
-          primeiro.focus();
-        }
-      }
     });
 
     setInterval(() => {
@@ -1815,6 +1820,22 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function militaresDisponiveisNoSeletorGuarnicaoServico() {
+    if (tipoSeletorMilitarGuarnicaoServico === 'condutor_motoristas') {
+      return obterMilitaresPainelMotoristas()
+        .map(obterDadosMilitarMotoristas)
+        .filter(militar => militar.id && (militar.nome || militar.rg))
+        .map(militar => ({
+          ID_Pessoa: militar.id,
+          Nome: militar.nome,
+          RG_CPF: militar.rg,
+          Ordem_Antiguidade: militar.ordem
+        }))
+        .sort((a, b) => {
+          return Number(a.Ordem_Antiguidade || 999999) - Number(b.Ordem_Antiguidade || 999999) ||
+            String(a.Nome || '').localeCompare(String(b.Nome || ''), 'pt-BR', { sensitivity: 'base' });
+        });
+    }
+
     let militaresDisponiveis = militaresSOS.slice();
 
     if (tipoSeletorMilitarGuarnicaoServico === 'integrante') {
@@ -1831,12 +1852,12 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function abrirSeletorMilitarGuarnicaoServico(tipo) {
-    if (tipo !== 'condutor' && tipo !== 'integrante') return;
+    if (!['condutor', 'integrante', 'condutor_motoristas'].includes(tipo)) return;
 
     tipoSeletorMilitarGuarnicaoServico = tipo;
     focoAntesDoSeletorMilitarGuarnicao = document.activeElement;
 
-    document.getElementById('tituloSeletorMilitarGuarnicao').textContent = tipo === 'condutor'
+    document.getElementById('tituloSeletorMilitarGuarnicao').textContent = tipo !== 'integrante'
       ? 'Selecionar condutor'
       : 'Selecionar integrante';
     document.getElementById('buscaRgSeletorMilitarGuarnicao').value = '';
@@ -1873,18 +1894,20 @@ let tipoMovimentacaoAtual = 'Entrada';
     const termoBusca = String(campoBusca.value || '').trim();
     const filtroNome = normalizarTextoSeletorGuarnicao(termoBusca);
     const filtroRg = normalizarRgSeletorGuarnicao(termoBusca);
-    const militares = militaresDisponiveisNoSeletorGuarnicaoServico().filter(militar => {
+    const militaresDisponiveis = militaresDisponiveisNoSeletorGuarnicaoServico();
+    const militares = militaresDisponiveis.filter(militar => {
       if (!termoBusca) return true;
 
       const correspondeNome = normalizarTextoSeletorGuarnicao(militar.Nome).includes(filtroNome);
       const correspondeRg = filtroRg && normalizarRgSeletorGuarnicao(militar.RG_CPF).includes(filtroRg);
       return correspondeNome || correspondeRg;
     });
-    const selectAtual = document.getElementById(
-      tipoSeletorMilitarGuarnicaoServico === 'condutor'
-        ? 'condutorGuarnicaoServico'
-        : 'integranteGuarnicaoServico'
-    );
+    const seletorMotoristas = tipoSeletorMilitarGuarnicaoServico === 'condutor_motoristas';
+    const selectAtual = document.getElementById(seletorMotoristas
+      ? 'condutorEventoMotoristas'
+      : (tipoSeletorMilitarGuarnicaoServico === 'condutor'
+          ? 'condutorGuarnicaoServico'
+          : 'integranteGuarnicaoServico'));
     const idSelecionado = selectAtual ? String(selectAtual.value || '') : '';
 
     resumo.textContent = militares.length === 1
@@ -1895,7 +1918,10 @@ let tipoMovimentacaoAtual = 'Entrada';
     if (!militares.length) {
       const vazio = document.createElement('div');
       vazio.className = 'vazio-seletor-militar';
-      vazio.innerHTML = '<strong>Nenhum militar encontrado</strong><span>Confira o nome ou RG digitado ou apague a busca para ver a lista completa.</span>';
+      vazio.innerHTML = tipoSeletorMilitarGuarnicaoServico === 'condutor_motoristas' &&
+        !militaresDisponiveis.length
+        ? '<strong>Efetivo não carregado</strong><span>Feche esta janela, atualize o Painel de Motoristas e tente novamente.</span>'
+        : '<strong>Nenhum militar encontrado</strong><span>Confira o nome ou RG digitado ou apague a busca para ver a lista completa.</span>';
       lista.appendChild(vazio);
       return;
     }
@@ -1904,7 +1930,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       const limpar = document.createElement('button');
       limpar.type = 'button';
       limpar.className = 'limpar-selecao-militar';
-      limpar.textContent = tipoSeletorMilitarGuarnicaoServico === 'condutor'
+      limpar.textContent = tipoSeletorMilitarGuarnicaoServico !== 'integrante'
         ? 'Limpar condutor selecionado'
         : 'Limpar integrante selecionado';
       limpar.onclick = limparSelecaoMilitarGuarnicaoServico;
@@ -1931,6 +1957,12 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function limparSelecaoMilitarGuarnicaoServico() {
+    if (tipoSeletorMilitarGuarnicaoServico === 'condutor_motoristas') {
+      definirCondutorEventoMotoristas('', '');
+      fecharSeletorMilitarGuarnicaoServico();
+      return;
+    }
+
     const ehCondutor = tipoSeletorMilitarGuarnicaoServico === 'condutor';
     const select = document.getElementById(
       ehCondutor ? 'condutorGuarnicaoServico' : 'integranteGuarnicaoServico'
@@ -1944,6 +1976,12 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function selecionarMilitarNoSeletorGuarnicaoServico(idMilitar) {
+    if (tipoSeletorMilitarGuarnicaoServico === 'condutor_motoristas') {
+      definirCondutorEventoMotoristas(idMilitar, 'manual');
+      fecharSeletorMilitarGuarnicaoServico();
+      return;
+    }
+
     const ehCondutor = tipoSeletorMilitarGuarnicaoServico === 'condutor';
     const select = document.getElementById(
       ehCondutor ? 'condutorGuarnicaoServico' : 'integranteGuarnicaoServico'
@@ -5189,30 +5227,68 @@ function obterDadosMilitarMotoristas(militar) {
   return { id: id, rg: rg, nome: nome, ordem: ordem, rotulo: nome + (rg ? ' — RG ' + rg : '') };
 }
 
-function preencherListasMilitaresMotoristas() {
-  const militares = obterMilitaresPainelMotoristas().map(obterDadosMilitarMotoristas)
-    .filter(militar => militar.nome || militar.rg)
-    .sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }));
-  const lista = document.getElementById('listaCondutoresEventoMotoristas');
-  if (!lista) return;
-  lista.innerHTML = '';
-  militares.forEach(militar => {
-    const option = document.createElement('option');
-    option.value = militar.rotulo;
-    lista.appendChild(option);
-  });
+function obterMilitarPainelMotoristasPorId(idMilitar) {
+  const id = String(idMilitar || '').trim();
+  if (!id) return null;
+  return obterMilitaresPainelMotoristas()
+    .map(obterDadosMilitarMotoristas)
+    .find(militar => String(militar.id || '').trim() === id) || null;
 }
 
-function resolverMilitarPainelMotoristas(texto) {
-  const termo = normalizarTextoSeletorGuarnicao(texto);
-  const rgTermo = normalizarRgSeletorGuarnicao(texto);
-  const exatos = obterMilitaresPainelMotoristas().map(obterDadosMilitarMotoristas).filter(militar => {
-    const rotulo = normalizarTextoSeletorGuarnicao(militar.rotulo);
-    const nome = normalizarTextoSeletorGuarnicao(militar.nome);
-    const rg = normalizarRgSeletorGuarnicao(militar.rg);
-    return rotulo === termo || nome === termo || (rgTermo && rg === rgTermo);
+function obterGuarnicoesServicoPainelMotoristas() {
+  if (painelMotoristasAtual && Array.isArray(painelMotoristasAtual.guarnicoesServico)) {
+    return painelMotoristasAtual.guarnicoesServico;
+  }
+  return Array.isArray(guarnicoesServico) ? guarnicoesServico : [];
+}
+
+function definirCondutorEventoMotoristas(idMilitar, origem) {
+  const campo = document.getElementById('condutorEventoMotoristas');
+  const texto = document.getElementById('textoCondutorEventoMotoristas');
+  const ajuda = document.getElementById('origemCondutorEventoMotoristas');
+  const militar = obterMilitarPainelMotoristasPorId(idMilitar);
+  const idValido = militar ? militar.id : '';
+
+  if (campo) {
+    campo.value = idValido;
+    campo.dataset.origem = idValido ? String(origem || 'manual') : '';
+  }
+  if (texto) texto.textContent = militar ? militar.rotulo : 'Selecione o condutor';
+  if (!ajuda) return;
+
+  if (militar && origem === 'guarnicao') {
+    ajuda.textContent = 'Preenchido conforme as Guarnições de Serviço. Toque para alterar.';
+  } else if (militar) {
+    ajuda.textContent = 'Condutor escolhido para este lançamento. Toque para alterar.';
+  } else if (!obterMilitaresPainelMotoristas().length) {
+    ajuda.textContent = 'O efetivo não foi carregado. Atualize o painel e tente novamente.';
+  } else {
+    ajuda.textContent = 'Toque para pesquisar o efetivo por nome ou RG.';
+  }
+}
+
+function preencherListasMilitaresMotoristas() {
+  const campo = document.getElementById('condutorEventoMotoristas');
+  if (tipoEventoMotoristasAtual === 'ABASTECIMENTO' &&
+      campo && campo.dataset.origem !== 'manual') {
+    atualizarCondutorEventoMotoristasPelaViatura();
+    return;
+  }
+  definirCondutorEventoMotoristas(campo ? campo.value : '', campo ? campo.dataset.origem : '');
+}
+
+function atualizarCondutorEventoMotoristasPelaViatura() {
+  if (tipoEventoMotoristasAtual !== 'ABASTECIMENTO') return;
+
+  const selectViatura = document.getElementById('viaturaEventoMotoristas');
+  const idViatura = selectViatura ? String(selectViatura.value || '').trim() : '';
+  const configuracao = obterGuarnicoesServicoPainelMotoristas().find(item => {
+    return String(valorCampoMotoristas(item, 'ID_Viatura', 'idViatura', 'vehicleId') || '').trim() === idViatura;
   });
-  return exatos.length === 1 ? exatos[0] : null;
+  const idCondutor = configuracao
+    ? String(valorCampoMotoristas(configuracao, 'ID_Condutor', 'idCondutor', 'condutorId') || '').trim()
+    : '';
+  definirCondutorEventoMotoristas(idCondutor, idCondutor ? 'guarnicao' : '');
 }
 
 function preencherViaturasEventoMotoristas(tipo, idSelecionado) {
@@ -5332,7 +5408,7 @@ function configurarModalEventoMotoristas(tipo, idViatura) {
     ) === 'EM_MANUTENCAO' ? 'Retorno' : 'Saída';
   }
   document.getElementById('dataHoraEventoMotoristas').value = obterDataHoraLocalAtualMotoristas();
-  document.getElementById('condutorEventoMotoristas').value = '';
+  definirCondutorEventoMotoristas('', '');
   document.getElementById('valorEventoMotoristas').value = '';
   document.getElementById('kmEventoMotoristas').value = '';
   document.getElementById('justificativaKmEventoMotoristas').value = '';
@@ -5342,6 +5418,7 @@ function configurarModalEventoMotoristas(tipo, idViatura) {
     opcao.checked = false;
   });
   if (tipo === 'SISGEO') atualizarCamposSisgeoEventoMotoristas();
+  if (tipo === 'ABASTECIMENTO') atualizarCondutorEventoMotoristasPelaViatura();
   definirMensagemModalMotoristas('mensagemEventoMotoristas', '', '');
 }
 
@@ -5386,6 +5463,9 @@ function abrirModalEventoMotoristas(tipoForcado = '', idViatura = '') {
 }
 
 function fecharModalEventoMotoristas(devolverFoco = true) {
+  if (tipoSeletorMilitarGuarnicaoServico === 'condutor_motoristas') {
+    fecharSeletorMilitarGuarnicaoServico();
+  }
   const modal = document.getElementById('modalEventoMotoristas');
   if (!modal || modal.classList.contains('oculto')) return;
   modal.classList.add('oculto');
@@ -5416,7 +5496,7 @@ function validarEventoMotoristas() {
   const idViaturaInformada = document.getElementById('viaturaEventoMotoristas').value;
   const idViatura = semViatura ? '' : idViaturaInformada;
   const dataHoraLocal = document.getElementById('dataHoraEventoMotoristas').value;
-  const textoCondutor = document.getElementById('condutorEventoMotoristas').value.trim();
+  const idCondutor = document.getElementById('condutorEventoMotoristas').value.trim();
   const valorTexto = document.getElementById('valorEventoMotoristas').value;
   const kmTexto = document.getElementById('kmEventoMotoristas').value;
   const justificativaKm = document.getElementById('justificativaKmEventoMotoristas').value.trim();
@@ -5439,9 +5519,11 @@ function validarEventoMotoristas() {
   }
   if (!semViatura && !idViatura) return { erro: tipo === 'SISGEO' ? 'Selecione a viatura cujo SISGEO ficou fora do prazo.' : 'Selecione a viatura.' };
   if (requerDataHora && !dataHoraLocal) return { erro: 'Informe a data e a hora.' };
-  if (requerCondutor && !textoCondutor) return { erro: 'Selecione o condutor pelo nome ou RG.' };
-  const condutor = requerCondutor ? resolverMilitarPainelMotoristas(textoCondutor) : null;
-  if (requerCondutor && !condutor) return { erro: 'Selecione uma sugestão exata do efetivo para identificar o condutor sem ambiguidade.' };
+  if (requerCondutor && !idCondutor) return { erro: 'Selecione o condutor pelo nome ou RG.' };
+  const condutor = requerCondutor ? obterMilitarPainelMotoristasPorId(idCondutor) : null;
+  if (requerCondutor && !condutor) {
+    return { erro: 'O condutor selecionado não está mais disponível no efetivo. Escolha outro militar.' };
+  }
   const valor = valorTexto === '' ? '' : Number(valorTexto);
   if (tipo === 'ABASTECIMENTO' && (!Number.isFinite(valor) || valor <= 0)) return { erro: 'Informe um valor de abastecimento maior que zero.' };
   const km = kmTexto === '' ? '' : Number(kmTexto);

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.0.8">
+  <link rel="stylesheet" href="style.css?v=27.0.9">
   </head>
 
   <body>
@@ -992,7 +992,7 @@
 
           <div class="campo campo-modal-motoristas" id="campoViaturaEventoMotoristas">
             <label for="viaturaEventoMotoristas">Viatura *</label>
-            <select id="viaturaEventoMotoristas"></select>
+            <select id="viaturaEventoMotoristas" onchange="atualizarCondutorEventoMotoristasPelaViatura()"></select>
           </div>
 
           <div class="campo campo-modal-motoristas oculto" id="campoResultadoEventoMotoristas">
@@ -1006,11 +1006,14 @@
           </div>
 
           <div class="campo campo-modal-motoristas oculto" id="campoCondutorEventoMotoristas">
-            <label for="condutorEventoMotoristas">Condutor — nome ou RG *</label>
-            <input type="search" id="condutorEventoMotoristas" list="listaCondutoresEventoMotoristas"
-              autocomplete="off" placeholder="Digite o nome ou RG">
-            <datalist id="listaCondutoresEventoMotoristas"></datalist>
-            <small>Selecione uma sugestão do efetivo para evitar ambiguidade.</small>
+            <label for="btnCondutorEventoMotoristas">Condutor *</label>
+            <button type="button" id="btnCondutorEventoMotoristas" class="botao-seletor-militar botao-condutor-evento-motoristas"
+              aria-haspopup="dialog" onclick="abrirSeletorMilitarGuarnicaoServico('condutor_motoristas')">
+              <span id="textoCondutorEventoMotoristas">Selecione o condutor</span>
+              <span class="seta-seletor-militar" aria-hidden="true">⌄</span>
+            </button>
+            <input type="hidden" id="condutorEventoMotoristas">
+            <small id="origemCondutorEventoMotoristas">Toque para pesquisar o efetivo por nome ou RG.</small>
           </div>
 
           <div class="grade-campos-motoristas">
@@ -1049,6 +1052,6 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.0.8"></script>
+  <script src="app.js?v=27.0.9"></script>
   </body>
 </html>
