@@ -614,7 +614,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     },
     sisgeo: {
       titulo: 'SISGEO',
-      descricao: 'Controle de realização dentro do prazo para cada viatura.',
+      descricao: 'Confirmação do cumprimento do prazo e registro das viaturas com pendência.',
       tipo: 'SISGEO',
       acao: 'Atualizar SISGEO'
     },
@@ -5105,14 +5105,37 @@ function alternarCampoEventoMotoristas(id, visivel) {
   const campo = document.getElementById(id);
   if (!campo) return;
   campo.classList.toggle('oculto', !visivel);
+  campo.setAttribute('aria-hidden', String(!visivel));
   campo.querySelectorAll('input, select, textarea').forEach(controle => { controle.disabled = !visivel; });
+}
+
+function obterResultadoSisgeoEventoMotoristas() {
+  const selecionado = document.querySelector('input[name="resultadoSisgeoEventoMotoristas"]:checked');
+  return selecionado ? selecionado.value : '';
+}
+
+function atualizarCamposSisgeoEventoMotoristas() {
+  if (tipoEventoMotoristasAtual !== 'SISGEO') return;
+  const foraDoPrazo = normalizarTextoMotoristas(obterResultadoSisgeoEventoMotoristas()) === 'NAO';
+  const labelObservacoes = document.getElementById('labelObservacoesEventoMotoristas');
+  const observacoes = document.getElementById('observacoesEventoMotoristas');
+
+  alternarCampoEventoMotoristas('campoViaturaEventoMotoristas', foraDoPrazo);
+  alternarCampoEventoMotoristas('campoObservacoesEventoMotoristas', foraDoPrazo);
+  if (labelObservacoes) labelObservacoes.textContent = 'Motivo *';
+  if (observacoes) observacoes.placeholder = 'Informe por que o SISGEO não foi realizado dentro do prazo';
+
+  if (!foraDoPrazo) {
+    const viatura = document.getElementById('viaturaEventoMotoristas');
+    if (viatura) viatura.value = '';
+    if (observacoes) observacoes.value = '';
+  }
 }
 
 function opcoesResultadoEventoMotoristas(tipo) {
   if (tipo === 'CONDICAO') return ['Operante', 'Inoperante'];
   if (tipo === 'MOV_ADMINISTRATIVA') return ['Saída', 'Entrada'];
   if (tipo === 'MANUTENCAO') return ['Saída', 'Retorno'];
-  if (tipo === 'SISGEO') return ['Realizado no prazo', 'Realizado fora do prazo', 'Pendente', 'Não se aplica'];
   return [];
 }
 
@@ -5123,7 +5146,7 @@ function configurarModalEventoMotoristas(tipo, idViatura) {
     ALTERACAO: { titulo: 'Registrar alteração', descricao: 'Descreva a alteração, avaria, conferência ou fato relacionado à viatura.', dataHora: true, observacaoObrigatoria: true },
     MOV_ADMINISTRATIVA: { titulo: 'Movimento administrativo', descricao: 'Registre a entrada ou saída de uma viatura administrativa.', resultado: true, dataHora: true, condutor: true, km: true, destino: true, labelResultado: 'Movimentação *', labelDestino: 'Destino / procedência (obrigatório na saída)' },
     MANUTENCAO: { titulo: 'Movimento de manutenção', descricao: 'Registre a saída para oficina ou o retorno à unidade.', resultado: true, dataHora: true, condutor: true, km: true, destino: true, labelResultado: 'Movimentação *', labelDestino: 'Oficina / destino (obrigatório na saída)' },
-    SISGEO: { titulo: 'Atualizar SISGEO', descricao: 'Informe a situação do SISGEO da viatura neste ciclo.', resultado: true, dataHora: true, labelResultado: 'Situação do SISGEO *' },
+    SISGEO: { titulo: 'Informar SISGEO', descricao: 'Confirme se o SISGEO das viaturas foi realizado dentro do prazo.', semViatura: true, perguntaSisgeo: true },
     OBSERVACAO_GERAL: { titulo: 'Observação geral', descricao: 'Registre uma informação pertinente ao serviço.', dataHora: true, semViatura: true, observacaoObrigatoria: true }
   };
   const configuracao = configuracoes[tipo] || configuracoes.ALTERACAO;
@@ -5136,14 +5159,17 @@ function configurarModalEventoMotoristas(tipo, idViatura) {
   document.getElementById('labelKmEventoMotoristas').textContent = tipo === 'ABASTECIMENTO'
     ? 'Quilometragem *' : 'Quilometragem';
   document.getElementById('labelObservacoesEventoMotoristas').textContent = configuracao.observacaoObrigatoria ? 'Observações *' : 'Observações';
+  document.getElementById('observacoesEventoMotoristas').placeholder = 'Informação complementar';
   alternarCampoEventoMotoristas('campoViaturaEventoMotoristas', !configuracao.semViatura);
   alternarCampoEventoMotoristas('campoResultadoEventoMotoristas', !!configuracao.resultado);
+  alternarCampoEventoMotoristas('campoSisgeoEventoMotoristas', !!configuracao.perguntaSisgeo);
   alternarCampoEventoMotoristas('campoDataHoraEventoMotoristas', !!configuracao.dataHora);
   alternarCampoEventoMotoristas('campoCondutorEventoMotoristas', !!configuracao.condutor);
   alternarCampoEventoMotoristas('campoValorEventoMotoristas', !!configuracao.valor);
   alternarCampoEventoMotoristas('campoKmEventoMotoristas', !!configuracao.km);
   alternarCampoEventoMotoristas('campoJustificativaKmEventoMotoristas', !!configuracao.km);
   alternarCampoEventoMotoristas('campoDestinoEventoMotoristas', !!configuracao.destino);
+  alternarCampoEventoMotoristas('campoObservacoesEventoMotoristas', !configuracao.perguntaSisgeo);
   preencherViaturasEventoMotoristas(tipo, idViatura);
   const selectResultado = document.getElementById('resultadoEventoMotoristas');
   selectResultado.innerHTML = '<option value="">Selecione</option>';
@@ -5177,6 +5203,10 @@ function configurarModalEventoMotoristas(tipo, idViatura) {
   document.getElementById('justificativaKmEventoMotoristas').value = '';
   document.getElementById('destinoEventoMotoristas').value = '';
   document.getElementById('observacoesEventoMotoristas').value = '';
+  document.querySelectorAll('input[name="resultadoSisgeoEventoMotoristas"]').forEach(opcao => {
+    opcao.checked = false;
+  });
+  if (tipo === 'SISGEO') atualizarCamposSisgeoEventoMotoristas();
   definirMensagemModalMotoristas('mensagemEventoMotoristas', '', '');
 }
 
@@ -5243,25 +5273,36 @@ function definirMensagemModalMotoristas(id, texto, tipo) {
 
 function validarEventoMotoristas() {
   const tipo = tipoEventoMotoristasAtual;
-  const semViatura = tipo === 'OBSERVACAO_GERAL';
-  const idViatura = document.getElementById('viaturaEventoMotoristas').value;
-  const resultado = document.getElementById('resultadoEventoMotoristas').value;
+  const resultado = tipo === 'SISGEO'
+    ? obterResultadoSisgeoEventoMotoristas()
+    : document.getElementById('resultadoEventoMotoristas').value;
+  const sisgeoForaDoPrazo = tipo === 'SISGEO' && normalizarTextoMotoristas(resultado) === 'NAO';
+  const semViatura = tipo === 'OBSERVACAO_GERAL' || (tipo === 'SISGEO' && !sisgeoForaDoPrazo);
+  const idViaturaInformada = document.getElementById('viaturaEventoMotoristas').value;
+  const idViatura = semViatura ? '' : idViaturaInformada;
   const dataHoraLocal = document.getElementById('dataHoraEventoMotoristas').value;
   const textoCondutor = document.getElementById('condutorEventoMotoristas').value.trim();
   const valorTexto = document.getElementById('valorEventoMotoristas').value;
   const kmTexto = document.getElementById('kmEventoMotoristas').value;
   const justificativaKm = document.getElementById('justificativaKmEventoMotoristas').value.trim();
   const destino = document.getElementById('destinoEventoMotoristas').value.trim();
-  const observacoes = document.getElementById('observacoesEventoMotoristas').value.trim();
+  const observacoesInformadas = document.getElementById('observacoesEventoMotoristas').value.trim();
+  const observacoes = tipo === 'SISGEO' && !sisgeoForaDoPrazo ? '' : observacoesInformadas;
   const requerResultado = ['CONDICAO', 'MOV_ADMINISTRATIVA', 'MANUTENCAO', 'SISGEO'].includes(tipo);
-  const requerDataHora = tipo !== 'CONDICAO';
+  const requerDataHora = !['CONDICAO', 'SISGEO'].includes(tipo);
   const requerCondutor = ['ABASTECIMENTO', 'MOV_ADMINISTRATIVA', 'MANUTENCAO'].includes(tipo);
   const requerKm = tipo === 'ABASTECIMENTO';
   const movimentoSaida = normalizarTextoMotoristas(resultado) === 'SAIDA';
   const requerDestino = ['MOV_ADMINISTRATIVA', 'MANUTENCAO'].includes(tipo) && movimentoSaida;
-  const requerObservacao = ['ALTERACAO', 'OBSERVACAO_GERAL'].includes(tipo) || (tipo === 'CONDICAO' && normalizarTextoMotoristas(resultado) === 'INOPERANTE');
-  if (!semViatura && !idViatura) return { erro: 'Selecione a viatura.' };
-  if (requerResultado && !resultado) return { erro: 'Selecione a situação do lançamento.' };
+  const requerObservacao = ['ALTERACAO', 'OBSERVACAO_GERAL'].includes(tipo) ||
+    (tipo === 'CONDICAO' && normalizarTextoMotoristas(resultado) === 'INOPERANTE') || sisgeoForaDoPrazo;
+  if (requerResultado && !resultado) {
+    return { erro: tipo === 'SISGEO' ? 'Informe se o SISGEO foi realizado dentro do prazo.' : 'Selecione a situação do lançamento.' };
+  }
+  if (tipo === 'SISGEO' && !['SIM', 'NAO'].includes(normalizarTextoMotoristas(resultado))) {
+    return { erro: 'Responda Sim ou Não sobre a realização do SISGEO dentro do prazo.' };
+  }
+  if (!semViatura && !idViatura) return { erro: tipo === 'SISGEO' ? 'Selecione a viatura cujo SISGEO ficou fora do prazo.' : 'Selecione a viatura.' };
   if (requerDataHora && !dataHoraLocal) return { erro: 'Informe a data e a hora.' };
   if (requerCondutor && !textoCondutor) return { erro: 'Selecione o condutor pelo nome ou RG.' };
   const condutor = requerCondutor ? resolverMilitarPainelMotoristas(textoCondutor) : null;
@@ -5272,7 +5313,9 @@ function validarEventoMotoristas() {
   if (requerKm && (!Number.isFinite(km) || km < 0)) return { erro: 'Informe uma quilometragem válida.' };
   if (km !== '' && (!Number.isFinite(km) || km < 0)) return { erro: 'A quilometragem informada não é válida.' };
   if (requerDestino && !destino) return { erro: 'Informe o destino, a oficina ou o estabelecimento.' };
-  if (requerObservacao && !observacoes) return { erro: 'Descreva a ocorrência nas observações.' };
+  if (requerObservacao && !observacoes) {
+    return { erro: tipo === 'SISGEO' ? 'Informe o motivo de o SISGEO não ter sido realizado dentro do prazo.' : 'Descreva a ocorrência nas observações.' };
+  }
   let dataHoraEvento = new Date().toISOString();
   if (dataHoraLocal) {
     const data = new Date(dataHoraLocal);

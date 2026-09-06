@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.0.4">
+  <link rel="stylesheet" href="style.css?v=27.0.5">
   </head>
 
   <body>
@@ -982,6 +982,23 @@
         <form id="formEventoMotoristas" onsubmit="salvarEventoMotoristas(event)">
           <p id="descricaoModalEventoMotoristas" class="descricao-modal-motoristas"></p>
 
+          <fieldset class="campo campo-modal-motoristas pergunta-sisgeo-motoristas oculto"
+            id="campoSisgeoEventoMotoristas">
+            <legend>O SISGEO foi realizado dentro do prazo?</legend>
+            <div class="opcoes-binarias-motoristas">
+              <label>
+                <input type="radio" name="resultadoSisgeoEventoMotoristas" value="Sim"
+                  onchange="atualizarCamposSisgeoEventoMotoristas()">
+                <span>Sim</span>
+              </label>
+              <label>
+                <input type="radio" name="resultadoSisgeoEventoMotoristas" value="Não"
+                  onchange="atualizarCamposSisgeoEventoMotoristas()">
+                <span>Não</span>
+              </label>
+            </div>
+          </fieldset>
+
           <div class="campo campo-modal-motoristas" id="campoViaturaEventoMotoristas">
             <label for="viaturaEventoMotoristas">Viatura *</label>
             <select id="viaturaEventoMotoristas"></select>
@@ -1041,6 +1058,6 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.0.4"></script>
+  <script src="app.js?v=27.0.5"></script>
   </body>
 </html>

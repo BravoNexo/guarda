@@ -2779,6 +2779,68 @@ body.modal-motoristas-aberto {
   line-height: 1.3;
 }
 
+.pergunta-sisgeo-motoristas {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.pergunta-sisgeo-motoristas legend {
+  margin-bottom: 7px;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.opcoes-binarias-motoristas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.opcoes-binarias-motoristas label {
+  position: relative;
+  cursor: pointer;
+}
+
+.opcoes-binarias-motoristas input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.opcoes-binarias-motoristas span {
+  display: grid;
+  min-height: 42px;
+  place-items: center;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+  transition: border-color .15s ease, background-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+.opcoes-binarias-motoristas label:hover span {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.opcoes-binarias-motoristas input:checked + span {
+  border-color: #1d4ed8;
+  background: #dbeafe;
+  color: #1e40af;
+  box-shadow: inset 0 0 0 1px #1d4ed8;
+}
+
+.opcoes-binarias-motoristas input:focus-visible + span {
+  outline: 3px solid rgba(37, 99, 235, .25);
+  outline-offset: 2px;
+}
+
 .grade-campos-motoristas {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
