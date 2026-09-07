@@ -3577,8 +3577,9 @@ function limparAreaOficial() {
 }
 
   function inicializarEquipeServico() {
-    // Os perfis com competências próprias permanecem nos seus respectivos blocos.
-    const perfis = ['perfilGuarda', 'cardToqueFogo', 'perfilOficial']
+    // Identidade e acesso de todos os perfis ficam reunidos na Equipe de Serviço.
+    const perfis = ['perfilGuarda', 'cardToqueFogo', 'perfilComandante', 'perfilOficial',
+      'perfilEncarregadoMotoristas']
       .map(id => document.getElementById(id))
       .filter(Boolean);
     if (!perfis.length || document.getElementById('cardEquipeServico')) return;
@@ -3598,7 +3599,7 @@ function limparAreaOficial() {
     const tituloEquipe = document.createElement('strong');
     tituloEquipe.textContent = 'Equipe de Serviço';
     const subtituloEquipe = document.createElement('small');
-    subtituloEquipe.textContent = 'Guarda, Toque de Fogo e Oficial de Dia';
+    subtituloEquipe.textContent = 'Guarda, Toque de Fogo, Comandante, Oficial de Dia e Encarregado de Motoristas';
     resumoEquipe.appendChild(tituloEquipe);
     resumoEquipe.appendChild(subtituloEquipe);
 
@@ -3628,6 +3629,12 @@ function limparAreaOficial() {
     document.querySelectorAll('.perfil-servico').forEach(item => {
       item.classList.toggle('perfil-expandido', abrir && item === perfil);
     });
+    const equipe = document.getElementById('cardEquipeServico');
+    if (abrir && equipe && equipe.contains(perfil)) {
+      equipe.classList.remove('equipe-recolhida');
+      const botaoEquipe = document.getElementById('btnAlternarEquipeServico');
+      if (botaoEquipe) botaoEquipe.setAttribute('aria-expanded', 'true');
+    }
   }
 
   function alternarEquipeServico() {
@@ -4035,6 +4042,7 @@ function atualizarTelaComandante() {
 
 function atualizarVisibilidadePainelComandante() {
   const painel = document.getElementById('cardPainelComandante');
+  const blocoComandante = document.getElementById('blocoComandanteGuarda');
   const competencias = document.getElementById('competenciasExclusivasComandante');
   const historico = document.getElementById('cardConsultaHistorico');
   const acaoRetroativa = document.getElementById('acaoLancamentoRetroativo');
@@ -4048,6 +4056,7 @@ function atualizarVisibilidadePainelComandante() {
   const comandanteNesteAparelho = aparelhoAssumiuComandanteAtual();
   const podeLancarHorarioAnterior = comandanteNesteAparelho &&
     permissoesPainelGestaoAtual.podeLancarHorarioAnterior === true;
+  if (blocoComandante) blocoComandante.classList.toggle('oculto', !comandanteNesteAparelho);
   if (competencias) competencias.classList.toggle('oculto', !comandanteNesteAparelho);
   painel.classList.remove('oculto');
   if (login) login.classList.toggle('oculto', possuiAcesso);

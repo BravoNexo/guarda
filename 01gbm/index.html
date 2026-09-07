@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.0.12">
+  <link rel="stylesheet" href="style.css?v=27.0.13">
   </head>
 
   <body>
@@ -371,14 +371,9 @@
           </div>
         </section>
 
-        <section class="card bloco-competencia bloco-competencia-comandante" id="blocoComandanteGuarda"
-          aria-labelledby="tituloCompetenciaComandante">
         <section class="card card-guarda card-comandante perfil-servico" id="perfilComandante">
           <div class="cabecalho-card-guarda">
-            <div>
-              <span class="rotulo-competencia">Gestão do serviço</span>
-              <h2 id="tituloCompetenciaComandante">Comandante da Guarda</h2>
-            </div>
+            <h2>Comandante da Guarda</h2>
 
             <div class="acoes-guarda">
               <button type="button" id="btnTrocarComandante" class="botao-trocar oculto" onclick="mostrarAreaTrocaComandante()">
@@ -435,6 +430,13 @@
             </button>
           </div>
         </section>
+
+        <section class="card bloco-competencia bloco-competencia-comandante oculto" id="blocoComandanteGuarda"
+          aria-labelledby="tituloCompetenciaComandante">
+          <div class="cabecalho-competencia">
+            <span class="rotulo-competencia">Gestão do serviço</span>
+            <h2 id="tituloCompetenciaComandante">Comandante da Guarda</h2>
+          </div>
           <div id="competenciasExclusivasComandante" class="conteudo-competencia oculto">
             <p class="descricao-competencia">Competências exclusivas do Comandante da Guarda deste serviço.</p>
             <div class="acao-competencia" id="acaoDesignacaoOficialDia">
@@ -508,14 +510,9 @@
           </div>
         </section>
 
-        <section class="card bloco-competencia bloco-competencia-motoristas" id="blocoEncarregadoMotoristas"
-          aria-labelledby="tituloCompetenciaMotoristas">
         <section class="card card-guarda card-comandante perfil-servico" id="perfilEncarregadoMotoristas">
           <div class="cabecalho-card-guarda">
-            <div>
-              <span class="rotulo-competencia">Livro e controle da frota</span>
-              <h2 id="tituloCompetenciaMotoristas">Encarregado de Motoristas</h2>
-            </div>
+            <h2>Encarregado de Motoristas</h2>
             <div class="acoes-guarda">
               <button type="button" id="btnAbrirAcessoEncarregadoMotoristas" class="botao-trocar"
                 onclick="mostrarAreaAcessoEncarregadoMotoristas()">Assumir função</button>
@@ -553,11 +550,12 @@
           </div>
         </section>
 
-        <section class="card card-painel-motoristas oculto" id="cardPainelMotoristas">
+        <section class="card card-painel-motoristas oculto" id="cardPainelMotoristas"
+          aria-labelledby="tituloCompetenciaMotoristas">
           <div class="cabecalho-painel-motoristas">
             <div>
               <span class="sobretitulo-painel-motoristas">Livro de serviço</span>
-              <h2>Livro do serviço</h2>
+              <h2 id="tituloCompetenciaMotoristas">Encarregado de Motoristas</h2>
               <span id="cicloPainelMotoristas">Ciclo das 08h às 08h</span>
             </div>
             <button type="button" id="btnAtualizarPainelMotoristas" class="botao-atualizar-motoristas"
@@ -625,7 +623,6 @@
             <div class="estado-vazio-painel">Carregando...</div>
           </div>
           <div id="atualizadoEmPainelMotoristas" class="rodape-painel-comandante"></div>
-        </section>
         </section>
 
         <div id="avisoSemPermissaoLancamento" class="aviso-bloqueio oculto">
@@ -1071,7 +1068,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.0.12"></script>
+  <script src="app.js?v=27.0.13"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&

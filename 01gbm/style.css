@@ -3051,23 +3051,12 @@ body.modal-motoristas-aberto {
   border-top: 5px solid var(--cor-competencia);
 }
 
-.bloco-competencia-motoristas {
-  --cor-competencia: #1d4ed8;
-  --fundo-competencia: #eff6ff;
-}
-
-.bloco-competencia > .perfil-servico {
-  padding: 16px !important;
+.cabecalho-competencia {
+  padding: 16px;
   background: var(--fundo-competencia);
 }
 
-.bloco-competencia > .perfil-servico .cabecalho-card-guarda {
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.bloco-competencia > .perfil-servico .cabecalho-card-guarda h2 {
+.cabecalho-competencia h2 {
   color: #0f172a;
   font-size: 1.25rem;
   line-height: 1.3;
@@ -3082,17 +3071,6 @@ body.modal-motoristas-aberto {
   font-weight: 700;
 }
 
-.bloco-competencia > .perfil-servico .status-guarda {
-  margin-top: 12px;
-  font-size: .875rem;
-  line-height: 1.5;
-}
-
-.bloco-competencia > .perfil-servico .acoes-guarda {
-  flex-wrap: wrap;
-}
-
-.bloco-competencia > .perfil-servico .acoes-guarda button,
 .acao-competencia > button {
   min-height: 44px;
   padding: 10px 12px;
@@ -3149,13 +3127,6 @@ body.modal-motoristas-aberto {
 .conteudo-competencia .area-designar-oficial,
 .conteudo-competencia .acao-lancamento-retroativo {
   margin-top: 14px;
-}
-
-.bloco-competencia > .card-painel-motoristas {
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  margin: 0;
 }
 
 @media (max-width: 420px) {
