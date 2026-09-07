@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.0.13">
+  <link rel="stylesheet" href="style.css?v=27.1.0">
   </head>
 
   <body>
@@ -523,6 +523,14 @@
 
           <div id="statusEncarregadoMotoristas" class="status-guarda">
             Carregando Encarregado de Motoristas...
+          </div>
+
+          <div id="areaEncerramentoPendenteMotoristas" class="area-encerramento-pendente-motoristas oculto">
+            <div>
+              <strong>Serviço anterior pendente</strong>
+              <span id="resumoEncerramentoPendenteMotoristas"></span>
+            </div>
+            <button type="button" onclick="abrirModalEncerrarServicoMotoristas()">Encerrar serviço</button>
           </div>
 
           <div id="areaAssumirEncarregadoMotoristas">
@@ -1068,7 +1076,45 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.0.13"></script>
+    <div id="modalEncerrarServicoMotoristas" class="modal-fundo modal-motoristas-fundo oculto" role="dialog"
+      aria-modal="true" aria-labelledby="tituloModalEncerrarServicoMotoristas"
+      aria-describedby="descricaoModalEncerrarServicoMotoristas"
+      onclick="if (event.target === this) fecharModalEncerrarServicoMotoristas()">
+      <div class="modal-card modal-card-motoristas modal-card-encerramento-motoristas" tabindex="-1">
+        <div class="cabecalho-modal-motoristas cabecalho-encerramento-motoristas">
+          <div>
+            <span>Livro do Encarregado</span>
+            <h3 id="tituloModalEncerrarServicoMotoristas">Encerrar serviço</h3>
+          </div>
+          <button type="button" id="btnFecharEncerramentoMotoristas" class="fechar-modal-motoristas"
+            aria-label="Fechar janela de encerramento" onclick="fecharModalEncerrarServicoMotoristas()">×</button>
+        </div>
+
+        <form id="formEncerramentoMotoristas" onsubmit="encerrarServicoEncarregadoMotoristas(event)">
+          <p id="descricaoModalEncerrarServicoMotoristas" class="descricao-modal-motoristas">
+            O próximo Encarregado já pode assumir normalmente. Este encerramento conclui apenas o seu livro anterior.
+          </p>
+          <div id="resumoModalEncerrarServicoMotoristas" class="resumo-modal-encerramento-motoristas"></div>
+
+          <div class="campo campo-modal-motoristas campo-sem-margem">
+            <label for="observacoesEncerramentoMotoristas">Observações finais (opcional)</label>
+            <textarea id="observacoesEncerramentoMotoristas" rows="5" maxlength="1000"
+              placeholder="Acrescente alguma informação relevante sobre o serviço, se necessário"></textarea>
+            <small>Se não houver observações, deixe o campo em branco.</small>
+          </div>
+
+          <div id="mensagemEncerramentoMotoristas" class="resultado oculto" role="status" aria-live="polite"></div>
+          <div class="acoes-modal-motoristas">
+            <button type="button" id="btnCancelarEncerramentoMotoristas" class="modal-cancelar"
+              onclick="fecharModalEncerrarServicoMotoristas()">Cancelar</button>
+            <button type="submit" id="btnConfirmarEncerramentoMotoristas"
+              class="modal-confirmar botao-encerrar-servico-motoristas">Encerrar serviço</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  <script src="app.js?v=27.1.0"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&

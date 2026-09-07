@@ -195,6 +195,12 @@ function montarDadosChamadaApi(nome, argumentos) {
         sessaoToken: sessaoEncarregadoMotoristasToken,
         sessaoEncarregadoMotoristasToken: sessaoEncarregadoMotoristasToken
       };
+    case 'encerrarServicoEncarregadoMotoristas':
+      return {
+        observacoes: argumentos[0] || '',
+        sessaoToken: sessaoEncarregadoMotoristasToken,
+        sessaoEncarregadoMotoristasToken: sessaoEncarregadoMotoristasToken
+      };
     case 'consultarHistoricoMovimentacoes':
       return {
         filtros: argumentos[0] || {},
@@ -357,6 +363,12 @@ function ajustarRespostaApi(nome, resposta) {
     };
     if (possuiBlocoEncarregadoMotoristas) {
       estadoAjustado.encarregadoMotoristas = encarregadoMotoristas;
+      estadoAjustado.sessaoEncarregadoMotoristasIdentificada =
+        blocoEncarregadoMotoristas.sessaoIdentificada === true ||
+        (!Object.prototype.hasOwnProperty.call(blocoEncarregadoMotoristas, 'sessaoIdentificada') &&
+          blocoEncarregadoMotoristas.sessaoValida === true);
+      estadoAjustado.encerramentoEncarregadoMotoristasPendente =
+        blocoEncarregadoMotoristas.encerramentoPendente || null;
     }
     return estadoAjustado;
   }
@@ -459,6 +471,7 @@ function criarExecutorAppsScript() {
     'validarCodigoAcessoEncarregadoMotoristas',
     'revogarSessaoEncarregadoMotoristas',
     'registrarEventoMotoristas',
+    'encerrarServicoEncarregadoMotoristas',
     'consultarHistoricoMovimentacoes',
     'getPessoasDentroGuarda',
     'getMovimentacoesRecentesGuarda',
@@ -549,11 +562,16 @@ let tipoMovimentacaoAtual = 'Entrada';
   let assinaturaPainelMotoristasCarregado = '';
   let dadosCodigoEncarregadoMotoristas = null;
   let encarregadoMotoristasEquipeAtual = null;
+  let sessaoEncarregadoMotoristasIdentificada = false;
+  let encerramentoEncarregadoMotoristasPendente = null;
+  let estadoEncarregadoMotoristasRecebido = false;
+  let encerramentoServicoMotoristasEmAndamento = false;
   let abaPainelMotoristasAtual = 'frota';
   let tipoEventoMotoristasAtual = '';
   let viaturaPreselecionadaMotoristas = '';
   let idSolicitacaoEventoMotoristasAtual = '';
   let focoAntesDoModalMotoristas = null;
+  let focoAntesDoModalEncerramentoMotoristas = null;
   let historicoInicializado = false;
   let dadosCodigoOficial = null;
   let oficialAtual = null;
@@ -638,6 +656,10 @@ let tipoMovimentacaoAtual = 'Entrada';
   function aplicarVisibilidadePublicaEquipeLocal() {
     if (aparelhoTemSessaoEquipeLocal()) return;
 
+    sessaoEncarregadoMotoristasIdentificada = false;
+    encerramentoEncarregadoMotoristasPendente = null;
+    estadoEncarregadoMotoristasRecebido = false;
+
     const toqueAtual = statusToqueFogoAtual && statusToqueFogoAtual.toque;
     const coberturaAtual = statusToqueFogoAtual && statusToqueFogoAtual.cobertura;
     const programacaoToqueAtual = statusToqueFogoAtual &&
@@ -656,7 +678,10 @@ let tipoMovimentacaoAtual = 'Entrada';
         (item.toque.Nome_Toque || item.toque.RG_Toque))
     );
 
-    if (!possuiIdentidadeRestrita) return;
+    if (!possuiIdentidadeRestrita) {
+      atualizarTelaEncarregadoMotoristas();
+      return;
+    }
 
     geracaoSessaoEquipe += 1;
     invalidarConsultasEquipeServico();
@@ -825,6 +850,11 @@ let tipoMovimentacaoAtual = 'Entrada';
       Object.prototype.hasOwnProperty.call(estado, 'encarregadoMotoristas');
     if (recebeuEstadoEncarregadoMotoristas) {
       encarregadoMotoristasEquipeAtual = estado.encarregadoMotoristas;
+      sessaoEncarregadoMotoristasIdentificada =
+        estado.sessaoEncarregadoMotoristasIdentificada === true;
+      encerramentoEncarregadoMotoristasPendente =
+        estado.encerramentoEncarregadoMotoristasPendente || null;
+      estadoEncarregadoMotoristasRecebido = true;
     }
     statusToqueFogoAtual = estado && estado.statusToque ? estado.statusToque : {};
     estadoToqueFogoCarregado = true;
@@ -941,7 +971,11 @@ let tipoMovimentacaoAtual = 'Entrada';
       if (modalMotoristasAberto) {
         if (evento.key === 'Escape') {
           evento.preventDefault();
-          fecharModalEventoMotoristas();
+          if (modalMotoristasAberto.id === 'modalEncerrarServicoMotoristas') {
+            fecharModalEncerrarServicoMotoristas();
+          } else {
+            fecharModalEventoMotoristas();
+          }
           return;
         }
 
@@ -3684,12 +3718,55 @@ function restaurarCodigoEncarregadoMotoristasPendente() {
 function limparAcessoEncarregadoMotoristasLocal() {
   localStorage.removeItem('encarregado_motoristas_sessao_token');
   localStorage.removeItem('encarregado_motoristas_sessao_iniciada_em');
+  sessaoEncarregadoMotoristasIdentificada = false;
+  encerramentoEncarregadoMotoristasPendente = null;
+  estadoEncarregadoMotoristasRecebido = false;
 }
 
 function aparelhoAssumiuEncarregadoMotoristasAtual() {
   return !!obterSessaoTokenEncarregadoMotoristasLocal() &&
     !!encarregadoMotoristasEquipeAtual &&
     encarregadoMotoristasEquipeAtual.Sessao_Valida === true;
+}
+
+function aparelhoEstaIdentificadoComoEncarregadoMotoristas() {
+  return !!obterSessaoTokenEncarregadoMotoristasLocal() &&
+    sessaoEncarregadoMotoristasIdentificada === true;
+}
+
+function descreverEncerramentoPendenteMotoristas(pendente) {
+  const registro = pendente || {};
+  const inicio = valorCampoMotoristas(
+    registro, 'inicio', 'Inicio', 'inicioFormatado', 'Inicio_Formatado',
+    'dataHoraInicio', 'DataHora_Inicio'
+  );
+  const fim = valorCampoMotoristas(
+    registro, 'fim', 'Fim', 'fimFormatado', 'Fim_Formatado',
+    'dataHoraFim', 'DataHora_Fim'
+  );
+  if (inicio && fim) return String(inicio) + ' até ' + String(fim);
+  const faixa = valorCampoMotoristas(registro, 'faixa', 'Faixa', 'faixaCiclo', 'Faixa_Ciclo');
+  if (faixa) return String(faixa);
+  return 'ciclo anterior';
+}
+
+function atualizarAcaoEncerramentoPendenteMotoristas() {
+  const area = document.getElementById('areaEncerramentoPendenteMotoristas');
+  const resumo = document.getElementById('resumoEncerramentoPendenteMotoristas');
+  const perfil = document.getElementById('perfilEncarregadoMotoristas');
+  if (!area || !resumo) return;
+
+  const podeEncerrar = aparelhoEstaIdentificadoComoEncarregadoMotoristas() &&
+    !!encerramentoEncarregadoMotoristasPendente;
+  area.classList.toggle('oculto', !podeEncerrar);
+  if (perfil) perfil.classList.toggle('tem-encerramento-motoristas', podeEncerrar);
+  if (podeEncerrar) {
+    resumo.textContent = 'Seu livro de ' +
+      descreverEncerramentoPendenteMotoristas(encerramentoEncarregadoMotoristasPendente) +
+      ' aguarda encerramento.';
+  } else {
+    resumo.textContent = '';
+  }
 }
 
 function invalidarPainelMotoristasLocal() {
@@ -3709,13 +3786,14 @@ function atualizarTelaEncarregadoMotoristas() {
   if (!status || !areaAcesso || !botaoEntrar || !botaoSair) return;
 
   const tokenLocal = obterSessaoTokenEncarregadoMotoristasLocal();
-  if (tokenLocal && (!encarregadoMotoristasEquipeAtual ||
-      encarregadoMotoristasEquipeAtual.Sessao_Valida !== true)) {
+  if (tokenLocal && estadoEncarregadoMotoristasRecebido &&
+      sessaoEncarregadoMotoristasIdentificada !== true) {
     limparAcessoEncarregadoMotoristasLocal();
     invalidarPainelMotoristasLocal();
   }
 
   const autenticado = aparelhoAssumiuEncarregadoMotoristasAtual();
+  const identificado = aparelhoEstaIdentificadoComoEncarregadoMotoristas();
   const encarregado = encarregadoMotoristasEquipeAtual;
   status.classList.remove('sem-guarda', 'com-guarda');
   if (encarregado) {
@@ -3725,17 +3803,22 @@ function atualizarTelaEncarregadoMotoristas() {
     status.innerHTML = nome
       ? 'Encarregado em serviço neste ciclo:<br>' + escaparHtml(nome) +
         (rg ? ' — RG ' + escaparHtml(rg) : '') +
-        (autenticado ? '<br><small>Acesso ao livro ativo neste aparelho.</small>' : '')
+        (autenticado ? '<br><small>Acesso ao livro atual ativo neste aparelho.</small>' : '')
       : 'Há um Encarregado de Motoristas em serviço neste ciclo.';
   } else {
     status.classList.add('sem-guarda');
-    status.textContent = 'A função ainda não foi assumida neste ciclo. Entre com seu e-mail para assumir.';
+    status.textContent = identificado
+      ? 'A função ainda não foi assumida no ciclo atual.'
+      : 'A função ainda não foi assumida neste ciclo. Entre com seu e-mail para assumir.';
   }
 
-  areaAcesso.classList.toggle('oculto', autenticado);
-  botaoEntrar.classList.toggle('oculto', autenticado);
-  botaoSair.classList.toggle('oculto', !autenticado);
-  if (!autenticado) botaoEntrar.textContent = 'Assumir função';
+  areaAcesso.classList.toggle('oculto', identificado);
+  botaoEntrar.classList.toggle('oculto', identificado);
+  botaoSair.classList.toggle('oculto', !identificado);
+  botaoSair.textContent = encerramentoEncarregadoMotoristasPendente
+    ? 'Sair do aparelho' : 'Sair';
+  if (!identificado) botaoEntrar.textContent = 'Assumir função';
+  atualizarAcaoEncerramentoPendenteMotoristas();
   atualizarVisibilidadePainelComandante();
 }
 
@@ -3790,7 +3873,9 @@ function validarCodigoEncarregadoMotoristas() {
   google.script.run
     .withSuccessHandler(resposta => {
       const token = String(resposta && resposta.sessaoToken || '');
-      if (!token || !resposta || !resposta.encarregado) {
+      const encerramentoPendente = resposta && resposta.encerramentoPendente
+        ? resposta.encerramentoPendente : null;
+      if (!token || !resposta || (!resposta.encarregado && !encerramentoPendente)) {
         botao.disabled = false;
         botao.textContent = 'Confirmar e assumir';
         mostrarMensagem('O servidor não devolveu uma sessão válida. Tente novamente.', 'erro');
@@ -3798,8 +3883,18 @@ function validarCodigoEncarregadoMotoristas() {
       }
       localStorage.setItem('encarregado_motoristas_sessao_token', token);
       marcarInicioSessaoLocal('encarregado_motoristas_sessao_iniciada_em');
-      encarregadoMotoristasEquipeAtual = resposta.encarregado;
-      encarregadoMotoristasEquipeAtual.Sessao_Valida = true;
+      sessaoEncarregadoMotoristasIdentificada = resposta.sessaoIdentificada === true ||
+        !!encerramentoPendente || !!resposta.encarregado;
+      encerramentoEncarregadoMotoristasPendente = encerramentoPendente;
+      estadoEncarregadoMotoristasRecebido = true;
+      if (encerramentoPendente) {
+        if (encarregadoMotoristasEquipeAtual) {
+          encarregadoMotoristasEquipeAtual.Sessao_Valida = false;
+        }
+      } else {
+        encarregadoMotoristasEquipeAtual = resposta.encarregado;
+        encarregadoMotoristasEquipeAtual.Sessao_Valida = true;
+      }
       dadosCodigoEncarregadoMotoristas = null;
       limparCodigoEncarregadoMotoristasPendente();
       limparCodigoAcessoDaUrl();
@@ -3811,8 +3906,15 @@ function validarCodigoEncarregadoMotoristas() {
       atualizarTelaEncarregadoMotoristas();
       carregarIdentidadesEquipeServico(true);
       carregarPainelMotoristas();
-      mostrarMensagem((resposta && resposta.mensagem) ||
-        'Função de Encarregado de Motoristas assumida e livro liberado neste aparelho.', 'sucesso');
+      if (encerramentoPendente) {
+        expandirPerfilServico('perfilEncarregadoMotoristas', true);
+        setTimeout(() => abrirModalEncerrarServicoMotoristas(), 0);
+        mostrarMensagem((resposta && resposta.mensagem) ||
+          'Serviço anterior recuperado. Revise as observações e encerre o seu livro.', 'sucesso');
+      } else {
+        mostrarMensagem((resposta && resposta.mensagem) ||
+          'Função de Encarregado de Motoristas assumida e livro liberado neste aparelho.', 'sucesso');
+      }
     })
     .withFailureHandler(erro => {
       botao.disabled = false;
@@ -3824,6 +3926,8 @@ function validarCodigoEncarregadoMotoristas() {
 
 function sairAcessoEncarregadoMotoristas(exibirMensagem = true) {
   const token = obterSessaoTokenEncarregadoMotoristasLocal();
+  const possuiaEncerramentoPendente = !!encerramentoEncarregadoMotoristasPendente;
+  fecharModalEncerrarServicoMotoristas(false, true);
   limparAcessoEncarregadoMotoristasLocal();
   dadosCodigoEncarregadoMotoristas = null;
   limparCodigoEncarregadoMotoristasPendente();
@@ -3840,10 +3944,128 @@ function sairAcessoEncarregadoMotoristas(exibirMensagem = true) {
   }
   if (exibirMensagem) {
     mostrarMensagem(
-      'Acesso encerrado neste aparelho. A responsabilidade pelo ciclo permanece registrada.',
+      possuiaEncerramentoPendente
+        ? 'Acesso encerrado neste aparelho. O livro anterior continua pendente e pode ser recuperado por e-mail.'
+        : 'Acesso encerrado neste aparelho. A responsabilidade pelo ciclo permanece registrada.',
       'sucesso'
     );
   }
+}
+
+function abrirModalEncerrarServicoMotoristas() {
+  if (!aparelhoEstaIdentificadoComoEncarregadoMotoristas() ||
+      !encerramentoEncarregadoMotoristasPendente) {
+    mostrarMensagem('Não há um serviço anterior pendente de encerramento neste aparelho.', 'erro');
+    return;
+  }
+
+  fecharModalEventoMotoristas(false);
+  const modal = document.getElementById('modalEncerrarServicoMotoristas');
+  const resumo = document.getElementById('resumoModalEncerrarServicoMotoristas');
+  const observacoes = document.getElementById('observacoesEncerramentoMotoristas');
+  const botao = document.getElementById('btnConfirmarEncerramentoMotoristas');
+  if (!modal || !resumo || !observacoes || !botao) {
+    mostrarMensagem('A janela de encerramento não está disponível. Atualize a página e tente novamente.', 'erro');
+    return;
+  }
+
+  focoAntesDoModalEncerramentoMotoristas = document.activeElement;
+  resumo.textContent = 'Livro de ' +
+    descreverEncerramentoPendenteMotoristas(encerramentoEncarregadoMotoristasPendente);
+  observacoes.value = '';
+  botao.disabled = false;
+  botao.textContent = 'Encerrar serviço';
+  encerramentoServicoMotoristasEmAndamento = false;
+  definirMensagemModalMotoristas('mensagemEncerramentoMotoristas', '', '');
+  modal.classList.remove('oculto');
+  document.body.classList.add('modal-motoristas-aberto');
+  setTimeout(() => observacoes.focus(), 0);
+}
+
+function fecharModalEncerrarServicoMotoristas(devolverFoco = true, forcar = false) {
+  const modal = document.getElementById('modalEncerrarServicoMotoristas');
+  if (!modal || modal.classList.contains('oculto')) return;
+  if (encerramentoServicoMotoristasEmAndamento && !forcar) return;
+
+  modal.classList.add('oculto');
+  encerramentoServicoMotoristasEmAndamento = false;
+  const observacoes = document.getElementById('observacoesEncerramentoMotoristas');
+  if (observacoes) observacoes.value = '';
+  definirMensagemModalMotoristas('mensagemEncerramentoMotoristas', '', '');
+  restaurarRolagemAposModalMotoristas();
+  if (devolverFoco && focoAntesDoModalEncerramentoMotoristas &&
+      typeof focoAntesDoModalEncerramentoMotoristas.focus === 'function') {
+    focoAntesDoModalEncerramentoMotoristas.focus({ preventScroll: true });
+  }
+  focoAntesDoModalEncerramentoMotoristas = null;
+}
+
+function encerrarServicoEncarregadoMotoristas(eventoSubmit) {
+  if (eventoSubmit) eventoSubmit.preventDefault();
+  if (encerramentoServicoMotoristasEmAndamento) return;
+
+  const tokenRequisicao = obterSessaoTokenEncarregadoMotoristasLocal();
+  if (!tokenRequisicao || !sessaoEncarregadoMotoristasIdentificada ||
+      !encerramentoEncarregadoMotoristasPendente) {
+    definirMensagemModalMotoristas(
+      'mensagemEncerramentoMotoristas',
+      'A sessão deste serviço não está mais disponível. Valide novamente o seu e-mail.',
+      'erro'
+    );
+    return;
+  }
+
+  const observacoes = String(
+    document.getElementById('observacoesEncerramentoMotoristas').value || ''
+  ).trim();
+  const botao = document.getElementById('btnConfirmarEncerramentoMotoristas');
+  const cancelar = document.getElementById('btnCancelarEncerramentoMotoristas');
+  const fechar = document.getElementById('btnFecharEncerramentoMotoristas');
+  encerramentoServicoMotoristasEmAndamento = true;
+  botao.disabled = true;
+  botao.textContent = 'Encerrando...';
+  if (cancelar) cancelar.disabled = true;
+  if (fechar) fechar.disabled = true;
+  definirMensagemModalMotoristas('mensagemEncerramentoMotoristas', '', '');
+
+  google.script.run
+    .withSuccessHandler(resposta => {
+      encerramentoServicoMotoristasEmAndamento = false;
+      if (cancelar) cancelar.disabled = false;
+      if (fechar) fechar.disabled = false;
+      if (tokenRequisicao === obterSessaoTokenEncarregadoMotoristasLocal()) {
+        fecharModalEncerrarServicoMotoristas(false, true);
+        limparAcessoEncarregadoMotoristasLocal();
+        if (encarregadoMotoristasEquipeAtual) {
+          encarregadoMotoristasEquipeAtual.Sessao_Valida = false;
+        }
+        invalidarPainelMotoristasLocal();
+        atualizarTelaEncarregadoMotoristas();
+        carregarIdentidadesEquipeServico(true);
+      } else {
+        fecharModalEncerrarServicoMotoristas(false, true);
+      }
+      mostrarMensagem((resposta && resposta.mensagem) ||
+        'Serviço do Encarregado de Motoristas encerrado.', 'sucesso');
+    })
+    .withFailureHandler(erro => {
+      if (tokenRequisicao !== obterSessaoTokenEncarregadoMotoristasLocal()) {
+        encerramentoServicoMotoristasEmAndamento = false;
+        fecharModalEncerrarServicoMotoristas(false, true);
+        return;
+      }
+      encerramentoServicoMotoristasEmAndamento = false;
+      botao.disabled = false;
+      botao.textContent = 'Encerrar serviço';
+      if (cancelar) cancelar.disabled = false;
+      if (fechar) fechar.disabled = false;
+      definirMensagemModalMotoristas(
+        'mensagemEncerramentoMotoristas',
+        (erro && erro.message) || 'Não foi possível encerrar o serviço.',
+        'erro'
+      );
+    })
+    .encerrarServicoEncarregadoMotoristas(observacoes);
 }
 
 function salvarCodigoOficialPendente(email) {
@@ -3958,7 +4180,7 @@ function aparelhoTemAcessoPainelGestao() {
     statusToqueFogoAtual &&
     statusToqueFogoAtual.sessaoValida === true
   );
-  const encarregadoMotoristasAutenticado = aparelhoAssumiuEncarregadoMotoristasAtual();
+  const encarregadoMotoristasAutenticado = aparelhoEstaIdentificadoComoEncarregadoMotoristas();
 
   return aparelhoAssumiuComandanteAtual() ||
     aparelhoAssumiuOficialAtual() ||
@@ -3979,7 +4201,7 @@ function aparelhoTemOutroAcessoPainelGestao() {
 
   return aparelhoAssumiuComandanteAtual() ||
     aparelhoAssumiuOficialAtual() ||
-    aparelhoAssumiuEncarregadoMotoristasAtual() ||
+    aparelhoEstaIdentificadoComoEncarregadoMotoristas() ||
     guardaAutenticado ||
     toqueAutenticado;
 }
@@ -4713,6 +4935,7 @@ function atualizarVisibilidadePainelMotoristas() {
     assinaturaPainelMotoristasCarregado = '';
     limparConteudoPainelMotoristas();
     fecharModalEventoMotoristas(false);
+    fecharModalEncerrarServicoMotoristas(false, true);
     return;
   }
 
@@ -4851,6 +5074,12 @@ function renderizarPainelMotoristas(painel) {
   const encarregado = painelMotoristasAtual.encarregado || null;
   const permissoes = painelMotoristasAtual.permissoes || {};
   const podeEditar = permissoes.podeEditar === true;
+  const podeEncerrar = permissoes.podeEncerrar === true;
+
+  if (podeEncerrar && painelMotoristasAtual.encerramentoPendente) {
+    encerramentoEncarregadoMotoristasPendente = painelMotoristasAtual.encerramentoPendente;
+    sessaoEncarregadoMotoristasIdentificada = true;
+  }
 
   if (!podeEditar) fecharModalEventoMotoristas(false);
 
@@ -4874,9 +5103,16 @@ function renderizarPainelMotoristas(painel) {
   const perfilTexto = valorCampoMotoristas(permissoes, 'perfil', 'Perfil');
   perfil.textContent = [origem ? 'Origem: ' + origem : '', perfilTexto ? 'Seu acesso: ' + perfilTexto : '']
     .filter(Boolean).join(' • ');
-  document.getElementById('avisoSomenteLeituraMotoristas').classList.add('oculto');
+  const avisoSomenteLeitura = document.getElementById('avisoSomenteLeituraMotoristas');
+  avisoSomenteLeitura.classList.toggle('oculto', podeEditar);
+  if (!podeEditar) {
+    avisoSomenteLeitura.textContent = podeEncerrar
+      ? 'Este ciclo já terminou. O livro está somente para consulta; use “Encerrar serviço” para concluí-lo com as observações finais.'
+      : 'Este livro está disponível somente para consulta neste aparelho.';
+  }
   document.getElementById('atualizadoEmPainelMotoristas').textContent = painelMotoristasAtual.atualizadoEm
     ? 'Atualizado em ' + painelMotoristasAtual.atualizadoEm : '';
+  atualizarAcaoEncerramentoPendenteMotoristas();
   preencherListasMilitaresMotoristas();
   selecionarAbaPainelMotoristas(abaPainelMotoristasAtual, false);
 }
@@ -5630,7 +5866,7 @@ function salvarEventoMotoristas(eventoSubmit) {
 }
 
 function obterModalMotoristasAberto() {
-  return ['modalEventoMotoristas']
+  return ['modalEventoMotoristas', 'modalEncerrarServicoMotoristas']
     .map(id => document.getElementById(id))
     .find(modal => modal && !modal.classList.contains('oculto')) || null;
 }
