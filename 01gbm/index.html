@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.0.9">
+  <link rel="stylesheet" href="style.css?v=27.0.12">
   </head>
 
   <body>
@@ -209,10 +209,10 @@
           </div>
         </section>
 
-        <section class="card painel-comandante" id="cardPainelComandante">
+        <section class="card painel-comandante painel-consulta-servico" id="cardPainelComandante">
           <div class="cabecalho-painel-comandante">
             <div>
-              <h2>Painel de Gestão do Serviço</h2>
+              <h2>Informações do serviço</h2>
               <span id="cicloPainelComandante">Ciclo das 08h às 08h</span>
             </div>
             <div class="acoes-cabecalho-painel-gestao">
@@ -311,24 +311,74 @@
               </div>
             </div>
 
-            <div id="acaoLancamentoRetroativo" class="acao-lancamento-retroativo oculto">
-              <div>
-                <strong>Ação exclusiva do Comandante</strong>
-                <span>Corrigir uma movimentação individual que ocorreu dentro do ciclo atual.</span>
-              </div>
-              <button type="button" id="btnAbrirLancamentoRetroativo" onclick="abrirLancamentoRetroativo()"
-                aria-controls="blocoLancamentoRetroativo" aria-expanded="false">
-                Lançar horário anterior
-              </button>
-            </div>
-
             <div id="atualizadoEmPainelComandante" class="rodape-painel-comandante"></div>
           </div>
         </section>
 
+        <section class="card card-historico oculto" id="cardConsultaHistorico">
+          <div class="cabecalho-historico">
+            <div>
+              <h2>Consultar histórico</h2>
+              <span>Pesquise movimentações antigas sem depender dos PDFs.</span>
+            </div>
+            <button type="button" id="btnAlternarConsultaHistorico" class="botao-alternar-historico"
+              aria-label="Expandir Consultar histórico" aria-expanded="false" aria-controls="conteudoConsultaHistorico"
+              onclick="alternarConsultaHistorico()">
+              <span class="icone-alternar-secao-painel" aria-hidden="true"></span>
+            </button>
+          </div>
+
+          <div id="conteudoConsultaHistorico" class="conteudo-consulta-historico oculto">
+            <a id="linkArquivoHistorico" class="link-arquivo-historico oculto" href="#" target="_blank" rel="noopener">
+              Abrir arquivo anual
+            </a>
+
+            <div class="filtros-historico">
+              <div class="campo">
+                <label for="historicoDataInicio">De</label>
+                <input type="date" id="historicoDataInicio">
+              </div>
+              <div class="campo">
+                <label for="historicoDataFim">Até</label>
+                <input type="date" id="historicoDataFim">
+              </div>
+              <div class="campo campo-busca-historico">
+                <label for="historicoTermo">Pessoa, RG/CPF, Auto/VTR ou local</label>
+                <input type="search" id="historicoTermo" placeholder="Digite para filtrar">
+              </div>
+              <div class="campo">
+                <label for="historicoTipo">Movimentação</label>
+                <select id="historicoTipo">
+                  <option value="">Todas</option>
+                  <option value="Entrada">Entrada</option>
+                  <option value="Saída">Saída</option>
+                </select>
+              </div>
+              <div class="campo">
+                <label for="historicoCategoria">Categoria</label>
+                <select id="historicoCategoria">
+                  <option value="">Todas</option>
+                  <option value="Militar">Militar</option>
+                  <option value="Colaborador">Colaborador</option>
+                  <option value="Visitante">Visitante</option>
+                </select>
+              </div>
+              <button type="button" id="btnConsultarHistorico" class="botao-pesquisar-historico" onclick="consultarHistorico()">Pesquisar</button>
+            </div>
+
+            <div id="resumoHistorico" class="resumo-historico">Informe o período e toque em Pesquisar.</div>
+            <div id="listaHistorico" class="lista-painel lista-historico"></div>
+          </div>
+        </section>
+
+        <section class="card bloco-competencia bloco-competencia-comandante" id="blocoComandanteGuarda"
+          aria-labelledby="tituloCompetenciaComandante">
         <section class="card card-guarda card-comandante perfil-servico" id="perfilComandante">
           <div class="cabecalho-card-guarda">
-            <h2>Comandante da Guarda</h2>
+            <div>
+              <span class="rotulo-competencia">Gestão do serviço</span>
+              <h2 id="tituloCompetenciaComandante">Comandante da Guarda</h2>
+            </div>
 
             <div class="acoes-guarda">
               <button type="button" id="btnTrocarComandante" class="botao-trocar oculto" onclick="mostrarAreaTrocaComandante()">
@@ -336,7 +386,7 @@
               </button>
 
               <button type="button" id="btnEncerrarComandante" class="botao-sair oculto" onclick="encerrarComandante()">
-                Sair
+                Encerrar serviço
               </button>
             </div>
           </div>
@@ -385,18 +435,15 @@
             </button>
           </div>
         </section>
-
-        <section class="card card-guarda card-comandante perfil-servico" id="perfilOficial">
-          <div class="cabecalho-card-guarda">
-            <h2>Oficial de Dia</h2>
-            <div class="acoes-guarda">
-              <button type="button" id="btnAbrirAcessoOficial" class="botao-trocar oculto" aria-expanded="false" aria-controls="areaAcessoPainelOficial" onclick="alternarAcessoPainelOficial()">Acessar painel</button>
-              <button type="button" id="btnEditarOficialDia" class="botao-trocar oculto" aria-expanded="false" onclick="mostrarDesignacaoOficialDia()">Informar</button>
+          <div id="competenciasExclusivasComandante" class="conteudo-competencia oculto">
+            <p class="descricao-competencia">Competências exclusivas do Comandante da Guarda deste serviço.</p>
+            <div class="acao-competencia" id="acaoDesignacaoOficialDia">
+              <div>
+                <strong>Oficial de Dia</strong>
+                <span>Informar ou alterar o oficial responsável pelo ciclo atual.</span>
+              </div>
+              <button type="button" id="btnEditarOficialDia" class="botao-trocar oculto" aria-expanded="false" aria-controls="areaDesignarOficial" onclick="mostrarDesignacaoOficialDia()">Informar</button>
             </div>
-          </div>
-
-          <div id="statusOficial" class="status-guarda">Carregando Oficial de Dia...</div>
-
           <div id="areaDesignarOficial" class="area-designar-oficial oculto">
             <div class="campo campo-sem-margem">
               <label>Oficial de Dia deste serviço</label>
@@ -408,12 +455,34 @@
             </div>
             <small>Informação válida para o ciclo atual, das 08h às 08h. O oficial indicado não precisa entrar no aplicativo.</small>
           </div>
+            <div id="acaoLancamentoRetroativo" class="acao-lancamento-retroativo oculto">
+              <div>
+                <strong>Lançamento em horário anterior</strong>
+                <span>Corrigir uma movimentação individual que ocorreu dentro do ciclo atual.</span>
+              </div>
+              <button type="button" id="btnAbrirLancamentoRetroativo" onclick="abrirLancamentoRetroativo()"
+                aria-controls="blocoLancamentoRetroativo" aria-expanded="false">
+                Lançar horário anterior
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="card card-guarda card-comandante perfil-servico" id="perfilOficial">
+          <div class="cabecalho-card-guarda">
+            <h2>Oficial de Dia</h2>
+            <div class="acoes-guarda">
+              <button type="button" id="btnAbrirAcessoOficial" class="botao-trocar oculto" aria-expanded="false" aria-controls="areaAcessoPainelOficial" onclick="alternarAcessoPainelOficial()">Acessar painel</button>
+            </div>
+          </div>
+
+          <div id="statusOficial" class="status-guarda">Carregando Oficial de Dia...</div>
 
           <div id="areaAcessoPainelOficial" class="acesso-oficial-painel oculto">
             <div class="cabecalho-acesso-oficial">
               <div>
                 <strong>Acesso de oficiais ao painel</strong>
-                <span>Qualquer oficial lotado no 1º GBM pode validar o próprio e-mail e consultar o Painel de Gestão.</span>
+                <span>Qualquer oficial lotado no 1º GBM pode validar o próprio e-mail e consultar as informações do serviço.</span>
               </div>
               <button type="button" id="btnSairAcessoOficial" class="botao-sair oculto" onclick="sairAcessoOficial()">Sair</button>
             </div>
@@ -439,9 +508,14 @@
           </div>
         </section>
 
+        <section class="card bloco-competencia bloco-competencia-motoristas" id="blocoEncarregadoMotoristas"
+          aria-labelledby="tituloCompetenciaMotoristas">
         <section class="card card-guarda card-comandante perfil-servico" id="perfilEncarregadoMotoristas">
           <div class="cabecalho-card-guarda">
-            <h2>Encarregado de Motoristas</h2>
+            <div>
+              <span class="rotulo-competencia">Livro e controle da frota</span>
+              <h2 id="tituloCompetenciaMotoristas">Encarregado de Motoristas</h2>
+            </div>
             <div class="acoes-guarda">
               <button type="button" id="btnAbrirAcessoEncarregadoMotoristas" class="botao-trocar"
                 onclick="mostrarAreaAcessoEncarregadoMotoristas()">Assumir função</button>
@@ -483,7 +557,7 @@
           <div class="cabecalho-painel-motoristas">
             <div>
               <span class="sobretitulo-painel-motoristas">Livro de serviço</span>
-              <h2>Encarregado de Motoristas</h2>
+              <h2>Livro do serviço</h2>
               <span id="cicloPainelMotoristas">Ciclo das 08h às 08h</span>
             </div>
             <button type="button" id="btnAtualizarPainelMotoristas" class="botao-atualizar-motoristas"
@@ -552,61 +626,6 @@
           </div>
           <div id="atualizadoEmPainelMotoristas" class="rodape-painel-comandante"></div>
         </section>
-
-        <section class="card card-historico oculto" id="cardConsultaHistorico">
-          <div class="cabecalho-historico">
-            <div>
-              <h2>Consultar histórico</h2>
-              <span>Pesquise movimentações antigas sem depender dos PDFs.</span>
-            </div>
-            <button type="button" id="btnAlternarConsultaHistorico" class="botao-alternar-historico"
-              aria-label="Expandir Consultar histórico" aria-expanded="false" aria-controls="conteudoConsultaHistorico"
-              onclick="alternarConsultaHistorico()">
-              <span class="icone-alternar-secao-painel" aria-hidden="true"></span>
-            </button>
-          </div>
-
-          <div id="conteudoConsultaHistorico" class="conteudo-consulta-historico oculto">
-            <a id="linkArquivoHistorico" class="link-arquivo-historico oculto" href="#" target="_blank" rel="noopener">
-              Abrir arquivo anual
-            </a>
-
-            <div class="filtros-historico">
-              <div class="campo">
-                <label for="historicoDataInicio">De</label>
-                <input type="date" id="historicoDataInicio">
-              </div>
-              <div class="campo">
-                <label for="historicoDataFim">Até</label>
-                <input type="date" id="historicoDataFim">
-              </div>
-              <div class="campo campo-busca-historico">
-                <label for="historicoTermo">Pessoa, RG/CPF, Auto/VTR ou local</label>
-                <input type="search" id="historicoTermo" placeholder="Digite para filtrar">
-              </div>
-              <div class="campo">
-                <label for="historicoTipo">Movimentação</label>
-                <select id="historicoTipo">
-                  <option value="">Todas</option>
-                  <option value="Entrada">Entrada</option>
-                  <option value="Saída">Saída</option>
-                </select>
-              </div>
-              <div class="campo">
-                <label for="historicoCategoria">Categoria</label>
-                <select id="historicoCategoria">
-                  <option value="">Todas</option>
-                  <option value="Militar">Militar</option>
-                  <option value="Colaborador">Colaborador</option>
-                  <option value="Visitante">Visitante</option>
-                </select>
-              </div>
-              <button type="button" id="btnConsultarHistorico" class="botao-pesquisar-historico" onclick="consultarHistorico()">Pesquisar</button>
-            </div>
-
-            <div id="resumoHistorico" class="resumo-historico">Informe o período e toque em Pesquisar.</div>
-            <div id="listaHistorico" class="lista-painel lista-historico"></div>
-          </div>
         </section>
 
         <div id="avisoSemPermissaoLancamento" class="aviso-bloqueio oculto">
@@ -1052,7 +1071,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.0.11"></script>
+  <script src="app.js?v=27.0.12"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&

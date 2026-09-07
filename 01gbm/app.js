@@ -3346,7 +3346,7 @@ function atualizarTelaOficial() {
 
   const comandantePodeEditar = aparelhoAssumiuComandanteAtual();
   if (btnEditar) {
-    btnEditar.classList.remove('oculto');
+    btnEditar.classList.toggle('oculto', !comandantePodeEditar);
     btnEditar.title = comandantePodeEditar
       ? 'Informar ou alterar o Oficial de Dia'
       : 'Entre como Comandante da Guarda neste aparelho para informar o Oficial de Dia';
@@ -3370,7 +3370,6 @@ function mostrarDesignacaoOficialDia() {
     if (campoEmailComandante) campoEmailComandante.focus();
     return;
   }
-  expandirPerfilServico('perfilOficial', true);
   const area = document.getElementById('areaDesignarOficial');
   if (!area.classList.contains('oculto')) {
     fecharDesignacaoOficialDia();
@@ -3494,7 +3493,7 @@ function validarCodigoOficial() {
       atualizarVisibilidadePainelComandante();
       carregarIdentidadesEquipeServico(true);
       carregarPainelComandante();
-      mostrarMensagem('Acesso ao Painel de Gestão liberado.', 'sucesso');
+      mostrarMensagem('Acesso às informações do serviço liberado.', 'sucesso');
       botao.disabled = false;
       botao.textContent = 'Entrar';
     })
@@ -3578,8 +3577,8 @@ function limparAreaOficial() {
 }
 
   function inicializarEquipeServico() {
-    const perfis = ['perfilGuarda', 'cardToqueFogo', 'perfilComandante', 'perfilOficial',
-      'perfilEncarregadoMotoristas']
+    // Os perfis com competências próprias permanecem nos seus respectivos blocos.
+    const perfis = ['perfilGuarda', 'cardToqueFogo', 'perfilOficial']
       .map(id => document.getElementById(id))
       .filter(Boolean);
     if (!perfis.length || document.getElementById('cardEquipeServico')) return;
@@ -3599,7 +3598,7 @@ function limparAreaOficial() {
     const tituloEquipe = document.createElement('strong');
     tituloEquipe.textContent = 'Equipe de Serviço';
     const subtituloEquipe = document.createElement('small');
-    subtituloEquipe.textContent = 'Guarda, Toque de Fogo, Comandante, Oficial de Dia e Encarregado de Motoristas';
+    subtituloEquipe.textContent = 'Guarda, Toque de Fogo e Oficial de Dia';
     resumoEquipe.appendChild(tituloEquipe);
     resumoEquipe.appendChild(subtituloEquipe);
 
@@ -3928,7 +3927,7 @@ function atualizarTelaAcessoOficial() {
   status.classList.toggle('oculto', !autenticado);
   if (autenticado) {
     status.innerHTML = '<strong>' + escaparHtml(oficialAcessoAtual.Nome || 'Oficial do 1º GBM') +
-      '</strong><br>Acesso ao Painel de Gestão ativo neste aparelho.';
+      '</strong><br>Acesso às informações do serviço ativo neste aparelho.';
   }
   atualizarRotuloAcessoPainelOficial();
 }
@@ -4011,7 +4010,7 @@ function atualizarTelaComandante() {
       ? 'Comandante atual:<br>' + escaparHtml(comandanteAtual.Nome_Comandante) +
         ' — RG ' + escaparHtml(comandanteAtual.RG_Comandante) +
         (esteAparelhoReconhecido && !esteAparelhoAssumiu
-          ? '<br><small>Sessão expirada. Use Sair para receber um novo código no e-mail.</small>'
+          ? '<br><small>Sessão expirada. Use Encerrar serviço para receber um novo código no e-mail.</small>'
           : '')
       : 'O serviço já possui Comandante da Guarda.<br><small>Entre com seu e-mail para consultar ou trocar o responsável.</small>';
 
@@ -4036,6 +4035,7 @@ function atualizarTelaComandante() {
 
 function atualizarVisibilidadePainelComandante() {
   const painel = document.getElementById('cardPainelComandante');
+  const competencias = document.getElementById('competenciasExclusivasComandante');
   const historico = document.getElementById('cardConsultaHistorico');
   const acaoRetroativa = document.getElementById('acaoLancamentoRetroativo');
   const login = document.getElementById('areaLoginConsultaEfetivo');
@@ -4048,6 +4048,7 @@ function atualizarVisibilidadePainelComandante() {
   const comandanteNesteAparelho = aparelhoAssumiuComandanteAtual();
   const podeLancarHorarioAnterior = comandanteNesteAparelho &&
     permissoesPainelGestaoAtual.podeLancarHorarioAnterior === true;
+  if (competencias) competencias.classList.toggle('oculto', !comandanteNesteAparelho);
   painel.classList.remove('oculto');
   if (login) login.classList.toggle('oculto', possuiAcesso);
   if (conteudo) conteudo.classList.toggle('oculto', !possuiAcesso);
@@ -4278,7 +4279,7 @@ function carregarPainelComandante(silencioso = false) {
       if (!silencioso && !respostaObsoleta) {
         mostrarMensagem(
           sessaoConsultaInvalida
-            ? 'Sua sessão do Painel de Gestão expirou. Entre novamente com seu e-mail.'
+            ? 'Sua sessão de consulta expirou. Entre novamente com seu e-mail.'
             : 'Erro ao atualizar painel: ' + mensagemErro,
           'erro'
         );
@@ -5815,12 +5816,12 @@ function enviarCodigoParaEncerrarComandante() {
       if (!emailEncerramentoComandante) {
         document.getElementById('areaCodigoEncerrarComandante').classList.add('oculto');
         mostrarStatusAcaoComandante(
-          'O código foi solicitado, mas não foi possível identificar o e-mail do comandante atual. Atualize a página e use Sair novamente.',
+          'O código foi solicitado, mas não foi possível identificar o e-mail do comandante atual. Atualize a página e use Encerrar serviço novamente.',
           'erro'
         );
         mostrarMensagem('Não foi possível identificar o e-mail do comandante atual.', 'erro');
         botao.disabled = false;
-        botao.textContent = 'Sair';
+        botao.textContent = 'Encerrar serviço';
         return;
       }
 
@@ -5831,13 +5832,13 @@ function enviarCodigoParaEncerrarComandante() {
         'sucesso'
       );
       botao.disabled = false;
-      botao.textContent = 'Sair';
+      botao.textContent = 'Encerrar serviço';
     })
     .withFailureHandler((erro) => {
       mostrarStatusAcaoComandante('Não foi possível enviar o código: ' + erro.message, 'erro');
       mostrarMensagem('Erro ao enviar código do comandante: ' + erro.message, 'erro');
       botao.disabled = false;
-      botao.textContent = 'Sair';
+      botao.textContent = 'Encerrar serviço';
     })
     .enviarCodigoEncerrarComandante();
 }
@@ -5848,7 +5849,7 @@ function validarCodigoEEncerrarComandante() {
   const botao = document.getElementById('btnConfirmarEncerramentoComandante');
 
   if (!emailEncerramentoComandante) {
-    mostrarStatusAcaoComandante('Não foi possível identificar o e-mail. Use Sair para solicitar um novo código.', 'erro');
+    mostrarStatusAcaoComandante('Não foi possível identificar o e-mail. Use Encerrar serviço para solicitar um novo código.', 'erro');
     mostrarMensagem('Solicite um novo código de encerramento.', 'erro');
     return;
   }
@@ -6233,7 +6234,7 @@ function validarCodigoConsultaEfetivo() {
       atualizarTelaConsultaEfetivo();
       carregarIdentidadesEquipeServico(true);
       atualizarVisibilidadePainelComandante();
-      mostrarMensagem('E-mail validado. Painel de Gestão liberado neste aparelho.', 'sucesso');
+      mostrarMensagem('E-mail validado. Informações do serviço liberadas neste aparelho.', 'sucesso');
       botao.disabled = false;
       botao.textContent = 'Entrar';
     })

@@ -3036,3 +3036,131 @@ body.modal-motoristas-aberto {
   font-size: 11px;
   line-height: 1.35;
 }
+
+/* Competências: consulta comum, Comandante e Encarregado de Motoristas. */
+.painel-consulta-servico {
+  border-top: 0;
+}
+
+.bloco-competencia {
+  --cor-competencia: #0f766e;
+  --fundo-competencia: #f0fdfa;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  border-top: 5px solid var(--cor-competencia);
+}
+
+.bloco-competencia-motoristas {
+  --cor-competencia: #1d4ed8;
+  --fundo-competencia: #eff6ff;
+}
+
+.bloco-competencia > .perfil-servico {
+  padding: 16px !important;
+  background: var(--fundo-competencia);
+}
+
+.bloco-competencia > .perfil-servico .cabecalho-card-guarda {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.bloco-competencia > .perfil-servico .cabecalho-card-guarda h2 {
+  color: #0f172a;
+  font-size: 1.25rem;
+  line-height: 1.3;
+  margin: 4px 0 0;
+}
+
+.rotulo-competencia {
+  display: block;
+  color: var(--cor-competencia);
+  font-size: .875rem;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.bloco-competencia > .perfil-servico .status-guarda {
+  margin-top: 12px;
+  font-size: .875rem;
+  line-height: 1.5;
+}
+
+.bloco-competencia > .perfil-servico .acoes-guarda {
+  flex-wrap: wrap;
+}
+
+.bloco-competencia > .perfil-servico .acoes-guarda button,
+.acao-competencia > button {
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: .875rem;
+}
+
+.conteudo-competencia {
+  padding: 16px;
+}
+
+.descricao-competencia {
+  margin: 0 0 14px;
+  font-size: .875rem;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.acao-competencia {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+}
+
+.acao-competencia strong,
+.acao-competencia span {
+  display: block;
+  line-height: 1.5;
+}
+
+.acao-competencia strong {
+  font-size: 1rem;
+}
+
+.acao-competencia span {
+  margin-top: 4px;
+  color: #475569;
+  font-size: .875rem;
+}
+
+.acao-competencia > button {
+  flex: 0 0 auto;
+  border: 1px solid #99f6e4;
+  border-radius: 10px;
+  background: var(--fundo-competencia);
+  color: #115e59;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.conteudo-competencia .area-designar-oficial,
+.conteudo-competencia .acao-lancamento-retroativo {
+  margin-top: 14px;
+}
+
+.bloco-competencia > .card-painel-motoristas {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+}
+
+@media (max-width: 420px) {
+  .acao-competencia {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
