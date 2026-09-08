@@ -6806,6 +6806,61 @@ function podeToqueAssumirHoraNesteAparelho() {
   );
 }
 
+function obterEstadoAcaoToqueFogo_() {
+  const status = statusToqueFogoAtual || {};
+  const itemLocal = obterItemProgramacaoToqueLocal_();
+  const periodoLocal = String(itemLocal && itemLocal.periodo && itemLocal.periodo.nome || '')
+    .trim()
+    .toLowerCase();
+  const sessaoValida = !!(
+    estadoToqueFogoCarregado &&
+    obterSessaoTokenToqueLocal() &&
+    status.sessaoValida === true &&
+    itemLocal && itemLocal.toque
+  );
+
+  if (!sessaoValida || status.sessaoCoberturaAtiva === true) {
+    return { visivel: false, habilitado: false, texto: 'Assumir Hora', titulo: '' };
+  }
+
+  const periodoAtual = String(status.periodo && status.periodo.nome || '').trim().toLowerCase();
+  const periodoDaSessaoAtual = status.sessaoPeriodoAtual === true || periodoLocal === periodoAtual;
+  const toqueNoturnoProgramado = periodoLocal === 'noturno' && periodoAtual === 'diurno';
+
+  if (!periodoDaSessaoAtual && !toqueNoturnoProgramado) {
+    return { visivel: false, habilitado: false, texto: 'Assumir Hora', titulo: '' };
+  }
+
+  if (!guardaAtual) {
+    return {
+      visivel: true,
+      habilitado: false,
+      texto: 'Aguardando a Guarda assumir',
+      titulo: 'O botão será liberado quando houver Guarda de Serviço ativa.'
+    };
+  }
+
+  if (podeToqueAssumirHoraNesteAparelho()) {
+    return {
+      visivel: true,
+      habilitado: true,
+      texto: 'Assumir Hora',
+      titulo: 'Assumir imediatamente o posto do militar da hora.'
+    };
+  }
+
+  if (toqueNoturnoProgramado && typeof status.sessaoPodeAssumirHora === 'boolean') {
+    return {
+      visivel: true,
+      habilitado: false,
+      texto: 'Assumir Hora • disponível às 21h',
+      titulo: 'O Toque de Fogo noturno poderá assumir a hora a partir das 21h.'
+    };
+  }
+
+  return { visivel: false, habilitado: false, texto: 'Assumir Hora', titulo: '' };
+}
+
 function carregarStatusToqueFogo(silencioso = false) {
   carregarIdentidadesEquipeServico(silencioso, true);
 }
@@ -6842,6 +6897,22 @@ function obterProgramacaoToqueFogoExibicao() {
   ];
 }
 
+function obterItemProgramacaoToquePorPeriodo_(nomePeriodo) {
+  const alvo = String(nomePeriodo || '').trim().toLowerCase();
+  return obterProgramacaoToqueFogoExibicao().find(item =>
+    String(item && item.periodo && item.periodo.nome || '').trim().toLowerCase() === alvo
+  ) || null;
+}
+
+function obterItemProgramacaoToqueLocal_() {
+  const idLocal = normalizarIdOperacional(localStorage.getItem('toque_fogo_id_local'));
+  if (!idLocal) return null;
+
+  return obterProgramacaoToqueFogoExibicao().find(item =>
+    normalizarIdOperacional(item && item.toque && item.toque.ID_ToqueFogo) === idLocal
+  ) || null;
+}
+
 function obterPeriodoAlvoToqueFogo() {
   const campo = document.getElementById('periodoAlvoToqueFogo');
   return campo && campo.value === 'Noturno' ? 'Noturno' : 'Diurno';
@@ -6849,10 +6920,20 @@ function obterPeriodoAlvoToqueFogo() {
 
 function atualizarTituloDefinicaoToqueFogo() {
   const periodo = obterPeriodoAlvoToqueFogo();
+  const itemPeriodo = obterItemProgramacaoToquePorPeriodo_(periodo);
+  const jaProgramado = !!(itemPeriodo && itemPeriodo.toque);
   const titulo = document.getElementById('tituloDefinicaoToqueFogo');
   const botao = document.getElementById('btnAssumirToqueFogo');
-  if (titulo) titulo.textContent = 'Definir Toque de Fogo ' + periodo.toLowerCase();
-  if (botao && !botao.disabled) botao.textContent = 'Confirmar Toque ' + periodo.toLowerCase();
+  if (titulo) {
+    titulo.textContent = jaProgramado
+      ? 'Entrar ou trocar Toque de Fogo ' + periodo.toLowerCase()
+      : 'Definir Toque de Fogo ' + periodo.toLowerCase();
+  }
+  if (botao && !botao.disabled) {
+    botao.textContent = jaProgramado
+      ? 'Continuar neste celular'
+      : 'Confirmar Toque ' + periodo.toLowerCase();
+  }
 }
 
 function renderizarProgramacaoToqueFogo() {
@@ -6887,7 +6968,14 @@ function renderizarProgramacaoToqueFogo() {
             (toque.RG_Toque ? ' — RG ' + escaparHtml(toque.RG_Toque) : '')
           : 'Militar definido')
       : 'Ainda não definido';
-    const rotuloBotao = periodoEncerrado ? 'Encerrado' : (toque ? 'Trocar' : 'Definir');
+    const idLocal = normalizarIdOperacional(localStorage.getItem('toque_fogo_id_local'));
+    const sessaoDestePeriodo = !!(
+      toque && status.sessaoValida === true && obterSessaoTokenToqueLocal() &&
+      idLocal === normalizarIdOperacional(toque.ID_ToqueFogo)
+    );
+    const rotuloBotao = periodoEncerrado
+      ? 'Encerrado'
+      : (toque ? (sessaoDestePeriodo ? 'Trocar' : 'Entrar / Trocar') : 'Definir');
 
     return '<div class="periodo-programado-toque' + (periodoAtual ? ' periodo-atual' : '') + '">' +
       '<div><strong>' + escaparHtml(nomePeriodo) + ' • ' + escaparHtml(periodo.faixa || '') +
@@ -6922,8 +7010,13 @@ function atualizarTelaToqueFogo() {
     alterarPeriodoAlvoToqueFogo();
   }
 
-  if (obterSessaoTokenToqueLocal() && status.sessaoValida === false) {
+  const idToqueLocal = normalizarIdOperacional(localStorage.getItem('toque_fogo_id_local'));
+  const tokenToqueArmazenado = localStorage.getItem('toque_fogo_sessao_token') || '';
+  const idContinuaProgramado = !!obterItemProgramacaoToqueLocal_();
+  if (idToqueLocal && !idContinuaProgramado) {
     limparToqueFogoLocal();
+  } else if (tokenToqueArmazenado && status.sessaoValida === false) {
+    invalidarSessaoToqueLocal();
   }
 
   if (toque) {
@@ -6967,9 +7060,19 @@ function atualizarTelaToqueFogo() {
     statusEl.innerHTML += '<br><small>' + mensagemSessao + '</small>';
   }
 
+  const existeToqueProgramado = obterProgramacaoToqueFogoExibicao().some(item =>
+    !!(item && item.toque)
+  );
+  if (existeToqueProgramado && status.sessaoValida !== true) {
+    statusEl.innerHTML += '<br><small>Para acessar os controles neste aparelho, use ' +
+      '<strong>Entrar / Trocar</strong> no período correto e valide seu e-mail.</small>';
+  }
+
   areaAssumir.classList.toggle('oculto', !loginToqueFogoAberto);
   btnTrocar.classList.remove('oculto');
-  btnTrocar.textContent = 'Definir / Trocar';
+  btnTrocar.textContent = existeToqueProgramado && status.sessaoValida !== true
+    ? 'Entrar neste celular'
+    : 'Definir / Trocar';
   renderizarProgramacaoToqueFogo();
 
   if (cobertura) {
@@ -6994,6 +7097,11 @@ function escolherPeriodoPadraoToqueFogo() {
   const programacao = obterProgramacaoToqueFogoExibicao().filter(item =>
     !(atual === 'Noturno' && item && item.periodo && item.periodo.nome === 'Diurno')
   );
+  const idLocal = normalizarIdOperacional(localStorage.getItem('toque_fogo_id_local'));
+  const periodoLocal = programacao.find(item =>
+    idLocal && normalizarIdOperacional(item && item.toque && item.toque.ID_ToqueFogo) === idLocal
+  );
+  if (periodoLocal && periodoLocal.periodo) return periodoLocal.periodo.nome;
   const faltanteAtual = programacao.find(item => item && item.periodo &&
     item.periodo.nome === atual && !item.toque);
   const faltante = faltanteAtual || programacao.find(item => item && !item.toque);
@@ -7018,8 +7126,8 @@ function mostrarAreaTrocaToqueFogo(periodoAlvo) {
   atualizarTituloDefinicaoToqueFogo();
   document.getElementById('areaAssumirToqueFogo').classList.remove('oculto');
   mostrarMensagem(
-    'Valide o e-mail do militar que ficará como Toque de Fogo ' +
-      obterPeriodoAlvoToqueFogo().toLowerCase() + '.',
+    'Valide o e-mail para acessar, definir ou trocar o Toque de Fogo ' +
+      obterPeriodoAlvoToqueFogo().toLowerCase() + ' neste celular.',
     'sucesso'
   );
 }
@@ -7120,7 +7228,7 @@ function assumirToqueFogo(encerrarAnterior = false, idToqueAnteriorEsperado = ''
   }
   const botao = document.getElementById('btnAssumirToqueFogo');
   botao.disabled = true;
-  botao.textContent = 'Definindo...';
+  botao.textContent = 'Processando...';
   const dados = {
     email: dadosCodigoToqueFogo.email,
     origemIdentificacao: dadosCodigoToqueFogo.encontradoNoEfetivo ? 'Efetivo' : 'Manual',
@@ -7191,6 +7299,10 @@ function salvarToqueFogoLocal(toque) {
 
 function limparToqueFogoLocal() {
   localStorage.removeItem('toque_fogo_id_local');
+  invalidarSessaoToqueLocal();
+}
+
+function invalidarSessaoToqueLocal() {
   localStorage.removeItem('toque_fogo_sessao_token');
   localStorage.removeItem('toque_fogo_sessao_iniciada_em');
 }
@@ -7242,12 +7354,18 @@ function atualizarAcoesCoberturaEPermissoes() {
   const btnRetomar = document.getElementById('btnRetomarPosto');
   const btnAssumirHora = document.getElementById('btnAssumirHoraToque');
   const retomarVisivel = podeGuardaRetomarNesteAparelho();
-  const assumirVisivel = podeToqueAssumirHoraNesteAparelho();
+  const estadoAssumir = obterEstadoAcaoToqueFogo_();
 
   if (btnRetomar) btnRetomar.classList.toggle('oculto', !retomarVisivel);
-  if (btnAssumirHora) btnAssumirHora.classList.toggle('oculto', !assumirVisivel);
+  if (btnAssumirHora) {
+    btnAssumirHora.classList.toggle('oculto', !estadoAssumir.visivel);
+    btnAssumirHora.disabled = !estadoAssumir.habilitado;
+    btnAssumirHora.textContent = estadoAssumir.texto;
+    btnAssumirHora.title = estadoAssumir.titulo;
+    btnAssumirHora.setAttribute('aria-disabled', estadoAssumir.habilitado ? 'false' : 'true');
+  }
 
-  manterAcoesCoberturaAcessiveis(retomarVisivel, assumirVisivel);
+  manterAcoesCoberturaAcessiveis(retomarVisivel, estadoAssumir.habilitado);
   atualizarPermissaoLancamento();
 }
 
