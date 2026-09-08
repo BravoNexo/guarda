@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.1.7">
+  <link rel="stylesheet" href="style.css?v=27.1.8">
   </head>
 
   <body>
@@ -527,7 +527,7 @@
 
           <div id="areaEncerramentoPendenteMotoristas" class="area-encerramento-pendente-motoristas oculto">
             <div>
-              <strong>Serviço anterior pendente</strong>
+              <strong id="tituloEncerramentoPendenteMotoristas">Serviço anterior pendente</strong>
               <span id="resumoEncerramentoPendenteMotoristas"></span>
             </div>
             <button type="button" onclick="abrirModalEncerrarServicoMotoristas()">Encerrar serviço</button>
@@ -1254,7 +1254,7 @@
 
         <form id="formEncerramentoMotoristas" onsubmit="encerrarServicoEncarregadoMotoristas(event)">
           <p id="descricaoModalEncerrarServicoMotoristas" class="descricao-modal-motoristas">
-            O próximo Encarregado já pode assumir normalmente. Este encerramento conclui apenas o seu livro anterior.
+            O encerramento fica disponível a partir das 07h. A responsabilidade do ciclo permanece válida até as 08h.
           </p>
           <div id="resumoModalEncerrarServicoMotoristas" class="resumo-modal-encerramento-motoristas"></div>
 
@@ -1276,7 +1276,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.7"></script>
+  <script src="app.js?v=27.1.8"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&
