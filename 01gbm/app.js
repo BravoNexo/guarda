@@ -230,7 +230,12 @@ function montarDadosChamadaApi(nome, argumentos) {
     case 'validarCodigoConsultaEfetivo':
       return { email: argumentos[0], codigo: argumentos[1] };
     case 'registrarSaidaRapidaPessoa':
-      return { idMovimentacaoEntrada: argumentos[0], sessaoToken: sessaoToken, sessaoToqueToken: sessaoToqueToken };
+      return {
+        idMovimentacaoEntrada: argumentos[0],
+        destino: argumentos[1],
+        sessaoToken: sessaoToken,
+        sessaoToqueToken: sessaoToqueToken
+      };
     case 'getDadosSOS':
       return {
         sessaoToken: sessaoToken,
@@ -4846,16 +4851,67 @@ function renderizarPessoasDentroGuarda(pessoas) {
 }
 
 function confirmarSaidaRapidaPessoa(pessoa, botao) {
+  const opcoesDestino = obterDestinosSaidaRapida_(pessoa);
+  if (!opcoesDestino.length) {
+    if (!destinos.length) {
+      carregarListas();
+      mostrarMensagem('As opções de destino ainda estão carregando. Tente novamente em instantes.', 'erro');
+    } else {
+      mostrarMensagem('Não há destino de saída disponível para esta pessoa.', 'erro');
+    }
+    return;
+  }
+
   abrirModalConfirmacao(
     'Registrar saída',
     'Confirma a saída de <strong>' + escaparHtml(pessoa.nome || 'pessoa não identificada') +
       '</strong>?<br><br>O registro ficará vinculado ao militar que está efetivamente no posto.',
-    () => registrarSaidaRapidaPessoaGuarda(pessoa.idMovimentacao, botao),
-    true
+    dadosConfirmacao => registrarSaidaRapidaPessoaGuarda(
+      pessoa.idMovimentacao,
+      dadosConfirmacao.destino,
+      botao
+    ),
+    true,
+    {
+      exibirDestino: true,
+      exigirDestino: true,
+      opcoesDestino: opcoesDestino,
+      destinoPadrao: 'Folga'
+    }
   );
 }
 
-function registrarSaidaRapidaPessoaGuarda(idMovimentacaoEntrada, botao) {
+function obterDestinosSaidaRapida_(pessoa) {
+  const tipoPessoa = normalizarTextoSeletorGuarnicao(pessoa && pessoa.tipoPessoa);
+  const pessoaExterna = tipoPessoa.indexOf('VISITANTE') >= 0 ||
+    tipoPessoa.indexOf('COLABORADOR') >= 0 ||
+    tipoPessoa === 'PESSOA EXTERNA';
+  const encontrados = new Set();
+
+  return destinos
+    .filter(item => {
+      const ativo = normalizarTextoSeletorGuarnicao(item.Ativo) === 'SIM';
+      const saida = normalizarTextoSeletorGuarnicao(item.Tipo_Movimentacao) === 'SAIDA';
+      const permitido = !pessoaExterna ||
+        normalizarTextoSeletorGuarnicao(item.Permitido_Para_Visitante) === 'SIM';
+      return ativo && saida && permitido && String(item.Destino || '').trim();
+    })
+    .sort((a, b) => {
+      const folgaA = normalizarTextoSeletorGuarnicao(a.Destino) === 'FOLGA';
+      const folgaB = normalizarTextoSeletorGuarnicao(b.Destino) === 'FOLGA';
+      if (folgaA !== folgaB) return folgaA ? -1 : 1;
+      return Number(a.Ordem || 999) - Number(b.Ordem || 999);
+    })
+    .map(item => String(item.Destino || '').trim())
+    .filter(destino => {
+      const chave = normalizarTextoSeletorGuarnicao(destino);
+      if (!chave || encontrados.has(chave)) return false;
+      encontrados.add(chave);
+      return true;
+    });
+}
+
+function registrarSaidaRapidaPessoaGuarda(idMovimentacaoEntrada, destino, botao) {
   if (!garantirPermissaoOperacionalAtual()) return;
 
   if (botao) {
@@ -4888,7 +4944,7 @@ function registrarSaidaRapidaPessoaGuarda(idMovimentacaoEntrada, botao) {
       carregarPessoasDentroGuarda(true);
       carregarMovimentacoesGuarda(true);
     })
-    .registrarSaidaRapidaPessoa(idMovimentacaoEntrada);
+    .registrarSaidaRapidaPessoa(idMovimentacaoEntrada, destino);
 }
 
 function inicializarPainelMotoristas() {
@@ -6261,8 +6317,9 @@ function aparelhoReconheceComandanteAtual() {
 
 let acaoConfirmadaModal = null;
 let focoAntesModalConfirmacao = null;
+let configuracaoModalConfirmacao = {};
 
-function abrirModalConfirmacao(titulo, texto, callback, estilo = false) {
+function abrirModalConfirmacao(titulo, texto, callback, estilo = false, configuracao = {}) {
   document.getElementById('modalTitulo').textContent = titulo;
   document.getElementById('modalTexto').innerHTML = texto;
 
@@ -6277,6 +6334,10 @@ function abrirModalConfirmacao(titulo, texto, callback, estilo = false) {
   if (botaoCancelar) botaoCancelar.textContent = estiloModal === 'retroativo'
     ? 'Voltar e revisar'
     : 'Cancelar';
+  configuracaoModalConfirmacao = configuracao && typeof configuracao === 'object'
+    ? configuracao
+    : {};
+  configurarDestinoModalConfirmacao_(configuracaoModalConfirmacao);
   acaoConfirmadaModal = typeof callback === 'function' ? callback : null;
   botaoConfirmar.onclick = confirmarAcaoModal;
 
@@ -6291,21 +6352,72 @@ function abrirModalConfirmacao(titulo, texto, callback, estilo = false) {
 }
 
 function confirmarAcaoModal() {
+  const selectDestino = document.getElementById('destinoModalConfirmacao');
+  const destino = selectDestino && !selectDestino.disabled
+    ? String(selectDestino.value || '').trim()
+    : '';
+  if (configuracaoModalConfirmacao.exigirDestino && !destino) {
+    if (selectDestino) {
+      selectDestino.setCustomValidity('Selecione o destino.');
+      selectDestino.reportValidity();
+    } else {
+      mostrarMensagem('Selecione o destino.', 'erro');
+    }
+    return;
+  }
+  if (selectDestino) selectDestino.setCustomValidity('');
+
   const callback = acaoConfirmadaModal;
+  const dadosConfirmacao = { destino: destino };
   fecharModalConfirmacao();
-  if (typeof callback === 'function') callback();
+  if (typeof callback === 'function') callback(dadosConfirmacao);
 }
 
 function fecharModalConfirmacao() {
   const modal = document.getElementById('modalConfirmacao');
   const app = document.querySelector('.app');
   acaoConfirmadaModal = null;
+  configuracaoModalConfirmacao = {};
   if (modal) modal.classList.add('oculto');
+  configurarDestinoModalConfirmacao_({});
   if (app) app.removeAttribute('inert');
   if (focoAntesModalConfirmacao && typeof focoAntesModalConfirmacao.focus === 'function') {
     focoAntesModalConfirmacao.focus();
   }
   focoAntesModalConfirmacao = null;
+}
+
+function configurarDestinoModalConfirmacao_(configuracao) {
+  const campo = document.getElementById('campoDestinoModalConfirmacao');
+  const select = document.getElementById('destinoModalConfirmacao');
+  if (!campo || !select) return;
+
+  const exibir = configuracao && configuracao.exibirDestino === true;
+  const opcoes = exibir && Array.isArray(configuracao.opcoesDestino)
+    ? configuracao.opcoesDestino
+    : [];
+  campo.classList.toggle('oculto', !exibir);
+  select.disabled = !exibir;
+  select.required = exibir && configuracao.exigirDestino === true;
+  select.setCustomValidity('');
+  select.innerHTML = '';
+
+  opcoes.forEach(valor => {
+    const destino = String(valor || '').trim();
+    if (!destino) return;
+    const option = document.createElement('option');
+    option.value = destino;
+    option.textContent = destino;
+    select.appendChild(option);
+  });
+
+  const destinoPadrao = normalizarTextoSeletorGuarnicao(
+    configuracao && configuracao.destinoPadrao
+  );
+  const opcaoPadrao = Array.from(select.options).find(option => {
+    return normalizarTextoSeletorGuarnicao(option.value) === destinoPadrao;
+  });
+  if (opcaoPadrao) select.value = opcaoPadrao.value;
 }
 
 // Mantém os controles do modal disponíveis para eventos inline e fluxos de troca.
