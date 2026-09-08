@@ -3880,8 +3880,7 @@ function atualizarTelaEncarregadoMotoristas() {
   areaAcesso.classList.toggle('oculto', identificado);
   botaoEntrar.classList.toggle('oculto', identificado);
   botaoSair.classList.toggle('oculto', !identificado);
-  botaoSair.textContent = encerramentoEncarregadoMotoristasPendente
-    ? 'Sair do aparelho' : 'Sair';
+  botaoSair.textContent = 'Encerrar Serviço';
   if (!identificado) botaoEntrar.textContent = 'Assumir função';
   atualizarAcaoEncerramentoPendenteMotoristas();
   atualizarVisibilidadePainelComandante();
@@ -4015,6 +4014,26 @@ function sairAcessoEncarregadoMotoristas(exibirMensagem = true) {
       'sucesso'
     );
   }
+}
+
+function acionarEncerramentoServicoMotoristas() {
+  if (encerramentoEncarregadoMotoristasPendente) {
+    abrirModalEncerrarServicoMotoristas();
+    return;
+  }
+
+  if (aparelhoEstaIdentificadoComoEncarregadoMotoristas()) {
+    mostrarMensagem(
+      'O encerramento deste serviço ficará disponível ao fim do ciclo, às 08h. Até lá, o livro permanece ativo neste aparelho.',
+      'erro'
+    );
+    return;
+  }
+
+  mostrarMensagem(
+    'Entre com o e-mail do Encarregado de Motoristas para encerrar o serviço.',
+    'erro'
+  );
 }
 
 function abrirModalEncerrarServicoMotoristas() {
