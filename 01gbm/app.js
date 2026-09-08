@@ -278,6 +278,13 @@ function montarDadosChamadaApi(nome, argumentos) {
         sessaoToqueToken: sessaoToqueToken,
         sessaoComandanteToken: sessaoComandanteToken
       };
+    case 'corrigirIdentificacaoPessoa':
+      return {
+        idMovimentacaoReferencia: argumentos[0],
+        versaoEsperada: argumentos[1],
+        correcao: argumentos[2] || {},
+        sessaoComandanteToken: sessaoComandanteToken
+      };
     case 'registrarMovimentacaoRetroativa':
       return { movimentacao: argumentos[0], sessaoComandanteToken: sessaoComandanteToken };
     case 'enviarCodigoAssumirToqueFogo':
@@ -498,6 +505,7 @@ function criarExecutorAppsScript() {
     'buscarPessoasPorRgCpf',
     'registrarMovimentacao',
     'atualizarMovimentacao',
+    'corrigirIdentificacaoPessoa',
     'registrarMovimentacaoRetroativa',
     'enviarCodigoAssumirToqueFogo',
     'validarCodigoAssumirToqueFogo',
@@ -569,6 +577,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   let emailEncerramentoComandante = null;
   let painelComandanteCarregado = false;
   let painelComandanteEmCarregamento = false;
+  let atualizacaoPainelComandantePendente = false;
   let permissoesPainelGestaoAtual = { podeLancarHorarioAnterior: false };
   let painelMotoristasAtual = null;
   let painelMotoristasCarregado = false;
@@ -614,6 +623,10 @@ let tipoMovimentacaoAtual = 'Entrada';
   let focoAntesModalEdicaoMovimentacao = null;
   let edicaoMovimentacaoSalvando = false;
   let geracaoEdicaoMovimentacao = 0;
+  let movimentacaoCorrecaoIdentificacao = null;
+  let focoAntesModalCorrecaoIdentificacao = null;
+  let correcaoIdentificacaoSalvando = false;
+  let geracaoCorrecaoIdentificacao = 0;
 
   const ABAS_PAINEL_MOTORISTAS = {
     frota: {
@@ -982,6 +995,20 @@ let tipoMovimentacaoAtual = 'Entrada';
             evento.preventDefault();
             primeiro.focus();
           }
+        }
+        return;
+      }
+
+      const modalCorrecaoIdentificacao = document.getElementById('modalCorrigirIdentificacaoPessoa');
+      if (modalCorrecaoIdentificacao && !modalCorrecaoIdentificacao.classList.contains('oculto')) {
+        if (evento.key === 'Escape') {
+          evento.preventDefault();
+          if (!correcaoIdentificacaoSalvando) fecharModalCorrecaoIdentificacaoPessoa();
+          return;
+        }
+
+        if (evento.key === 'Tab') {
+          manterFocoDentroDoModal(evento, modalCorrecaoIdentificacao);
         }
         return;
       }
@@ -4295,6 +4322,16 @@ function atualizarTelaComandante() {
     limparComandanteLocal();
   }
 
+  const modalCorrecao = document.getElementById('modalCorrigirIdentificacaoPessoa');
+  if (!aparelhoAssumiuComandanteAtual() && modalCorrecao &&
+      !modalCorrecao.classList.contains('oculto') && !correcaoIdentificacaoSalvando) {
+    fecharModalCorrecaoIdentificacaoPessoa(false);
+    mostrarMensagem(
+      'A sessão do Comandante não está mais ativa. A correção foi cancelada.',
+      'erro'
+    );
+  }
+
   atualizarVisibilidadePainelComandante();
   atualizarVisibilidadeGuarnicoesServico();
   atualizarTelaOficial();
@@ -4498,10 +4535,15 @@ function renderizarHistorico(resultado) {
 
 function carregarPainelComandante(silencioso = false) {
   if (!aparelhoTemAcessoPainelGestao()) {
+    atualizacaoPainelComandantePendente = false;
     atualizarVisibilidadePainelComandante();
     return;
   }
-  if (painelComandanteEmCarregamento) return;
+  if (painelComandanteEmCarregamento) {
+    atualizacaoPainelComandantePendente = true;
+    painelComandanteCarregado = false;
+    return;
+  }
 
   const botao = document.getElementById('btnAtualizarPainelComandante');
   const assinaturaRequisicao = obterAssinaturaCredenciaisPainelGestao();
@@ -4510,6 +4552,7 @@ function carregarPainelComandante(silencioso = false) {
     consultaEfetivoAtual &&
     !aparelhoTemOutroAcessoPainelGestao()
   );
+  atualizacaoPainelComandantePendente = false;
   painelComandanteEmCarregamento = true;
 
   if (botao) {
@@ -4521,8 +4564,10 @@ function carregarPainelComandante(silencioso = false) {
     .withSuccessHandler((painel) => {
       painelComandanteEmCarregamento = false;
       const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaCredenciaisPainelGestao();
+      const atualizacaoPendente = atualizacaoPainelComandantePendente;
+      atualizacaoPainelComandantePendente = false;
 
-      if (!respostaObsoleta) {
+      if (!respostaObsoleta && !atualizacaoPendente) {
         renderizarPainelComandante(painel || {});
         painelComandanteCarregado = true;
       }
@@ -4532,7 +4577,7 @@ function carregarPainelComandante(silencioso = false) {
         botao.textContent = 'Atualizar';
       }
 
-      if (respostaObsoleta && aparelhoTemAcessoPainelGestao()) {
+      if ((respostaObsoleta || atualizacaoPendente) && aparelhoTemAcessoPainelGestao()) {
         painelComandanteCarregado = false;
         carregarPainelComandante(true);
       }
@@ -4540,12 +4585,14 @@ function carregarPainelComandante(silencioso = false) {
     .withFailureHandler((erro) => {
       painelComandanteEmCarregamento = false;
       const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaCredenciaisPainelGestao();
+      const atualizacaoPendente = atualizacaoPainelComandantePendente;
+      atualizacaoPainelComandantePendente = false;
       const mensagemErro = String(erro && erro.message || erro || '');
       const sessaoConsultaInvalida = !respostaObsoleta &&
         consultaEfetivoEraUnicoAcesso &&
         /valide o e-mail de um militar do 1º gbm para acessar o painel de gestão/i.test(mensagemErro);
 
-      if (!silencioso && !respostaObsoleta) {
+      if (!silencioso && !respostaObsoleta && !atualizacaoPendente) {
         mostrarMensagem(
           sessaoConsultaInvalida
             ? 'Sua sessão de consulta expirou. Entre novamente com seu e-mail.'
@@ -4570,7 +4617,7 @@ function carregarPainelComandante(silencioso = false) {
         return;
       }
 
-      if (respostaObsoleta && aparelhoTemAcessoPainelGestao()) {
+      if ((respostaObsoleta || atualizacaoPendente) && aparelhoTemAcessoPainelGestao()) {
         painelComandanteCarregado = false;
         carregarPainelComandante(true);
       }
@@ -4667,6 +4714,7 @@ function renderizarListaPessoasDentro(pessoas) {
     adicionarSeloMovimentacaoRetroativa(cabecalho, pessoa);
     item.appendChild(cabecalho);
     item.appendChild(criarDetalhesPessoaPainel(pessoa));
+    adicionarAcaoEdicaoMovimentacao_(item, pessoa, { somenteCorrecao: true });
     lista.appendChild(item);
   });
 }
@@ -4706,21 +4754,45 @@ function renderizarListaMovimentacoesRecentes(movimentacoes, idLista = 'listaMov
   });
 }
 
-function adicionarAcaoEdicaoMovimentacao_(item, movimentacao) {
-  if (!item || !movimentacao || movimentacao.podeEditar !== true) return;
+function adicionarAcaoEdicaoMovimentacao_(item, movimentacao, opcoes = {}) {
+  const podeEditar = !!(
+    movimentacao && movimentacao.podeEditar === true && opcoes.somenteCorrecao !== true
+  );
+  const podeCorrigir = !!(
+    movimentacao && movimentacao.podeCorrigirIdentificacao === true
+  );
+  if (!item || !movimentacao || (!podeEditar && !podeCorrigir)) {
+    return;
+  }
 
   const acoes = document.createElement('div');
   acoes.className = 'acoes-item-movimentacao';
 
-  const botao = document.createElement('button');
-  botao.type = 'button';
-  botao.className = 'botao-editar-movimentacao';
-  botao.textContent = 'Editar';
-  botao.setAttribute('aria-label', 'Editar movimentação de ' +
-    String(movimentacao.nome || 'pessoa não identificada'));
-  botao.onclick = () => abrirModalEdicaoMovimentacao(movimentacao, botao);
+  if (podeEditar) {
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'botao-editar-movimentacao';
+    botao.textContent = 'Editar';
+    botao.setAttribute('aria-label', 'Editar movimentação de ' +
+      String(movimentacao.nome || 'pessoa não identificada'));
+    botao.onclick = () => abrirModalEdicaoMovimentacao(movimentacao, botao);
+    acoes.appendChild(botao);
+  }
 
-  acoes.appendChild(botao);
+  if (podeCorrigir) {
+    const botaoCorrecao = document.createElement('button');
+    botaoCorrecao.type = 'button';
+    botaoCorrecao.className = 'botao-editar-movimentacao botao-corrigir-identificacao';
+    botaoCorrecao.textContent = 'Corrigir identificação';
+    botaoCorrecao.setAttribute('aria-label', 'Corrigir identificação de ' +
+      String(movimentacao.nome || 'pessoa não identificada'));
+    botaoCorrecao.onclick = () => abrirModalCorrecaoIdentificacaoPessoa(
+      movimentacao,
+      botaoCorrecao
+    );
+    acoes.appendChild(botaoCorrecao);
+  }
+
   item.appendChild(acoes);
 }
 
@@ -5038,6 +5110,259 @@ function salvarEdicaoMovimentacao(evento) {
       );
     })
     .atualizarMovimentacao(idMovimentacao, versaoEsperada, alteracoes);
+}
+
+function categoriaCorrecaoIdentificacao_(valor) {
+  const categoria = normalizarTextoSeletorGuarnicao(valor);
+  if (categoria.indexOf('COLABORADOR') >= 0) return 'Colaborador';
+  if (categoria.indexOf('VISITANTE') >= 0 || categoria === 'PESSOA EXTERNA') {
+    return 'Visitante';
+  }
+  return 'Militar';
+}
+
+function definirEstadoSalvamentoCorrecaoIdentificacao_(salvando) {
+  correcaoIdentificacaoSalvando = salvando === true;
+  const modal = document.getElementById('modalCorrigirIdentificacaoPessoa');
+  if (modal) modal.setAttribute('aria-busy', correcaoIdentificacaoSalvando ? 'true' : 'false');
+
+  [
+    'categoriaCorrecaoIdentificacao',
+    'nomeCorrecaoIdentificacao',
+    'documentoCorrecaoIdentificacao',
+    'motivoCorrecaoIdentificacao',
+    'btnFecharCorrecaoIdentificacao',
+    'btnCancelarCorrecaoIdentificacao',
+    'btnSalvarCorrecaoIdentificacao'
+  ].forEach(id => {
+    const controle = document.getElementById(id);
+    if (!controle) return;
+    controle.disabled = correcaoIdentificacaoSalvando;
+    if (id.indexOf('btn') === 0) {
+      controle.setAttribute(
+        'aria-disabled',
+        correcaoIdentificacaoSalvando ? 'true' : 'false'
+      );
+    }
+  });
+
+  const botaoSalvar = document.getElementById('btnSalvarCorrecaoIdentificacao');
+  if (botaoSalvar) {
+    botaoSalvar.textContent = correcaoIdentificacaoSalvando
+      ? 'Corrigindo...'
+      : 'Confirmar correção';
+  }
+}
+
+function mostrarMensagemCorrecaoIdentificacao_(texto, tipo = 'erro') {
+  const area = document.getElementById('mensagemCorrecaoIdentificacao');
+  if (!area) return;
+
+  const mensagem = String(texto || '').trim();
+  area.textContent = mensagem;
+  area.classList.remove('erro', 'sucesso');
+  area.classList.toggle('oculto', !mensagem);
+  if (!mensagem) return;
+
+  area.classList.add(tipo === 'sucesso' ? 'sucesso' : 'erro');
+  area.setAttribute('role', tipo === 'sucesso' ? 'status' : 'alert');
+  area.setAttribute('aria-live', tipo === 'sucesso' ? 'polite' : 'assertive');
+}
+
+function abrirModalCorrecaoIdentificacaoPessoa(movimentacao, botaoOrigem) {
+  if (correcaoIdentificacaoSalvando) return;
+  if (!movimentacao || movimentacao.podeCorrigirIdentificacao !== true ||
+      !aparelhoAssumiuComandanteAtual()) {
+    mostrarMensagem(
+      'Somente o Comandante da Guarda pode corrigir a identificação deste registro.',
+      'erro'
+    );
+    return;
+  }
+
+  const modal = document.getElementById('modalCorrigirIdentificacaoPessoa');
+  const formulario = document.getElementById('formCorrigirIdentificacaoPessoa');
+  if (!modal || !formulario) return;
+
+  geracaoCorrecaoIdentificacao += 1;
+  movimentacaoCorrecaoIdentificacao = Object.assign({}, movimentacao);
+  focoAntesModalCorrecaoIdentificacao = botaoOrigem || document.activeElement;
+  definirEstadoSalvamentoCorrecaoIdentificacao_(false);
+  formulario.reset();
+  mostrarMensagemCorrecaoIdentificacao_('');
+
+  const nomeResumo = document.getElementById('nomeResumoCorrecaoIdentificacao');
+  const metadadosResumo = document.getElementById('metadadosResumoCorrecaoIdentificacao');
+  if (nomeResumo) nomeResumo.textContent = movimentacao.nome || 'Pessoa não identificada';
+  if (metadadosResumo) {
+    metadadosResumo.textContent = [
+      movimentacao.tipoPessoa || 'Categoria não informada',
+      movimentacao.documento ? 'RG/CPF ' + movimentacao.documento : 'Documento não informado',
+      movimentacao.dataHora || ''
+    ].filter(Boolean).join(' • ');
+  }
+
+  const categoria = document.getElementById('categoriaCorrecaoIdentificacao');
+  const nome = document.getElementById('nomeCorrecaoIdentificacao');
+  const documento = document.getElementById('documentoCorrecaoIdentificacao');
+  const motivo = document.getElementById('motivoCorrecaoIdentificacao');
+  categoria.value = categoriaCorrecaoIdentificacao_(movimentacao.tipoPessoa);
+  nome.value = String(movimentacao.nome || '');
+  documento.value = String(movimentacao.documento || '');
+  [categoria, nome, documento, motivo].forEach(campo => campo.setCustomValidity(''));
+
+  const app = document.querySelector('.app');
+  if (app) app.setAttribute('inert', '');
+  modal.classList.remove('oculto');
+  setTimeout(() => categoria.focus(), 30);
+}
+
+function fecharModalCorrecaoIdentificacaoPessoa(restaurarFoco = true, forcar = false) {
+  if (correcaoIdentificacaoSalvando && !forcar) return false;
+
+  const modal = document.getElementById('modalCorrigirIdentificacaoPessoa');
+  const formulario = document.getElementById('formCorrigirIdentificacaoPessoa');
+  const app = document.querySelector('.app');
+  const focoAnterior = focoAntesModalCorrecaoIdentificacao;
+
+  geracaoCorrecaoIdentificacao += 1;
+  definirEstadoSalvamentoCorrecaoIdentificacao_(false);
+  if (modal) modal.classList.add('oculto');
+  if (formulario) formulario.reset();
+  mostrarMensagemCorrecaoIdentificacao_('');
+  if (app) app.removeAttribute('inert');
+  movimentacaoCorrecaoIdentificacao = null;
+  focoAntesModalCorrecaoIdentificacao = null;
+
+  if (restaurarFoco && focoAnterior && typeof focoAnterior.focus === 'function' &&
+      document.documentElement.contains(focoAnterior)) {
+    focoAnterior.focus();
+  }
+  return true;
+}
+
+function salvarCorrecaoIdentificacaoPessoa(evento) {
+  if (evento) evento.preventDefault();
+  if (correcaoIdentificacaoSalvando) return;
+  if (!aparelhoAssumiuComandanteAtual()) {
+    fecharModalCorrecaoIdentificacaoPessoa(false);
+    mostrarMensagem(
+      'A sessão do Comandante não está mais ativa. Entre novamente para fazer a correção.',
+      'erro'
+    );
+    return;
+  }
+  if (!movimentacaoCorrecaoIdentificacao ||
+      movimentacaoCorrecaoIdentificacao.podeCorrigirIdentificacao !== true) {
+    fecharModalCorrecaoIdentificacaoPessoa(false);
+    mostrarMensagem('Atualize o painel antes de tentar corrigir novamente.', 'erro');
+    return;
+  }
+
+  const versaoEsperada = movimentacaoCorrecaoIdentificacao.versao;
+  if (versaoEsperada === undefined || versaoEsperada === null || versaoEsperada === '') {
+    fecharModalCorrecaoIdentificacaoPessoa(false);
+    painelComandanteCarregado = false;
+    carregarPainelComandante(true);
+    mostrarMensagem('O registro foi atualizado. Abra-o novamente para corrigir.', 'erro');
+    return;
+  }
+
+  const categoria = document.getElementById('categoriaCorrecaoIdentificacao');
+  const nome = document.getElementById('nomeCorrecaoIdentificacao');
+  const documento = document.getElementById('documentoCorrecaoIdentificacao');
+  const motivo = document.getElementById('motivoCorrecaoIdentificacao');
+  const categoriaValor = String(categoria.value || '').trim();
+  const nomeValor = String(nome.value || '').trim().replace(/\s+/g, ' ');
+  const documentoValor = String(documento.value || '').replace(/\D/g, '');
+  const motivoValor = String(motivo.value || '').trim();
+
+  if (!categoriaValor) {
+    categoria.setCustomValidity('Selecione a categoria correta.');
+    categoria.reportValidity();
+    return;
+  }
+  categoria.setCustomValidity('');
+  if (nomeValor.length < 3) {
+    nome.setCustomValidity('Informe o nome completo da pessoa.');
+    nome.reportValidity();
+    return;
+  }
+  nome.setCustomValidity('');
+  if (documentoValor.length < 3 || documentoValor.length > 14) {
+    documento.setCustomValidity('Informe um RG/CPF válido, com 3 a 14 dígitos.');
+    documento.reportValidity();
+    return;
+  }
+  documento.setCustomValidity('');
+  if (!motivoValor) {
+    motivo.setCustomValidity('Informe o motivo da correção.');
+    motivo.reportValidity();
+    return;
+  }
+  motivo.setCustomValidity('');
+
+  const categoriaAtual = categoriaCorrecaoIdentificacao_(
+    movimentacaoCorrecaoIdentificacao.tipoPessoa
+  );
+  const nomeAtual = String(movimentacaoCorrecaoIdentificacao.nome || '')
+    .trim().replace(/\s+/g, ' ').toUpperCase();
+  const documentoAtual = String(movimentacaoCorrecaoIdentificacao.documento || '')
+    .replace(/\D/g, '');
+  if (categoriaValor === categoriaAtual && nomeValor.toUpperCase() === nomeAtual &&
+      documentoValor === documentoAtual) {
+    mostrarMensagemCorrecaoIdentificacao_(
+      'Altere ao menos um dado da identificação antes de confirmar.',
+      'erro'
+    );
+    return;
+  }
+
+  const idMovimentacao = movimentacaoCorrecaoIdentificacao.idMovimentacao;
+  const geracaoSolicitacao = geracaoCorrecaoIdentificacao;
+  mostrarMensagemCorrecaoIdentificacao_('');
+  definirEstadoSalvamentoCorrecaoIdentificacao_(true);
+
+  google.script.run
+    .withSuccessHandler(resposta => {
+      if (geracaoSolicitacao !== geracaoCorrecaoIdentificacao ||
+          !movimentacaoCorrecaoIdentificacao ||
+          String(movimentacaoCorrecaoIdentificacao.idMovimentacao || '') !==
+            String(idMovimentacao || '')) {
+        return;
+      }
+      definirEstadoSalvamentoCorrecaoIdentificacao_(false);
+      fecharModalCorrecaoIdentificacaoPessoa(false, true);
+      mostrarMensagem(
+        resposta && resposta.mensagem || 'Identificação corrigida com sucesso.',
+        'sucesso'
+      );
+
+      carregarPessoasDentroGuarda(true);
+      carregarMovimentacoesGuarda(true);
+      painelComandanteCarregado = false;
+      carregarPainelComandante(true);
+      carregarIdentidadesEquipeServico(true);
+    })
+    .withFailureHandler(erro => {
+      if (geracaoSolicitacao !== geracaoCorrecaoIdentificacao ||
+          !movimentacaoCorrecaoIdentificacao ||
+          String(movimentacaoCorrecaoIdentificacao.idMovimentacao || '') !==
+            String(idMovimentacao || '')) {
+        return;
+      }
+      definirEstadoSalvamentoCorrecaoIdentificacao_(false);
+      mostrarMensagemCorrecaoIdentificacao_(
+        'Não foi possível corrigir a identificação: ' + (erro.message || erro),
+        'erro'
+      );
+    })
+    .corrigirIdentificacaoPessoa(idMovimentacao, versaoEsperada, {
+      categoria: categoriaValor,
+      nome: nomeValor,
+      documento: documentoValor,
+      motivo: motivoValor
+    });
 }
 
 function criarDetalhesPessoaPainel(pessoa) {

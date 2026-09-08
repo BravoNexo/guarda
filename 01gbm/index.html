@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.1.5">
+  <link rel="stylesheet" href="style.css?v=27.1.6">
   </head>
 
   <body>
@@ -1039,6 +1039,85 @@
       </div>
     </div>
 
+    <div id="modalCorrigirIdentificacaoPessoa"
+      class="modal-fundo modal-correcao-identificacao-fundo oculto"
+      role="dialog" aria-modal="true" aria-labelledby="tituloModalCorrecaoIdentificacao"
+      aria-describedby="descricaoModalCorrecaoIdentificacao"
+      onclick="if (event.target === this) fecharModalCorrecaoIdentificacaoPessoa()">
+      <div class="modal-card modal-card-correcao-identificacao" tabindex="-1">
+        <div class="cabecalho-modal-edicao-movimentacao">
+          <div>
+            <span>Exclusivo do Comandante da Guarda</span>
+            <h3 id="tituloModalCorrecaoIdentificacao">Corrigir identificação</h3>
+          </div>
+          <button type="button" id="btnFecharCorrecaoIdentificacao"
+            class="fechar-modal-edicao-movimentacao" aria-label="Fechar correção"
+            onclick="fecharModalCorrecaoIdentificacaoPessoa()">×</button>
+        </div>
+
+        <p id="descricaoModalCorrecaoIdentificacao" class="descricao-modal-edicao-movimentacao">
+          A correção atualizará o cadastro e os registros vinculados desta pessoa no serviço atual.
+          O tipo e os horários das movimentações não serão alterados.
+        </p>
+
+        <div class="resumo-edicao-movimentacao resumo-correcao-identificacao"
+          aria-label="Identificação atualmente registrada">
+          <strong id="nomeResumoCorrecaoIdentificacao">Pessoa não identificada</strong>
+          <span id="metadadosResumoCorrecaoIdentificacao"></span>
+        </div>
+
+        <form id="formCorrigirIdentificacaoPessoa"
+          onsubmit="salvarCorrecaoIdentificacaoPessoa(event)">
+          <div class="campo campo-edicao-movimentacao">
+            <label for="categoriaCorrecaoIdentificacao">Categoria correta *</label>
+            <select id="categoriaCorrecaoIdentificacao" required
+              onchange="this.setCustomValidity('')">
+              <option value="Militar">Militar</option>
+              <option value="Colaborador">Colaborador</option>
+              <option value="Visitante">Visitante</option>
+            </select>
+          </div>
+
+          <div class="campo campo-edicao-movimentacao">
+            <label for="nomeCorrecaoIdentificacao">Nome completo *</label>
+            <input type="text" id="nomeCorrecaoIdentificacao" minlength="3" maxlength="150"
+              required autocomplete="off" oninput="this.setCustomValidity('')">
+          </div>
+
+          <div class="campo campo-edicao-movimentacao">
+            <label for="documentoCorrecaoIdentificacao">RG/CPF *</label>
+            <input type="text" id="documentoCorrecaoIdentificacao" minlength="3" maxlength="20"
+              required inputmode="numeric" autocomplete="off"
+              oninput="this.setCustomValidity('')">
+          </div>
+
+          <div class="campo campo-edicao-movimentacao campo-motivo-edicao-movimentacao">
+            <label for="motivoCorrecaoIdentificacao">Motivo da correção *</label>
+            <textarea id="motivoCorrecaoIdentificacao" rows="2" maxlength="500" required
+              placeholder="Ex.: colaborador cadastrado incorretamente como militar"
+              oninput="this.setCustomValidity('')"></textarea>
+            <small>A identificação anterior, a nova e o responsável ficarão registrados na auditoria.</small>
+          </div>
+
+          <div class="aviso-correcao-identificacao">
+            Cadastros originados do efetivo oficial não podem ser alterados aqui.
+          </div>
+
+          <div id="mensagemCorrecaoIdentificacao"
+            class="mensagem-modal-correcao oculto" role="status"
+            aria-live="polite" aria-atomic="true"></div>
+
+          <div class="acoes-modal-edicao-movimentacao">
+            <button type="button" id="btnCancelarCorrecaoIdentificacao" class="modal-cancelar"
+              onclick="fecharModalCorrecaoIdentificacaoPessoa()">Cancelar</button>
+            <button type="submit" id="btnSalvarCorrecaoIdentificacao" class="modal-confirmar">
+              Confirmar correção
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <div id="modalSeletorMilitarGuarnicao" class="modal-fundo modal-seletor-fundo oculto"
       role="dialog" aria-modal="true" aria-labelledby="tituloSeletorMilitarGuarnicao"
       onclick="if (event.target === this) fecharSeletorMilitarGuarnicaoServico()">
@@ -1197,7 +1276,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.5"></script>
+  <script src="app.js?v=27.1.6"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&

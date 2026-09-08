@@ -3258,7 +3258,9 @@ body.modal-motoristas-aberto {
 /* Edição auditada das movimentações do posto */
 .acoes-item-movimentacao {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: 8px;
   margin-top: 9px;
 }
 
@@ -3285,8 +3287,28 @@ body.modal-motoristas-aberto {
   outline-offset: 2px;
 }
 
+.botao-corrigir-identificacao {
+  border-color: #7c3aed;
+  background: #f5f3ff;
+  color: #5b21b6;
+}
+
+.botao-corrigir-identificacao:hover {
+  border-color: #6d28d9;
+  background: #ede9fe;
+  color: #4c1d95;
+}
+
+.botao-corrigir-identificacao:focus-visible {
+  outline-color: rgba(124, 58, 237, .24);
+}
+
 .modal-edicao-movimentacao-fundo {
   z-index: 100002;
+}
+
+.modal-correcao-identificacao-fundo {
+  z-index: 100003;
 }
 
 .modal-card-edicao-movimentacao {
@@ -3295,6 +3317,18 @@ body.modal-motoristas-aberto {
   max-height: calc(100vh - 36px);
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.modal-card-correcao-identificacao {
+  width: min(100%, 560px);
+  max-width: 560px;
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.modal-correcao-identificacao-fundo[aria-busy="true"] .modal-card-correcao-identificacao {
+  cursor: progress;
 }
 
 .cabecalho-modal-edicao-movimentacao {
@@ -3367,6 +3401,43 @@ body.modal-motoristas-aberto {
   line-height: 1.4;
 }
 
+.resumo-correcao-identificacao {
+  border-color: #ddd6fe;
+  background: #f5f3ff;
+}
+
+.aviso-correcao-identificacao {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.mensagem-modal-correcao {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.mensagem-modal-correcao.erro {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.mensagem-modal-correcao.sucesso {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
 .grade-edicao-movimentacao {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3418,12 +3489,14 @@ body.modal-motoristas-aberto {
 }
 
 @media (max-width: 600px) {
-  .modal-edicao-movimentacao-fundo {
+  .modal-edicao-movimentacao-fundo,
+  .modal-correcao-identificacao-fundo {
     align-items: flex-end;
     padding: 0;
   }
 
-  .modal-card-edicao-movimentacao {
+  .modal-card-edicao-movimentacao,
+  .modal-card-correcao-identificacao {
     width: 100%;
     max-width: none;
     max-height: 94vh;
