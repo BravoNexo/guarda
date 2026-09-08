@@ -3658,6 +3658,11 @@ function limparAreaOficial() {
     perfis[0].parentNode.insertBefore(card, perfis[0]);
     perfis.forEach(perfil => conteudo.appendChild(perfil));
 
+    const cardMovimentacao = document.getElementById('cardMovimentacao');
+    if (cardMovimentacao && card.parentNode) {
+      card.parentNode.insertBefore(cardMovimentacao, card.nextSibling);
+    }
+
     card.querySelector('#btnAlternarEquipeServico').addEventListener('click', alternarEquipeServico);
   }
 
