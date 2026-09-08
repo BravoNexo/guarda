@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.1.3">
+  <link rel="stylesheet" href="style.css?v=27.1.5">
   </head>
 
   <body>
@@ -961,6 +961,84 @@
       </div>
     </div>
 
+    <div id="modalEditarMovimentacao" class="modal-fundo modal-edicao-movimentacao-fundo oculto"
+      role="dialog" aria-modal="true" aria-labelledby="tituloModalEditarMovimentacao"
+      aria-describedby="descricaoModalEditarMovimentacao"
+      onclick="if (event.target === this) fecharModalEdicaoMovimentacao()">
+      <div class="modal-card modal-card-edicao-movimentacao" tabindex="-1">
+        <div class="cabecalho-modal-edicao-movimentacao">
+          <div>
+            <span>Registro do serviço</span>
+            <h3 id="tituloModalEditarMovimentacao">Editar movimentação</h3>
+          </div>
+          <button type="button" id="btnFecharEdicaoMovimentacao" class="fechar-modal-edicao-movimentacao"
+            aria-label="Fechar edição" onclick="fecharModalEdicaoMovimentacao()">×</button>
+        </div>
+
+        <p id="descricaoModalEditarMovimentacao" class="descricao-modal-edicao-movimentacao">
+          A pessoa, o tipo e o horário permanecem vinculados ao registro original.
+        </p>
+
+        <div class="resumo-edicao-movimentacao" aria-label="Movimentação selecionada">
+          <strong id="nomeEdicaoMovimentacao">Pessoa não identificada</strong>
+          <span id="metadadosEdicaoMovimentacao"></span>
+        </div>
+
+        <form id="formEditarMovimentacao" onsubmit="salvarEdicaoMovimentacao(event)">
+          <div class="grade-edicao-movimentacao">
+            <div class="campo campo-edicao-movimentacao">
+              <label for="destinoEdicaoMovimentacao">Destino</label>
+              <select id="destinoEdicaoMovimentacao" required
+                onchange="this.setCustomValidity('')"></select>
+            </div>
+
+            <div class="campo campo-edicao-movimentacao">
+              <label for="procedenciaEdicaoMovimentacao">Procedência</label>
+              <select id="procedenciaEdicaoMovimentacao" required
+                onchange="atualizarComplementoEdicaoMovimentacao()"></select>
+            </div>
+          </div>
+
+          <div class="campo campo-edicao-movimentacao oculto" id="campoComplementoEdicaoMovimentacao">
+            <label for="complementoEdicaoMovimentacao" id="labelComplementoEdicaoMovimentacao">
+              Complemento da procedência
+            </label>
+            <input type="text" id="complementoEdicaoMovimentacao" maxlength="300"
+              oninput="this.setCustomValidity('')">
+          </div>
+
+          <div class="campo campo-edicao-movimentacao">
+            <label for="prefixoEdicaoMovimentacao">Auto/VTR</label>
+            <input type="text" id="prefixoEdicaoMovimentacao" maxlength="40"
+              placeholder="Prefixo ou placa, se houver"
+              oninput="normalizarPrefixoPlaca(this)" autocomplete="off">
+          </div>
+
+          <div class="campo campo-edicao-movimentacao">
+            <label for="observacoesEdicaoMovimentacao">Observações</label>
+            <textarea id="observacoesEdicaoMovimentacao" rows="3" maxlength="3000"
+              placeholder="Informação complementar, se houver"></textarea>
+          </div>
+
+          <div class="campo campo-edicao-movimentacao campo-motivo-edicao-movimentacao">
+            <label for="motivoEdicaoMovimentacao">Motivo da alteração *</label>
+            <textarea id="motivoEdicaoMovimentacao" rows="2" maxlength="500" required
+              placeholder="Explique resumidamente o que está sendo corrigido"
+              oninput="this.setCustomValidity('')"></textarea>
+            <small>O motivo ficará registrado na auditoria.</small>
+          </div>
+
+          <div class="acoes-modal-edicao-movimentacao">
+            <button type="button" id="btnCancelarEdicaoMovimentacao" class="modal-cancelar"
+              onclick="fecharModalEdicaoMovimentacao()">Cancelar</button>
+            <button type="submit" id="btnSalvarEdicaoMovimentacao" class="modal-confirmar">
+              Salvar alterações
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <div id="modalSeletorMilitarGuarnicao" class="modal-fundo modal-seletor-fundo oculto"
       role="dialog" aria-modal="true" aria-labelledby="tituloSeletorMilitarGuarnicao"
       onclick="if (event.target === this) fecharSeletorMilitarGuarnicaoServico()">
@@ -1119,7 +1197,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.3"></script>
+  <script src="app.js?v=27.1.5"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&
