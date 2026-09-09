@@ -958,16 +958,21 @@
             </div>
             <div class="campo" id="campoDestinoViaturaLocal">
               <label for="destinoViaturaLocal">Destino da saída *</label>
-              <select id="destinoViaturaLocal" onchange="atualizarRotuloRegistroViaturas()" required disabled>
+              <select id="destinoViaturaLocal" onchange="selecionarDestinoViaturaLocal(this.value)" required disabled>
                 <option value="">Carregando destinos...</option>
               </select>
               <p id="statusDestinosViaturaLocal" class="dica-varios-ocupantes" role="status" aria-live="polite">Carregando os destinos disponíveis...</p>
               <button type="button" id="btnRecarregarDestinosViatura" class="botao-secundario oculto" onclick="carregarListas()">Recarregar opções</button>
             </div>
+            <div class="campo oculto" id="campoDestinoEntradaViatura">
+              <label for="destinoEntradaViaturaLocal">Destino da entrada</label>
+              <input type="text" id="destinoEntradaViaturaLocal" value="Quartel" readonly aria-describedby="descricaoDestinoEntradaViatura">
+              <p id="descricaoDestinoEntradaViatura" class="dica-varios-ocupantes">Definido automaticamente para a entrada na unidade.</p>
+            </div>
             <div class="titulo-bloco-viatura">
               <div>
                 <strong id="tituloSelecaoSOS">Selecionar viaturas para saída</strong>
-                <span>Selecione uma ou mais viaturas. Confira a composição sugerida e toque para editar.</span>
+                <span id="descricaoSelecaoViaturas">Selecione uma ou mais viaturas. Confira a composição sugerida e toque para editar.</span>
               </div>
             </div>
             <div id="listaViaturasSOS" class="lista-selecao-sos"></div>
@@ -1343,7 +1348,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.19"></script>
+  <script src="app.js?v=27.1.20"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&

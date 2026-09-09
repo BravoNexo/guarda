@@ -1255,6 +1255,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   let destinos = [];
   let procedencias = [];
   let estadoListasFormulario = 'carregando';
+  let destinoSaidaViaturaSelecionado = 'SOS';
   let geracaoListasFormulario = 0;
   let botaoRegistroBloqueadoPorListas = false;
   let viaturasSOS = [];
@@ -1978,7 +1979,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     document.getElementById('areaRegistroPadrao').classList.toggle('oculto', isSOS);
     document.getElementById('areaRegistroSOS').classList.toggle('oculto', !isSOS);
     document.getElementById('labelTipoMovimentacao').textContent = isSOS ? 'Movimentação da viatura' : 'Tipo de movimentação';
-    document.getElementById('textoBtnEntrada').textContent = isSOS ? 'Retorno' : 'Entrada';
+    document.getElementById('textoBtnEntrada').textContent = 'Entrada';
     document.getElementById('textoBtnSaida').textContent = 'Saída';
 
     document.getElementById('areaOcupantesViatura').classList.toggle('oculto', !isViatura);
@@ -2047,9 +2048,14 @@ let tipoMovimentacaoAtual = 'Entrada';
     }
   }
 
+  function selecionarDestinoViaturaLocal(valor) {
+    destinoSaidaViaturaSelecionado = String(valor || '');
+    atualizarRotuloRegistroViaturas();
+  }
+
   function preencherDestinosViaturaLocal() {
     const select = document.getElementById('destinoViaturaLocal');
-    const atual = select.value;
+    const atual = destinoSaidaViaturaSelecionado;
     select.innerHTML = '';
     const incluir = (valor, texto) => {
       const opcao = document.createElement('option');
@@ -2083,7 +2089,8 @@ let tipoMovimentacaoAtual = 'Entrada';
         vistos.add(chave);
         incluir(destino, destino);
       });
-    select.value = Array.from(select.options).some(opcao => opcao.value === atual) ? atual : '';
+    select.value = Array.from(select.options).some(opcao => opcao.value === atual) ? atual : 'SOS';
+    destinoSaidaViaturaSelecionado = select.value;
     atualizarRotuloRegistroViaturas();
   }
 
@@ -2098,6 +2105,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     if (modoRegistroAtual !== 'SOS') return;
     const retorno = tipoMovimentacaoAtual === 'Entrada';
     document.getElementById('campoDestinoViaturaLocal').classList.toggle('oculto', retorno);
+    document.getElementById('campoDestinoEntradaViatura').classList.toggle('oculto', !retorno);
     document.getElementById('destinoViaturaLocal').required = !retorno;
     const sos = document.getElementById('destinoViaturaLocal').value === 'SOS';
     const botao = document.getElementById('btnRegistrarMovimentacao');
@@ -2108,7 +2116,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     } else if (!bloquearPorListas && botaoRegistroBloqueadoPorListas) {
       liberarBloqueioRegistroPorListas();
     }
-    if (!botao.disabled) botao.textContent = retorno ? 'Registrar retorno' : (sos ? 'Registrar saída SOS' : 'Registrar saída');
+    if (!botao.disabled) botao.textContent = retorno ? 'Registrar entrada' : (sos ? 'Registrar saída SOS' : 'Registrar saída');
   }
 
   function contextoViaturasAindaValido(geracao, assinatura) {
@@ -2201,8 +2209,11 @@ let tipoMovimentacaoAtual = 'Entrada';
       ? ['Em ocorrência', 'Fora da unidade'].includes(item.Situacao_Atual)
       : item.Situacao_Atual === 'No quartel');
     document.getElementById('tituloSelecaoSOS').textContent = retorno
-      ? 'Selecionar viaturas que retornaram'
+      ? 'Selecionar viaturas que entraram'
       : 'Selecionar viaturas para saída';
+    document.getElementById('descricaoSelecaoViaturas').textContent = retorno
+      ? 'A entrada mantém a composição registrada na saída. Para outros veículos, use Veículo externo.'
+      : 'Selecione uma ou mais viaturas. Confira a composição sugerida e toque para editar.';
     atualizarRotuloRegistroViaturas();
 
     Object.keys(selecoesViaturasSOS).forEach(id => {
@@ -2416,7 +2427,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       if (tipoMovimentacaoAtual === 'Entrada') {
         const avisoCondutorRetorno = document.createElement('small');
         avisoCondutorRetorno.className = 'aviso-condutor-retorno-sos';
-        avisoCondutorRetorno.textContent = 'No retorno, permanece a composição registrada na saída.';
+        avisoCondutorRetorno.textContent = 'Na entrada, permanece a composição registrada na saída.';
         editor.appendChild(avisoCondutorRetorno);
       }
 
