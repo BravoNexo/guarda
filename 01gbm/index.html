@@ -395,13 +395,11 @@
           <div id="statusAcaoComandante" class="resultado oculto" role="status" aria-live="polite"></div>
 
           <div id="areaCodigoEncerrarComandante" class="oculto">
-            <div class="campo">
-              <label>Alterações e observações do serviço</label>
-              <textarea id="observacoesEncerramentoComandante" rows="4" placeholder="Ex.: alterações na guarnição, ocorrências relevantes, pendências ou sem alterações."></textarea>
-            </div>
+            <div id="observacoesEncerramentoHost"></div>
             <div class="campo">
               <label>Código enviado ao comandante atual</label>
               <input type="text" id="codigoEncerrarComandante" inputmode="numeric" placeholder="Digite o código">
+              <button type="button" onclick="cancelarEncerramentoComandante()">Cancelar encerramento</button>
               <button type="button" id="btnConfirmarEncerramentoComandante" class="botao-finalizar-relatorio" onclick="validarCodigoEEncerrarComandante()">Encerrar serviço</button>
             </div>
           </div>
@@ -441,6 +439,23 @@
           </div>
           <div id="competenciasExclusivasComandante" class="conteudo-competencia oculto">
             <p class="descricao-competencia">Competências exclusivas do Comandante da Guarda deste serviço.</p>
+            <div id="observacoesServicoHost">
+              <div id="editorObservacoesServico" class="campo">
+                <label for="observacoesEncerramentoComandante"><strong>Alterações e observações do serviço</strong></label>
+                <p>Registre durante o serviço e salve quando desejar. No encerramento, este mesmo texto estará disponível para revisão.</p>
+                <textarea id="observacoesEncerramentoComandante" rows="6" maxlength="20000" oninput="alterarObservacoesServico()" placeholder="Ex.: alterações na guarnição, ocorrências relevantes, pendências ou sem alterações." readonly></textarea>
+                <div class="acoes-designacao-oficial">
+                  <button type="button" id="btnRecarregarObservacoesServico" onclick="recarregarObservacoesServico()">Recarregar texto salvo</button>
+                  <button type="button" id="btnSalvarObservacoesServico" class="botao-secundario" onclick="salvarObservacoesServico()" disabled>Salvar observações</button>
+                </div>
+                <div id="statusObservacoesServico" role="status" aria-live="polite">Carregando observações...</div>
+                <details id="conflitoObservacoesServico" class="oculto">
+                  <summary>Conferir texto salvo no servidor</summary>
+                  <pre id="textoConflitoObservacoesServico" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
+                  <button type="button" id="btnRevisarConflitoObservacoes" onclick="revisarConflitoObservacoesServico()">Concluí a revisão do meu texto</button>
+                </details>
+              </div>
+            </div>
             <div id="acaoLancamentoRetroativo" class="acao-lancamento-retroativo oculto">
               <div>
                 <strong>Lançamento em horário anterior</strong>
@@ -1273,7 +1288,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.12"></script>
+  <script src="app.js?v=27.1.13"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&

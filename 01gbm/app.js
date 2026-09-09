@@ -17,12 +17,12 @@ const DURACAO_SESSAO_LOCAL = {
   const MESTRE_LEITURAS = new Set([
     'getListasFormulario', 'getEstadoEquipeServico', 'getGuardaAtivo',
     'getComandanteAtivo', 'getOficialDiaAtivo', 'getStatusToqueFogo',
-    'getPainelComandante', 'getPainelMotoristas',
+    'getObservacoesServicoComandante', 'getPainelComandante', 'getPainelMotoristas',
     'consultarHistoricoMovimentacoes', 'getPessoasDentroGuarda',
     'getMovimentacoesRecentesGuarda', 'getDadosSOS', 'buscarPessoasPorRgCpf'
   ]);
   const MESTRE_ESCRITAS = new Set([
-    'registrarEventoMotoristas', 'registrarSaidaRapidaPessoa',
+    'salvarObservacoesServicoComandante', 'registrarEventoMotoristas', 'registrarSaidaRapidaPessoa',
     'salvarGuarnicoesServico', 'registrarMovimentacaoSOS', 'registrarMovimentacao',
     'atualizarMovimentacao', 'corrigirIdentificacaoPessoa', 'registrarMovimentacaoRetroativa'
   ]);
@@ -247,6 +247,238 @@ const DURACAO_SESSAO_LOCAL = {
       .forEach(elemento => controlar(elemento, ativo));
     document.querySelectorAll('.botao-saida-rapida, .botao-editar-movimentacao')
       .forEach(elemento => controlar(elemento, ativo && !mestrePodeEscrever()));
+  }
+
+  const OBS_rascunhos = new Map();
+  let OBS_atual = null;
+  let OBS_revisaoAberta = false;
+
+  function OBS_contexto_() {
+    if (!podeConsultarCompetenciasComandante() || !comandanteAtual || !comandanteAtual.ID_ComandanteGuarda) return null;
+    const id = String(comandanteAtual.ID_ComandanteGuarda);
+    const token = modoMestreAtivo() ? obterSessaoMestreTokenLocal() : obterSessaoTokenComandanteLocal();
+    if (!token) return null;
+    return { id: id, chave: id + '|' + (modoMestreAtivo() ? 'M|' : 'C|') + token };
+  }
+  function OBS_contextoVigente_(estado) {
+    const atual = OBS_contexto_();
+    return !!estado && !!atual && atual.chave === estado.chave && OBS_atual === estado;
+  }
+  function OBS_podeSalvar_(estado) {
+    return OBS_contextoVigente_(estado) && estado.pronto && estado.editavel && !estado.fechando &&
+      !estado.conflito && podeExecutarCompetenciaComandante();
+  }
+  function OBS_podeEncerrar_() {
+    return !modoMestreAtivo() && aparelhoReconheceComandanteAtual();
+  }
+  function OBS_assinaturaEncerramento_() {
+    return !modoMestreAtivo() && comandanteAtual
+      ? String(comandanteAtual.ID_ComandanteGuarda || '') + '|' + obterSessaoTokenComandanteLocal() : '';
+  }
+  function OBS_obterEstado_() {
+    const contexto = OBS_contexto_();
+    if (!contexto) { OBS_recolherRevisao_(); OBS_atual = null; return null; }
+    let estado = OBS_rascunhos.get(contexto.chave);
+    if (!estado) {
+      estado = { id: contexto.id, chave: contexto.chave, texto: '', salvo: '', versao: '', pronto: false,
+        editavel: false, lendo: false, salvando: false, fechando: false, conflito: null,
+        sequencia: 0, revisaoTexto: 0, ultimaLeitura: 0, mensagem: 'Carregando observações...', tipo: '' };
+      OBS_rascunhos.set(contexto.chave, estado);
+    }
+    if (OBS_atual !== estado) {
+      OBS_recolherRevisao_();
+      OBS_atual = estado;
+    }
+    return estado;
+  }
+  function OBS_renderizar_() {
+    const estado = OBS_atual;
+    const campo = document.getElementById('observacoesEncerramentoComandante');
+    const salvar = document.getElementById('btnSalvarObservacoesServico');
+    const recarregar = document.getElementById('btnRecarregarObservacoesServico');
+    const status = document.getElementById('statusObservacoesServico');
+    const vigente = OBS_contextoVigente_(estado);
+    if (campo) {
+      const texto = vigente ? estado.texto : '';
+      if (campo.value !== texto) campo.value = texto;
+      campo.readOnly = !vigente || !estado.pronto || !estado.editavel || estado.fechando || !podeExecutarCompetenciaComandante();
+    }
+    if (salvar) {
+      salvar.disabled = !OBS_podeSalvar_(estado) || estado.salvando || estado.lendo;
+      salvar.textContent = vigente && estado.salvando ? 'Salvando...' : 'Salvar observações';
+    }
+    if (recarregar) recarregar.disabled = !vigente || estado.lendo || estado.salvando || estado.fechando;
+    if (status) {
+      status.textContent = vigente ? estado.mensagem : 'Entre como Comandante da Guarda para consultar as observações deste serviço.';
+      status.classList.remove('erro', 'sucesso');
+      if (vigente && estado.tipo) status.classList.add(estado.tipo);
+    }
+    const conflito = document.getElementById('conflitoObservacoesServico');
+    if (conflito) conflito.classList.toggle('oculto', !vigente || !estado.conflito);
+    const salvo = document.getElementById('textoConflitoObservacoesServico');
+    if (salvo) salvo.textContent = vigente && estado.conflito ? estado.conflito.observacoesServico : '';
+    const revisar = document.getElementById('btnRevisarConflitoObservacoes');
+    if (revisar) revisar.disabled = !vigente || !estado.conflito || !estado.editavel || !podeExecutarCompetenciaComandante();
+  }
+  function OBS_dadosValidos_(resposta, estado) {
+    if (!resposta || String(resposta.idComandante) !== estado.id || typeof resposta.versaoObservacoes !== 'string' ||
+        typeof resposta.observacoesServico !== 'string' || typeof resposta.editavel !== 'boolean') {
+      throw Error('OBS_SERVICO: Resposta de observações incompatível com este serviço.');
+    }
+    return resposta;
+  }
+  async function OBS_carregar_(estado, descartar = false) {
+    if (!OBS_contextoVigente_(estado)) return false;
+    if (estado.salvando) await estado.promessaGravacao;
+    if (!OBS_contextoVigente_(estado)) return false;
+    if (estado.lendo) return estado.promessaLeitura;
+    const sequencia = ++estado.sequencia;
+    const revisaoTexto = estado.revisaoTexto;
+    estado.lendo = true;
+    estado.mensagem = estado.pronto ? 'Atualizando o texto salvo; seu rascunho será preservado.' : 'Carregando observações...';
+    estado.tipo = '';
+    OBS_renderizar_();
+    estado.promessaLeitura = (async () => {
+      try {
+        const resposta = OBS_dadosValidos_(await chamarApi('getObservacoesServicoComandante',
+          { idComandante: estado.id, sessaoToken: obterSessaoTokenComandanteLocal() }), estado);
+        if (!OBS_contextoVigente_(estado) || sequencia !== estado.sequencia) return false;
+        const alterado = estado.pronto && estado.texto !== estado.salvo;
+        estado.editavel = resposta.editavel;
+        if (!alterado || (descartar && revisaoTexto === estado.revisaoTexto)) {
+          estado.texto = resposta.observacoesServico;
+          estado.salvo = resposta.observacoesServico;
+          estado.versao = resposta.versaoObservacoes;
+          estado.conflito = null;
+        } else if (resposta.versaoObservacoes !== estado.versao) {
+          estado.conflito = resposta;
+        }
+        estado.pronto = true;
+        estado.ultimaLeitura = Date.now();
+        estado.mensagem = estado.conflito
+          ? 'O texto salvo mudou em outro acesso. Seu rascunho foi mantido; confira a versão abaixo antes de salvar.'
+          : estado.texto !== estado.salvo ? 'Alterações ainda não salvas. Seu rascunho foi mantido.'
+          : !estado.editavel ? 'Observações salvas — este serviço não permite novas alterações.'
+          : !podeExecutarCompetenciaComandante() ? 'Observações salvas — somente visualização.'
+          : 'Texto salvo carregado' + (resposta.salvoEm ? ' • ' + resposta.salvoEm : '') + '.';
+        estado.tipo = estado.conflito ? 'erro' : '';
+        return true;
+      } catch (erro) {
+        if (!OBS_contextoVigente_(estado) || sequencia !== estado.sequencia) return false;
+        if (/OBS_SERVICO|OBS_ENCERRADO/.test(erro.message)) estado.editavel = false;
+        estado.mensagem = 'Não foi possível carregar: ' + erro.message + ' Seu rascunho foi mantido.';
+        estado.tipo = 'erro';
+        estado.ultimaLeitura = Date.now();
+        return false;
+      } finally {
+        estado.lendo = false;
+        if (OBS_contextoVigente_(estado)) OBS_renderizar_();
+      }
+    })();
+    return estado.promessaLeitura;
+  }
+  function atualizarObservacoesServico() {
+    const estado = OBS_obterEstado_();
+    OBS_renderizar_();
+    if (estado && !estado.lendo && !estado.salvando && !estado.fechando &&
+        (!estado.ultimaLeitura || Date.now() - estado.ultimaLeitura > 60000)) OBS_carregar_(estado);
+  }
+  function alterarObservacoesServico() {
+    const estado = OBS_atual;
+    if (!OBS_contextoVigente_(estado) || !estado.pronto || !estado.editavel || !podeExecutarCompetenciaComandante() || estado.fechando) return;
+    estado.texto = document.getElementById('observacoesEncerramentoComandante').value;
+    estado.revisaoTexto += 1;
+    estado.mensagem = estado.texto === estado.salvo ? 'Texto igual à versão salva.' : 'Alterações ainda não salvas.';
+    estado.tipo = '';
+    OBS_renderizar_();
+  }
+  async function salvarObservacoesServico() {
+    const estado = OBS_atual;
+    if (!OBS_podeSalvar_(estado) || estado.salvando || estado.lendo) return false;
+    const texto = estado.texto;
+    if (texto.length > 20000) {
+      estado.mensagem = 'Limite de 20.000 caracteres. Seu texto foi mantido, mas ainda não foi salvo.'; estado.tipo = 'erro'; OBS_renderizar_(); return false;
+    }
+    const sequencia = ++estado.sequencia;
+    estado.salvando = true; estado.mensagem = 'Salvando observações no serviço atual...'; estado.tipo = '';
+    OBS_renderizar_();
+    estado.promessaGravacao = (async () => {
+      try {
+        const resposta = OBS_dadosValidos_(await chamarApi('salvarObservacoesServicoComandante', {
+          idComandante: estado.id, observacoesServico: texto, versaoObservacoes: estado.versao,
+          sessaoToken: obterSessaoTokenComandanteLocal()
+        }), estado);
+        if (!OBS_contextoVigente_(estado) || sequencia !== estado.sequencia) return false;
+        const houveNovaDigitacao = estado.texto !== texto;
+        estado.salvo = resposta.observacoesServico; estado.versao = resposta.versaoObservacoes; estado.editavel = resposta.editavel;
+        if (!houveNovaDigitacao) estado.texto = resposta.observacoesServico;
+        estado.conflito = null; estado.ultimaLeitura = Date.now();
+        estado.mensagem = houveNovaDigitacao ? 'Versão enviada salva. Há novas alterações ainda não salvas.' : 'Observações salvas no serviço' + (resposta.salvoEm ? ' • ' + resposta.salvoEm : '') + '.';
+        estado.tipo = houveNovaDigitacao ? '' : 'sucesso';
+        return true;
+      } catch (erro) {
+        if (!OBS_contextoVigente_(estado) || sequencia !== estado.sequencia) return false;
+        if (/OBS_SERVICO|OBS_ENCERRADO/.test(erro.message)) estado.editavel = false;
+        estado.mensagem = 'Não foi possível salvar: ' + erro.message + ' Seu rascunho foi mantido.'; estado.tipo = 'erro';
+        if (/OBS_CONFLITO/.test(erro.message)) estado.conflito = { observacoesServico: 'Recarregue o texto salvo para consultar a atualização.', versaoObservacoes: null };
+        return false;
+      } finally {
+        estado.salvando = false;
+        if (OBS_contextoVigente_(estado)) OBS_renderizar_();
+      }
+    })();
+    return estado.promessaGravacao;
+  }
+  function recarregarObservacoesServico() {
+    const estado = OBS_atual;
+    if (!OBS_contextoVigente_(estado) || estado.salvando || estado.lendo || estado.fechando) return;
+    if (estado.texto !== estado.salvo) {
+      abrirModalConfirmacao('Recarregar texto salvo', 'Seu rascunho ainda não foi salvo. Deseja substituí-lo pela versão salva no servidor?',
+        () => { if (OBS_contextoVigente_(estado)) OBS_carregar_(estado, true); }, true);
+    } else OBS_carregar_(estado, true);
+  }
+  function revisarConflitoObservacoesServico() {
+    const estado = OBS_atual;
+    if (!OBS_contextoVigente_(estado) || !estado.conflito || !estado.editavel || !podeExecutarCompetenciaComandante()) return;
+    if (typeof estado.conflito.versaoObservacoes !== 'string') { OBS_carregar_(estado); return; }
+    const remoto = estado.conflito;
+    abrirModalConfirmacao('Confirmar revisão do texto', 'Você conferiu a versão salva abaixo e incorporou ao seu rascunho o que deseja manter? Depois, use Salvar observações para gravar o texto revisado.', () => {
+      if (!OBS_contextoVigente_(estado) || estado.conflito !== remoto || !podeExecutarCompetenciaComandante()) return;
+      estado.versao = remoto.versaoObservacoes; estado.salvo = remoto.observacoesServico; estado.conflito = null;
+      estado.mensagem = 'Revisão confirmada. Seu rascunho foi mantido; use Salvar observações.'; estado.tipo = ''; OBS_renderizar_();
+    }, true);
+  }
+  function OBS_abrirRevisao_() {
+    const host = document.getElementById('observacoesEncerramentoHost');
+    const editor = document.getElementById('editorObservacoesServico');
+    if (host && editor) host.appendChild(editor);
+    OBS_revisaoAberta = true;
+    OBS_renderizar_();
+  }
+  function OBS_recolherRevisao_() {
+    const host = document.getElementById('observacoesServicoHost');
+    const editor = document.getElementById('editorObservacoesServico');
+    if (host && editor) host.appendChild(editor);
+    OBS_revisaoAberta = false;
+  }
+  function cancelarEncerramentoComandante() {
+    if (OBS_atual && OBS_atual.fechando) return;
+    document.getElementById('areaCodigoEncerrarComandante').classList.add('oculto');
+    document.getElementById('codigoEncerrarComandante').value = '';
+    emailEncerramentoComandante = null;
+    OBS_recolherRevisao_();
+    mostrarStatusAcaoComandante('Encerramento cancelado. As observações foram mantidas.', '');
+    OBS_renderizar_();
+  }
+  async function OBS_prepararEncerramento_() {
+    if (!OBS_podeEncerrar_()) { mostrarMensagem('Somente o Comandante da Guarda deste serviço pode encerrá-lo.', 'erro'); return false; }
+    const estado = OBS_obterEstado_();
+    if (!estado) return false;
+    const atualizado = await OBS_carregar_(estado);
+    if (!atualizado || !OBS_contextoVigente_(estado) || !OBS_podeEncerrar_() || !estado.pronto || !estado.editavel || estado.conflito) {
+      mostrarMensagem('Confira as observações e resolva eventuais conflitos antes de encerrar. Seu rascunho foi mantido.', 'erro'); return false;
+    }
+    return true;
   }
 
 function obterTokenSessaoLocal(chaveToken, chaveInicio, duracao) {
@@ -576,6 +808,9 @@ function montarDadosChamadaApi(nome, argumentos) {
       return { sessaoToken: sessaoOficialToken };
     case 'validarCodigoEEncerrarOficialDia':
       return { email: argumentos[0], codigo: argumentos[1], sessaoToken: sessaoOficialToken };
+    case 'getObservacoesServicoComandante':
+    case 'salvarObservacoesServicoComandante':
+      return Object.assign({}, argumentos[0] || {}, { sessaoToken: sessaoComandanteToken });
     case 'enviarCodigoEncerrarComandante':
       return { sessaoToken: sessaoComandanteToken };
     case 'validarCodigoEEncerrarComandante':
@@ -583,6 +818,8 @@ function montarDadosChamadaApi(nome, argumentos) {
         email: argumentos[0],
         codigo: argumentos[1],
         observacoesServico: argumentos[2] || '',
+        idComandante: (argumentos[3] || {}).idComandante || '',
+        versaoObservacoes: (argumentos[3] || {}).versaoObservacoes || '',
         sessaoToken: sessaoComandanteToken
       };
     default:
@@ -737,6 +974,8 @@ function criarExecutorAppsScript() {
     'getDadosOficialDiaParaComandante',
     'designarOficialDia',
     'getStatusToqueFogo',
+    'getObservacoesServicoComandante',
+    'salvarObservacoesServicoComandante',
     'getPainelComandante',
     'getPainelMotoristas',
     'enviarCodigoAcessoEncarregadoMotoristas',
@@ -4749,6 +4988,7 @@ function atualizarVisibilidadePainelComandante() {
     permissoesPainelGestaoAtual = { podeLancarHorarioAnterior: false };
   }
 
+  atualizarObservacoesServico();
   atualizarVisibilidadePainelMotoristas();
   mestreAgendarInterface();
 }
@@ -7159,7 +7399,8 @@ function assumirComandante(encerrarAnterior = false) {
     });
 }
 
-function encerrarComandante() {
+async function encerrarComandante() {
+  if (!await OBS_prepararEncerramento_()) return;
   expandirPerfilServico('perfilComandante', true);
   abrirModalConfirmacao(
     'Encerrar Comandante da Guarda',
@@ -7170,6 +7411,8 @@ function encerrarComandante() {
 }
 
 function enviarCodigoParaEncerrarComandante() {
+  if (!OBS_podeEncerrar_() || !OBS_podeSalvar_(OBS_atual)) return;
+  const assinaturaObservacoes = OBS_assinaturaEncerramento_();
   const botao = document.getElementById('btnEncerrarComandante');
   botao.disabled = true;
   botao.textContent = 'Enviando...';
@@ -7177,6 +7420,7 @@ function enviarCodigoParaEncerrarComandante() {
 
   google.script.run
     .withSuccessHandler((resposta) => {
+      if (assinaturaObservacoes !== OBS_assinaturaEncerramento_()) { botao.disabled = false; botao.textContent = 'Encerrar serviço'; return; }
       const candidatosEmail = [
         resposta && resposta.email,
         comandanteAtual && comandanteAtual.Email_Comandante
@@ -7197,6 +7441,7 @@ function enviarCodigoParaEncerrarComandante() {
         return;
       }
 
+      OBS_abrirRevisao_();
       expandirPerfilServico('perfilComandante', true);
       document.getElementById('areaCodigoEncerrarComandante').classList.remove('oculto');
       mostrarStatusAcaoComandante(
@@ -7207,6 +7452,7 @@ function enviarCodigoParaEncerrarComandante() {
       botao.textContent = 'Encerrar serviço';
     })
     .withFailureHandler((erro) => {
+      if (assinaturaObservacoes !== OBS_assinaturaEncerramento_()) { botao.disabled = false; botao.textContent = 'Encerrar serviço'; return; }
       mostrarStatusAcaoComandante('Não foi possível enviar o código: ' + erro.message, 'erro');
       mostrarMensagem('Erro ao enviar código do comandante: ' + erro.message, 'erro');
       botao.disabled = false;
@@ -7216,8 +7462,12 @@ function enviarCodigoParaEncerrarComandante() {
 }
 
 function validarCodigoEEncerrarComandante() {
+  const estadoObservacoes = OBS_atual;
+  if (!OBS_podeEncerrar_() || !OBS_podeSalvar_(estadoObservacoes) || estadoObservacoes.salvando || estadoObservacoes.lendo) return;
+  const assinaturaObservacoes = OBS_assinaturaEncerramento_();
   const codigo = document.getElementById('codigoEncerrarComandante').value.trim();
-  const observacoesServico = document.getElementById('observacoesEncerramentoComandante').value.trim();
+  const observacoesServico = estadoObservacoes.texto;
+  if (observacoesServico.length > 20000) { mostrarMensagem("Limite de 20.000 caracteres nas observações.", "erro"); return; }
   const botao = document.getElementById('btnConfirmarEncerramentoComandante');
 
   if (!emailEncerramentoComandante) {
@@ -7236,10 +7486,18 @@ function validarCodigoEEncerrarComandante() {
     botao.disabled = true;
     botao.textContent = 'Encerrando...';
   }
+  estadoObservacoes.fechando = true;
+  OBS_renderizar_();
   mostrarStatusAcaoComandante('Confirmando o encerramento do serviço...', '');
 
   google.script.run
     .withSuccessHandler((resposta) => {
+      estadoObservacoes.fechando = false;
+      if (assinaturaObservacoes !== OBS_assinaturaEncerramento_() || !OBS_contextoVigente_(estadoObservacoes)) { if (botao) { botao.disabled = false; botao.textContent = 'Encerrar serviço'; } return; }
+      estadoObservacoes.salvo = observacoesServico;
+      estadoObservacoes.editavel = false;
+      estadoObservacoes.mensagem = 'Observações incluídas no encerramento confirmado.';
+      estadoObservacoes.tipo = 'sucesso';
       if (botao) {
         botao.disabled = false;
         botao.textContent = 'Encerrar serviço';
@@ -7260,6 +7518,13 @@ function validarCodigoEEncerrarComandante() {
       }
     })
     .withFailureHandler((erro) => {
+      estadoObservacoes.fechando = false;
+      if (assinaturaObservacoes !== OBS_assinaturaEncerramento_() || !OBS_contextoVigente_(estadoObservacoes)) { if (botao) { botao.disabled = false; botao.textContent = 'Encerrar serviço'; } return; }
+      if (/OBS_SERVICO|OBS_ENCERRADO/.test(erro.message)) estadoObservacoes.editavel = false;
+      if (/OBS_CONFLITO/.test(erro.message)) estadoObservacoes.conflito = { observacoesServico: 'Recarregue o texto salvo para consultar a atualização.', versaoObservacoes: null };
+      estadoObservacoes.mensagem = 'Encerramento não confirmado. Seu rascunho foi mantido: ' + erro.message;
+      estadoObservacoes.tipo = 'erro';
+      OBS_renderizar_();
       const mensagemErro = 'Erro ao encerrar comandante: ' + erro.message;
       if (botao) {
         botao.disabled = false;
@@ -7268,7 +7533,7 @@ function validarCodigoEEncerrarComandante() {
       mostrarStatusAcaoComandante(mensagemErro, 'erro');
       mostrarMensagem(mensagemErro, 'erro');
     })
-    .validarCodigoEEncerrarComandante(emailEncerramentoComandante, codigo, observacoesServico);
+    .validarCodigoEEncerrarComandante(emailEncerramentoComandante, codigo, observacoesServico, { idComandante: estadoObservacoes.id, versaoObservacoes: estadoObservacoes.versao });
 }
 
 function mostrarStatusAcaoComandante(texto, tipo) {
@@ -7288,6 +7553,7 @@ function mascararEmailComandante(email) {
 }
 
 function limparAreaComandante() {
+  OBS_recolherRevisao_();
   dadosCodigoComandante = null;
   emailEncerramentoComandante = null;
   limparCodigoComandantePendente();
@@ -7295,8 +7561,7 @@ function limparAreaComandante() {
   [
     'emailComandante',
     'codigoComandante',
-    'codigoEncerrarComandante',
-    'observacoesEncerramentoComandante'
+    'codigoEncerrarComandante'
   ].forEach(id => {
     const campo = document.getElementById(id);
     if (campo) campo.value = '';
