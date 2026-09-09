@@ -61,16 +61,18 @@
               <label>E-mail do militar</label>
               <div class="linha-busca">
                 <input type="email" id="emailGuarda" placeholder="Digite o e-mail">
-                <button type="button" onclick="enviarCodigoGuarda()">Enviar</button>
+                <button type="button" id="btnEnviarCodigoGuarda" onclick="enviarCodigoGuarda()">Enviar código</button>
               </div>
             </div>
 
+            <p id="lpStatus_guarda" role="status" aria-live="polite" class="oculto"></p>
+            <button type="button" id="lpCancelar_guarda" class="botao-secundario oculto" onclick="LP_cancelar_('guarda')">Cancelar solicitação / trocar e-mail</button>
             <div id="areaCodigoGuarda" class="oculto">
               <div class="campo">
                 <label>Código recebido por e-mail</label>
                 <div class="linha-busca">
-                  <input type="text" id="codigoGuarda" placeholder="Digite o código">
-                  <button type="button" onclick="validarCodigoGuarda()">Validar</button>
+                  <input type="text" id="codigoGuarda" placeholder="Digite o código" autocomplete="one-time-code" inputmode="numeric">
+                  <button type="button" id="btnValidarCodigoGuarda" onclick="validarCodigoGuarda()">Validar</button>
                 </div>
               </div>
             </div>
@@ -133,16 +135,18 @@
               <label>E-mail do militar</label>
               <div class="linha-busca">
                 <input type="email" id="emailToqueFogo" placeholder="Digite o e-mail">
-                <button type="button" onclick="enviarCodigoToqueFogo()">Enviar</button>
+                <button type="button" id="btnEnviarCodigoToqueFogo" onclick="enviarCodigoToqueFogo()">Enviar código</button>
               </div>
             </div>
 
+            <p id="lpStatus_toque" role="status" aria-live="polite" class="oculto"></p>
+            <button type="button" id="lpCancelar_toque" class="botao-secundario oculto" onclick="LP_cancelar_('toque')">Cancelar solicitação / trocar e-mail</button>
             <div id="areaCodigoToqueFogo" class="oculto">
               <div class="campo">
                 <label>Código recebido por e-mail</label>
                 <div class="linha-busca">
-                  <input type="text" id="codigoToqueFogo" inputmode="numeric" placeholder="Digite o código">
-                  <button type="button" onclick="validarCodigoToqueFogo()">Validar</button>
+                  <input type="text" id="codigoToqueFogo" inputmode="numeric" placeholder="Digite o código" autocomplete="one-time-code">
+                  <button type="button" id="btnValidarCodigoToqueFogo" onclick="validarCodigoToqueFogo()">Validar</button>
                 </div>
               </div>
             </div>
@@ -235,6 +239,8 @@
                   onclick="enviarCodigoConsultaEfetivo()">Enviar código</button>
               </div>
             </div>
+            <p id="lpStatus_consulta" role="status" aria-live="polite" class="oculto"></p>
+            <button type="button" id="lpCancelar_consulta" class="botao-secundario oculto" onclick="LP_cancelar_('consulta')">Cancelar solicitação / trocar e-mail</button>
             <div id="areaCodigoConsultaEfetivo" class="area-codigo-consulta oculto">
               <div class="campo campo-sem-margem">
                 <label for="codigoConsultaEfetivo">Código recebido por e-mail</label>
@@ -409,16 +415,18 @@
               <label>E-mail do militar</label>
               <div class="linha-busca">
                 <input type="email" id="emailComandante" placeholder="Digite o e-mail cadastrado">
-                <button type="button" onclick="enviarCodigoComandante()">Enviar</button>
+                <button type="button" id="btnEnviarCodigoComandante" onclick="enviarCodigoComandante()">Enviar código</button>
               </div>
             </div>
 
+            <p id="lpStatus_comandante" role="status" aria-live="polite" class="oculto"></p>
+            <button type="button" id="lpCancelar_comandante" class="botao-secundario oculto" onclick="LP_cancelar_('comandante')">Cancelar solicitação / trocar e-mail</button>
             <div id="areaCodigoComandante" class="oculto">
               <div class="campo">
                 <label>Código recebido por e-mail</label>
                 <div class="linha-busca">
-                  <input type="text" id="codigoComandante" inputmode="numeric" placeholder="Digite o código">
-                  <button type="button" onclick="validarCodigoComandante()">Validar</button>
+                  <input type="text" id="codigoComandante" inputmode="numeric" placeholder="Digite o código" autocomplete="one-time-code">
+                  <button type="button" id="btnValidarCodigoComandante" onclick="validarCodigoComandante()">Validar</button>
                 </div>
               </div>
             </div>
@@ -509,11 +517,13 @@
                   <button type="button" id="btnEnviarCodigoOficial" onclick="enviarCodigoOficial()">Enviar código</button>
                 </div>
               </div>
-              <div id="areaCodigoOficial" class="area-codigo-consulta oculto">
+              <p id="lpStatus_oficial" role="status" aria-live="polite" class="oculto"></p>
+            <button type="button" id="lpCancelar_oficial" class="botao-secundario oculto" onclick="LP_cancelar_('oficial')">Cancelar solicitação / trocar e-mail</button>
+            <div id="areaCodigoOficial" class="area-codigo-consulta oculto">
                 <div class="campo campo-sem-margem">
                   <label>Código recebido por e-mail</label>
                   <div class="linha-busca">
-                    <input type="text" id="codigoOficial" inputmode="numeric" maxlength="6" placeholder="000000">
+                    <input type="text" id="codigoOficial" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code">
                     <button type="button" id="btnValidarCodigoOficial" onclick="validarCodigoOficial()">Entrar</button>
                   </div>
                 </div>
@@ -556,12 +566,14 @@
               </div>
             </div>
 
+            <p id="lpStatus_encarregado" role="status" aria-live="polite" class="oculto"></p>
+            <button type="button" id="lpCancelar_encarregado" class="botao-secundario oculto" onclick="LP_cancelar_('encarregado')">Cancelar solicitação / trocar e-mail</button>
             <div id="areaCodigoEncarregadoMotoristas" class="oculto">
               <div class="campo campo-sem-margem">
                 <label>Código recebido por e-mail</label>
                 <div class="linha-busca">
                   <input type="text" id="codigoEncarregadoMotoristas" inputmode="numeric" maxlength="6"
-                    placeholder="000000">
+                    placeholder="000000" autocomplete="one-time-code">
                   <button type="button" id="btnValidarCodigoEncarregadoMotoristas"
                     onclick="validarCodigoEncarregadoMotoristas()">Confirmar e assumir</button>
                 </div>
@@ -1288,7 +1300,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.13"></script>
+  <script src="app.js?v=27.1.14"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&

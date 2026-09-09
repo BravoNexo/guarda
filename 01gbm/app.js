@@ -481,6 +481,212 @@ const DURACAO_SESSAO_LOCAL = {
     return true;
   }
 
+  const LP_TTL = 10 * 60 * 1000;
+  const LP_CONFIG = {
+    guarda: {email:'emailGuarda',codigo:'codigoGuarda',area:'areaAssumirGuarda',otp:'areaCodigoGuarda',card:'perfilGuarda',enviar:'btnEnviarCodigoGuarda',validar:'btnValidarCodigoGuarda',acao:'enviarCodigoAssumirGuarda',duasEtapas:true,legado:'guarda'},
+    comandante: {email:'emailComandante',codigo:'codigoComandante',area:'areaAssumirComandante',otp:'areaCodigoComandante',card:'perfilComandante',enviar:'btnEnviarCodigoComandante',validar:'btnValidarCodigoComandante',acao:'enviarCodigoAssumirComandante',duasEtapas:true,legado:'comandante'},
+    oficial: {email:'emailOficial',codigo:'codigoOficial',area:'areaLoginOficial',otp:'areaCodigoOficial',card:'perfilOficial',enviar:'btnEnviarCodigoOficial',validar:'btnValidarCodigoOficial',acao:'enviarCodigoAssumirOficialDia',legado:'oficial_dia'},
+    toque: {email:'emailToqueFogo',codigo:'codigoToqueFogo',area:'areaAssumirToqueFogo',otp:'areaCodigoToqueFogo',card:'cardToqueFogo',enviar:'btnEnviarCodigoToqueFogo',validar:'btnValidarCodigoToqueFogo',acao:'enviarCodigoAssumirToqueFogo',duasEtapas:true},
+    encarregado: {email:'emailEncarregadoMotoristas',codigo:'codigoEncarregadoMotoristas',area:'areaAssumirEncarregadoMotoristas',otp:'areaCodigoEncarregadoMotoristas',card:'perfilEncarregadoMotoristas',enviar:'btnEnviarCodigoEncarregadoMotoristas',validar:'btnValidarCodigoEncarregadoMotoristas',acao:'enviarCodigoAcessoEncarregadoMotoristas',legado:'encarregado_motoristas'},
+    consulta: {email:'emailConsultaEfetivo',codigo:'codigoConsultaEfetivo',area:'areaLoginConsultaEfetivo',otp:'areaCodigoConsultaEfetivo',enviar:'btnEnviarCodigoConsultaEfetivo',validar:'btnValidarConsultaEfetivo',acao:'enviarCodigoConsultaEfetivo'}
+  };
+  const LP_ESTADOS = Object.create(null);
+  let LP_inicializado = false;
+  function LP_no_(id) { return document.getElementById(id); }
+  function LP_estado_(perfil) {
+    if (!Object.prototype.hasOwnProperty.call(LP_CONFIG,perfil)) throw Error('Perfil de acesso inválido.');
+    return LP_ESTADOS[perfil] || (LP_ESTADOS[perfil] = {aberto:false,pendente:false,validado:false,enviando:false,validando:false,confirmando:false,geracao:0,email:'',periodo:'',solicitadoEm:0,mensagem:''});
+  }
+  function LP_email_(perfil) { return String(LP_no_(LP_CONFIG[perfil].email)?.value || '').trim().toLowerCase(); }
+  function LP_periodo_(perfil) { return perfil === 'toque' ? obterPeriodoAlvoToqueFogo() : ''; }
+  function LP_chave_(perfil) { return 'login_codigo_pendente_v1:' + perfil; }
+  function LP_removerArmazenado_(perfil) {
+    try {
+      localStorage.removeItem(LP_chave_(perfil));
+      const legado = LP_CONFIG[perfil].legado;
+      if (legado) { localStorage.removeItem(legado + '_email_pendente'); localStorage.removeItem(legado + '_codigo_pendente_em'); }
+    } catch (_) { /* A solicitação continua disponível em memória quando o armazenamento está bloqueado. */ }
+  }
+  function LP_gravar_(perfil) {
+    const e = LP_estado_(perfil);
+    LP_removerArmazenado_(perfil);
+    try {
+      // Only UI recovery metadata. Never persist OTP, ticket, identity, session or permission.
+      localStorage.setItem(LP_chave_(perfil), JSON.stringify({perfil:perfil,email:e.email,periodo:e.periodo,solicitadoEm:e.solicitadoEm}));
+    } catch (_) { e.mensagem += ' Este navegador não permite restaurar a solicitação após recarregar a página.'; }
+  }
+  function LP_resetDados_(perfil) {
+    if (perfil === 'guarda') dadosCodigoGuarda = null;
+    if (perfil === 'comandante') dadosCodigoComandante = null;
+    if (perfil === 'oficial') dadosCodigoOficial = null;
+    if (perfil === 'toque') { dadosCodigoToqueFogo = null; geracaoValidacaoToqueFogo += 1; }
+    if (perfil === 'encarregado') dadosCodigoEncarregadoMotoristas = null;
+  }
+  function LP_dadosPendentes_(perfil) {
+    const e = LP_estado_(perfil);
+    // Only called on a NEW/restored request, never on an ordinary render.
+    if (perfil === 'guarda') dadosCodigoGuarda = {email:e.email,encontradoNoEfetivo:false,militar:null,ticketAssuncao:''};
+    if (perfil === 'comandante') dadosCodigoComandante = {email:e.email,militar:null,ticketAssuncao:''};
+    if (perfil === 'oficial') dadosCodigoOficial = {email:e.email,militar:null};
+    if (perfil === 'toque') dadosCodigoToqueFogo = {email:e.email,encontradoNoEfetivo:false,militar:null,ticketAssuncao:'',periodoAlvo:e.periodo};
+    if (perfil === 'encarregado') dadosCodigoEncarregadoMotoristas = {email:e.email};
+  }
+  function LP_limparCampos_(perfil, emailTambem) {
+    const c = LP_CONFIG[perfil];
+    if (LP_no_(c.codigo)) LP_no_(c.codigo).value = '';
+    if (emailTambem && LP_no_(c.email)) LP_no_(c.email).value = '';
+    const extras = {
+      guarda:['areaMilitarIdentificado','areaIdentificacaoManual','btnAssumirGuarda'],
+      comandante:['areaComandanteIdentificado','btnAssumirComandante'],
+      toque:['areaToqueFogoIdentificado','areaToqueFogoManual','btnAssumirToqueFogo']
+    };
+    (extras[perfil] || []).forEach(id => { const n=LP_no_(id); if(n)n.classList.add('oculto'); });
+    if (LP_no_(c.otp)) LP_no_(c.otp).classList.add('oculto');
+    const b=LP_no_(c.validar); if(b){b.disabled=false;b.textContent=perfil==='encarregado'?'Confirmar e assumir':(c.duasEtapas?'Validar':'Entrar');}
+  }
+  function LP_invalidar_(perfil, limparEmail = false) {
+    const e=LP_estado_(perfil);
+    e.geracao+=1;e.pendente=false;e.validado=false;e.enviando=false;e.validando=false;e.confirmando=false;e.solicitadoEm=0;
+    LP_removerArmazenado_(perfil);LP_resetDados_(perfil);LP_limparCampos_(perfil,limparEmail);
+  }
+  function LP_cancelar_(perfil) {
+    LP_invalidar_(perfil,true);const e=LP_estado_(perfil);e.aberto=false;e.email='';e.periodo='';
+    if(perfil==='toque')loginToqueFogoAberto=false;
+    LP_no_(LP_CONFIG[perfil].area)?.classList.add('oculto');
+    e.mensagem='Solicitação cancelada. Nenhuma sessão ativa foi encerrada.';LP_renderizar_(perfil);
+  }
+  function LP_alterarIdentificacao_(perfil) {
+    const e=LP_estado_(perfil),email=LP_email_(perfil),periodo=LP_periodo_(perfil);
+    if (email===e.email && periodo===e.periodo) return;
+    LP_invalidar_(perfil);e.aberto=true;e.email=email;e.periodo=periodo;
+    e.mensagem='Solicite um novo código para este e-mail' + (perfil==='toque'?' e período':'') + '.';
+    LP_renderizar_(perfil);
+  }
+  function LP_finalizar_(perfil) {
+    const e=LP_estado_(perfil);e.geracao+=1;e.aberto=false;e.pendente=false;e.validado=false;e.enviando=false;e.validando=false;e.confirmando=false;e.mensagem='';
+    LP_removerArmazenado_(perfil);LP_limparCampos_(perfil,false);
+    LP_no_(LP_CONFIG[perfil].area)?.classList.add('oculto');LP_renderizar_(perfil);
+  }
+  function LP_limparPendente_(perfil) {
+    const e=LP_estado_(perfil);e.pendente=false;LP_removerArmazenado_(perfil);
+  }
+  function LP_abrir_(perfil) {
+    const e=LP_estado_(perfil);
+    if ((e.pendente||e.validado||e.enviando) && (LP_email_(perfil)!==e.email || LP_periodo_(perfil)!==e.periodo)) LP_alterarIdentificacao_(perfil);
+    e.aberto=true;LP_renderizar_(perfil);
+  }
+  function LP_renderizar_(perfil) {
+    const e=LP_estado_(perfil),c=LP_CONFIG[perfil];
+    if (e.pendente && (!Number.isFinite(e.solicitadoEm)||Date.now()-e.solicitadoEm>=LP_TTL||e.solicitadoEm>Date.now())) {
+      LP_invalidar_(perfil);e.aberto=true;e.mensagem='O prazo desta solicitação terminou. Use Enviar código para solicitar outro.';
+    }
+    // An unfinished login is UI state, not evidence of permission or ownership.
+    if (e.aberto) {
+      LP_no_(c.area)?.classList.remove('oculto');
+      if (perfil==='oficial') LP_no_('areaAcessoPainelOficial')?.classList.remove('oculto');
+      if (perfil==='toque') loginToqueFogoAberto=true;
+    }
+    const otp=LP_no_(c.otp);if(otp && e.pendente)otp.classList.remove('oculto');
+    const status=LP_no_('lpStatus_'+perfil);if(status){status.textContent=e.mensagem;status.classList.toggle('oculto',!e.mensagem);}
+    const cancelar=LP_no_('lpCancelar_'+perfil);if(cancelar)cancelar.classList.toggle('oculto',!(e.pendente||e.validado||e.enviando||e.validando));
+    const b=LP_no_(c.enviar);if(b){b.disabled=e.enviando||e.validando||e.confirmando;b.textContent=e.enviando?'Solicitando...':(e.pendente||e.validado?'Reenviar código':'Enviar código');}
+    const v=LP_no_(c.validar);if(v)v.disabled=e.validando||e.enviando;
+  }
+  function LP_restaurar_(perfil) {
+    const e=LP_estado_(perfil),c=LP_CONFIG[perfil];
+    if (e.validado||e.enviando||e.validando||e.pendente) {LP_renderizar_(perfil);return e.pendente;}
+    let dado;
+    try {
+      const bruto=localStorage.getItem(LP_chave_(perfil));
+      if(bruto) dado=JSON.parse(bruto);
+      else if(c.legado) {const email=localStorage.getItem(c.legado+'_email_pendente'),em=localStorage.getItem(c.legado+'_codigo_pendente_em');if(email&&em)dado={perfil,email,periodo:'',solicitadoEm:Date.parse(em)};}
+    } catch (_) { LP_removerArmazenado_(perfil);return false; }
+    if(!dado)return false;
+    const now=Date.now();
+    if(dado.perfil!==perfil||typeof dado.email!=='string'||!dado.email.includes('@')||dado.email.length>254||typeof dado.solicitadoEm!=='number'||!Number.isFinite(dado.solicitadoEm)||dado.solicitadoEm>now||now-dado.solicitadoEm>=LP_TTL||
+      (perfil==='toque'?!['Diurno','Noturno'].includes(dado.periodo):dado.periodo!=='')) {LP_removerArmazenado_(perfil);return false;}
+    e.email=dado.email.trim().toLowerCase();e.periodo=dado.periodo;e.solicitadoEm=dado.solicitadoEm;e.pendente=true;e.aberto=true;
+    if(LP_no_(c.email))LP_no_(c.email).value=e.email;
+    if(perfil==='toque'&&LP_no_('periodoAlvoToqueFogo'))LP_no_('periodoAlvoToqueFogo').value=e.periodo;
+    e.mensagem='Código solicitado. Consulte seu e-mail, volte aqui e digite o código. Esta etapa ficará aberta por até 10 minutos.';
+    LP_dadosPendentes_(perfil);LP_gravar_(perfil);LP_renderizar_(perfil);return true;
+  }
+  function LP_guardarPendente_(perfil,email) {
+    const e=LP_estado_(perfil);e.email=String(email).trim().toLowerCase();e.periodo=LP_periodo_(perfil);e.solicitadoEm=Date.now();e.pendente=true;e.aberto=true;LP_gravar_(perfil);
+  }
+  function LP_assinatura_(perfil) {
+    const e=LP_estado_(perfil);return {geracao:e.geracao,email:LP_email_(perfil),periodo:LP_periodo_(perfil)};
+  }
+  function LP_mesmaSolicitacao_(perfil,s) {
+    const e=LP_estado_(perfil);return !!s&&s.geracao===e.geracao&&s.email===LP_email_(perfil)&&s.periodo===LP_periodo_(perfil);
+  }
+  function LP_enviar_(perfil,confirmado = false) {
+    const e=LP_estado_(perfil),c=LP_CONFIG[perfil],email=LP_email_(perfil),periodo=LP_periodo_(perfil);
+    if(e.enviando||e.validando||e.confirmando)return;
+    if(!email||!email.includes('@')||email.length>254) {mostrarMensagem('Informe um e-mail válido.','erro');return;}
+    if(perfil==='toque'&&!['Diurno','Noturno'].includes(periodo)){mostrarMensagem('Selecione o período do Toque de Fogo.','erro');return;}
+    if((e.pendente||e.validado)&&!confirmado) {
+      const assinatura=LP_assinatura_(perfil);e.confirmando=true;LP_renderizar_(perfil);
+      abrirModalConfirmacao('Reenviar código','Solicitar outro código pode invalidar o anterior. Deseja continuar?',()=>{
+        if(!LP_mesmaSolicitacao_(perfil,assinatura))return;e.confirmando=false;LP_enviar_(perfil,true);
+      },true);
+      // The modal close hook also releases this flag without issuing a request.
+      return;
+    }
+    LP_invalidar_(perfil);e.aberto=true;e.email=email;e.periodo=periodo;e.solicitadoEm=Date.now();e.pendente=true;e.enviando=true;
+    e.mensagem='Solicitando código. Consulte seu e-mail e volte aqui para digitá-lo; a confirmação do envio ainda está em andamento.';
+    LP_dadosPendentes_(perfil);LP_gravar_(perfil);LP_renderizar_(perfil);
+    const assinatura=LP_assinatura_(perfil);
+    const falha=erro=>{
+      if(!LP_mesmaSolicitacao_(perfil,assinatura))return;e.enviando=false;
+      e.mensagem='Não foi possível confirmar o envio: '+(erro?.message||erro)+'. Se o código chegou, digite-o aqui; caso contrário, use Reenviar código.';LP_renderizar_(perfil);
+    };
+    try {
+    const executor=google.script.run.withSuccessHandler(resposta=>{
+      if(!LP_mesmaSolicitacao_(perfil,assinatura))return;
+      e.enviando=false;e.mensagem='Código solicitado. Consulte seu e-mail, volte aqui e digite o código. Se o e-mail estiver autorizado, ele receberá a mensagem.';
+      if(perfil==='toque'&&resposta?.periodo&&resposta.periodo!==periodo){LP_invalidar_(perfil);e.mensagem='O período informado pelo servidor mudou. Confira o período e solicite outro código.';}
+      LP_renderizar_(perfil);
+    }).withFailureHandler(falha);
+    if(perfil==='toque')executor[c.acao](email,periodo);else executor[c.acao](email);
+    } catch(erro) { falha(erro); }
+  }
+  function LP_iniciarValidacao_(perfil) {
+    const e=LP_estado_(perfil);if(e.validando||e.enviando)return null;
+    e.validando=true;e.aberto=true;const s=LP_assinatura_(perfil);LP_renderizar_(perfil);return s;
+  }
+  function LP_falhouValidacao_(perfil,s) {
+    if(!LP_mesmaSolicitacao_(perfil,s))return false;
+    const e=LP_estado_(perfil);e.validando=false;e.mensagem='Não foi possível validar. Confira o código recebido ou use Reenviar código.';LP_renderizar_(perfil);return true;
+  }
+  function LP_validado_(perfil) {
+    const e=LP_estado_(perfil);e.geracao+=1;e.validando=false;e.enviando=false;e.confirmando=false;e.pendente=false;LP_removerArmazenado_(perfil);
+    e.validado=!!LP_CONFIG[perfil].duasEtapas;e.aberto=e.validado;
+    e.mensagem=e.validado?'Código validado. Confira a identificação e confirme a função abaixo.':'';
+    if(!e.validado)LP_limparCampos_(perfil,false);LP_renderizar_(perfil);
+  }
+  function LP_receberLink_(perfil,email) {
+    // Match exactly the pre-existing deep-link routes in aplicarCodigoDoLink.
+    perfil=perfil==='encarregado-motoristas'?'encarregado':(['consulta','encarregado','oficial','comandante'].includes(perfil)?perfil:'guarda');
+    LP_invalidar_(perfil);const e=LP_estado_(perfil);e.email=email.trim().toLowerCase();e.periodo=LP_periodo_(perfil);e.solicitadoEm=Date.now();e.aberto=true;e.pendente=true;
+    e.mensagem='Código recebido pelo link. Continue a confirmação neste formulário.';LP_gravar_(perfil);
+    // Existing explicit email deep-link behavior remains responsible for filling/validating the OTP.
+    return perfil;
+  }
+  function LP_liberarConfirmacoes_() {
+    Object.keys(LP_CONFIG).forEach(p=>{const e=LP_estado_(p);e.confirmando=false;LP_renderizar_(p);});
+  }
+  function LP_inicializar_() {
+    if(LP_inicializado)return;LP_inicializado=true;
+    Object.keys(LP_CONFIG).forEach(perfil=>{
+      const campo=LP_no_(LP_CONFIG[perfil].email);if(campo)campo.addEventListener('input',()=>LP_alterarIdentificacao_(perfil));
+      LP_restaurar_(perfil);
+    });
+    const recente=Object.keys(LP_CONFIG).filter(p=>LP_estado_(p).pendente).sort((a,b)=>LP_estado_(b).solicitadoEm-LP_estado_(a).solicitadoEm)[0];
+    if(recente&&LP_CONFIG[recente].card)expandirPerfilServico(LP_CONFIG[recente].card,true);
+    window.addEventListener('pageshow',()=>Object.keys(LP_CONFIG).forEach(LP_renderizar_));
+  }
+
 function obterTokenSessaoLocal(chaveToken, chaveInicio, duracao) {
   const token = localStorage.getItem(chaveToken) || '';
   if (!token) return '';
@@ -1467,11 +1673,8 @@ let tipoMovimentacaoAtual = 'Entrada';
     selecionarModoRegistro('Individual');
     alternarTipoRegistro();
     carregarIdentidadesEquipeServico();
-    restaurarCodigoGuardaPendente();
-    restaurarCodigoComandantePendente();
-    restaurarCodigoOficialPendente();
+    LP_inicializar_();
     restaurarAcessoOficial();
-    restaurarCodigoEncarregadoMotoristasPendente();
     aplicarCodigoDoLink();
     inicializarFiltrosHistorico();
     agendarProximaViradaServico();
@@ -3581,42 +3784,19 @@ let tipoMovimentacaoAtual = 'Entrada';
     } else {
       atualizarAcoesCoberturaEPermissoes();
     }
+  LP_renderizar_('guarda');
   }
 
   function mostrarAreaTrocaGuarda() {
     expandirPerfilServico('perfilGuarda', true);
     document.getElementById('areaAssumirGuarda').classList.remove('oculto');
     mostrarMensagem('Informe seu e-mail para assumir a Guarda neste celular. A sessão anterior será encerrada após a confirmação.', 'sucesso');
+  LP_abrir_('guarda');
   }  
 
-  function enviarCodigoGuarda() {
-    const email = document.getElementById('emailGuarda').value.trim().toLowerCase();
-
-    if (!email || !email.includes('@')) {
-      mostrarMensagem('Informe um e-mail válido.', 'erro');
-      return;
-    }
-
-    google.script.run
-      .withSuccessHandler((resposta) => {
-        dadosCodigoGuarda = {
-          email: email,
-          encontradoNoEfetivo: false,
-          militar: null,
-          ticketAssuncao: ''
-        };
-
-        salvarCodigoGuardaPendente(email);
-
-        document.getElementById('areaCodigoGuarda').classList.remove('oculto');
-
-        mostrarMensagem('Se o e-mail estiver autorizado, o código será enviado.', 'sucesso');
-      })
-      .withFailureHandler((erro) => {
-        mostrarMensagem('Erro ao enviar código: ' + erro.message, 'erro');
-      })
-      .enviarCodigoAssumirGuarda(email);
-  }
+function enviarCodigoGuarda() {
+  LP_enviar_('guarda');
+}
 
   function validarCodigoGuarda() {
     const email = document.getElementById('emailGuarda').value.trim().toLowerCase();
@@ -3627,8 +3807,13 @@ let tipoMovimentacaoAtual = 'Entrada';
       return;
     }
 
-    google.script.run
+    const lpValidacao=LP_iniciarValidacao_('guarda');
+  if(!lpValidacao)return;
+  try {
+  google.script.run
       .withSuccessHandler((resposta) => {
+      if(!LP_mesmaSolicitacao_('guarda',lpValidacao))return;
+      LP_validado_('guarda');
         dadosCodigoGuarda = {
           email: resposta.email,
           encontradoNoEfetivo: resposta.encontradoNoEfetivo,
@@ -3663,9 +3848,11 @@ let tipoMovimentacaoAtual = 'Entrada';
         mostrarMensagem('Código validado com sucesso.', 'sucesso');
       })
       .withFailureHandler((erro) => {
+      if(!LP_falhouValidacao_('guarda',lpValidacao))return;
         mostrarMensagem('Erro ao validar código: ' + erro.message, 'erro');
       })
       .validarCodigoAssumirGuarda(email, codigo);
+  } catch(erro) { if(LP_falhouValidacao_('guarda',lpValidacao))mostrarMensagem('Não foi possível iniciar a validação: '+(erro.message||erro),'erro'); }
   }
 
   function assumirGuarda(encerrarAnterior = false) {
@@ -3772,6 +3959,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function limparAreaGuarda() {
+  LP_finalizar_('guarda');
     limparCodigoGuardaPendente();
 
     dadosCodigoGuarda = null;
@@ -3813,45 +4001,17 @@ let tipoMovimentacaoAtual = 'Entrada';
     }
   }
 
-  function salvarCodigoGuardaPendente(email) {
-    localStorage.setItem('guarda_email_pendente', email);
-    localStorage.setItem('guarda_codigo_pendente_em', new Date().toISOString());
-  }
+function salvarCodigoGuardaPendente(email) {
+  LP_guardarPendente_('guarda',email);
+}
 
-  function limparCodigoGuardaPendente() {
-    localStorage.removeItem('guarda_email_pendente');
-    localStorage.removeItem('guarda_codigo_pendente_em');
-  }
+function limparCodigoGuardaPendente() {
+  LP_limparPendente_('guarda');
+}
 
-  function restaurarCodigoGuardaPendente() {
-    const email = localStorage.getItem('guarda_email_pendente');
-    const geradoEm = localStorage.getItem('guarda_codigo_pendente_em');
-
-    if (!email || !geradoEm) {
-      return;
-    }
-
-    const agora = new Date();
-    const dataGerado = new Date(geradoEm);
-    const diferencaMinutos = (agora - dataGerado) / 1000 / 60;
-
-    if (diferencaMinutos > 10) {
-      limparCodigoGuardaPendente();
-      return;
-    }
-
-    document.getElementById('emailGuarda').value = email;
-    document.getElementById('areaCodigoGuarda').classList.remove('oculto');
-
-    dadosCodigoGuarda = {
-      email: email,
-      encontradoNoEfetivo: false,
-      militar: null,
-      ticketAssuncao: ''
-    };
-
-    mostrarMensagem('Código pendente restaurado. Digite o código recebido por e-mail.', 'sucesso');
-  }
+function restaurarCodigoGuardaPendente() {
+  LP_restaurar_('guarda');
+}
 
 function limparCodigoAcessoDaUrl() {
   if (!window.history || typeof window.history.replaceState !== 'function') return;
@@ -3868,6 +4028,8 @@ function aplicarCodigoDoLink() {
   if (!email || !codigo) {
     return;
   }
+
+  LP_receberLink_(perfil,email);
 
   if (perfil === 'consulta') {
     document.getElementById('emailConsultaEfetivo').value = email;
@@ -4083,30 +4245,11 @@ function mostrarAreaTrocaOficial() {
   alternarAcessoPainelOficial(true);
   document.getElementById('areaAssumirOficial').classList.remove('oculto');
   mostrarMensagem('Informe seu e-mail cadastrado para assumir como Oficial de Dia.', 'sucesso');
+  LP_abrir_('oficial');
 }
 
 function enviarCodigoOficial() {
-  const email = document.getElementById('emailOficial').value.trim().toLowerCase();
-  if (!email) return mostrarMensagem('Informe o e-mail cadastrado do oficial.', 'erro');
-  const botao = document.getElementById('btnEnviarCodigoOficial');
-  botao.disabled = true;
-  botao.textContent = 'Enviando...';
-  google.script.run
-    .withSuccessHandler((resposta) => {
-      dadosCodigoOficial = { email: email, militar: null };
-      salvarCodigoOficialPendente(email);
-      document.getElementById('areaCodigoOficial').classList.remove('oculto');
-      document.getElementById('codigoOficial').focus();
-      mostrarMensagem('Se o e-mail estiver autorizado, o código será enviado.', 'sucesso');
-      botao.disabled = false;
-      botao.textContent = 'Reenviar código';
-    })
-    .withFailureHandler((erro) => {
-      mostrarMensagem('Acesso não liberado: ' + erro.message, 'erro');
-      botao.disabled = false;
-      botao.textContent = 'Enviar código';
-    })
-    .enviarCodigoAssumirOficialDia(email);
+  LP_enviar_('oficial');
 }
 
 function validarCodigoOficial() {
@@ -4116,8 +4259,13 @@ function validarCodigoOficial() {
   const botao = document.getElementById('btnValidarCodigoOficial');
   botao.disabled = true;
   botao.textContent = 'Validando...';
+  const lpValidacao=LP_iniciarValidacao_('oficial');
+  if(!lpValidacao)return;
+  try {
   google.script.run
     .withSuccessHandler((resposta) => {
+      if(!LP_mesmaSolicitacao_('oficial',lpValidacao))return;
+      LP_validado_('oficial');
       localStorage.setItem('oficial_dia_sessao_token', resposta.sessaoToken || '');
       marcarInicioSessaoLocal('oficial_dia_sessao_iniciada_em');
       salvarOficialLocal(resposta.militar);
@@ -4131,11 +4279,13 @@ function validarCodigoOficial() {
       botao.textContent = 'Entrar';
     })
     .withFailureHandler((erro) => {
+      if(!LP_falhouValidacao_('oficial',lpValidacao))return;
       mostrarMensagem('Erro ao validar acesso de oficial: ' + erro.message, 'erro');
       botao.disabled = false;
       botao.textContent = 'Entrar';
     })
     .validarCodigoAssumirOficialDia(email, codigo);
+  } catch(erro) { if(LP_falhouValidacao_('oficial',lpValidacao))mostrarMensagem('Não foi possível iniciar a validação: '+(erro.message||erro),'erro'); }
 }
 
 function assumirOficial(encerrarAnterior = false) {
@@ -4198,6 +4348,7 @@ function validarCodigoEEncerrarOficial() {
 }
 
 function limparAreaOficial() {
+  LP_finalizar_('oficial');
   dadosCodigoOficial = null;
   emailEncerramentoOficial = null;
   ['emailOficial', 'codigoOficial', 'codigoEncerrarOficial'].forEach(id => {
@@ -4293,30 +4444,15 @@ function limparAreaOficial() {
   }
 
 function salvarCodigoEncarregadoMotoristasPendente(email) {
-  localStorage.setItem('encarregado_motoristas_email_pendente', email);
-  localStorage.setItem('encarregado_motoristas_codigo_pendente_em', new Date().toISOString());
+  LP_guardarPendente_('encarregado',email);
 }
 
 function limparCodigoEncarregadoMotoristasPendente() {
-  localStorage.removeItem('encarregado_motoristas_email_pendente');
-  localStorage.removeItem('encarregado_motoristas_codigo_pendente_em');
+  LP_limparPendente_('encarregado');
 }
 
 function restaurarCodigoEncarregadoMotoristasPendente() {
-  const email = localStorage.getItem('encarregado_motoristas_email_pendente');
-  const geradoEm = localStorage.getItem('encarregado_motoristas_codigo_pendente_em');
-  const dataGeracao = geradoEm ? new Date(geradoEm) : null;
-  if (!email || !dataGeracao || isNaN(dataGeracao.getTime()) ||
-      Date.now() - dataGeracao.getTime() > 10 * 60 * 1000) {
-    limparCodigoEncarregadoMotoristasPendente();
-    return;
-  }
-  const campoEmail = document.getElementById('emailEncarregadoMotoristas');
-  const areaCodigo = document.getElementById('areaCodigoEncarregadoMotoristas');
-  if (campoEmail) campoEmail.value = email;
-  if (areaCodigo) areaCodigo.classList.remove('oculto');
-  dadosCodigoEncarregadoMotoristas = { email: email };
-  expandirPerfilServico('perfilEncarregadoMotoristas', true);
+  LP_restaurar_('encarregado');
 }
 
 function limparAcessoEncarregadoMotoristasLocal() {
@@ -4436,6 +4572,7 @@ function atualizarTelaEncarregadoMotoristas() {
   if (!identificado) botaoEntrar.textContent = 'Assumir função';
   atualizarAcaoEncerramentoPendenteMotoristas();
   atualizarVisibilidadePainelComandante();
+  LP_renderizar_('encarregado');
 }
 
 function mostrarAreaAcessoEncarregadoMotoristas() {
@@ -4444,35 +4581,11 @@ function mostrarAreaAcessoEncarregadoMotoristas() {
   if (area) area.classList.remove('oculto');
   const campoEmail = document.getElementById('emailEncarregadoMotoristas');
   if (campoEmail) campoEmail.focus();
+  LP_abrir_('encarregado');
 }
 
 function enviarCodigoEncarregadoMotoristas() {
-  const campoEmail = document.getElementById('emailEncarregadoMotoristas');
-  const email = String(campoEmail && campoEmail.value || '').trim().toLowerCase();
-  if (!email || !email.includes('@')) {
-    mostrarMensagem('Informe um e-mail válido.', 'erro');
-    return;
-  }
-  const botao = document.getElementById('btnEnviarCodigoEncarregadoMotoristas');
-  botao.disabled = true;
-  botao.textContent = 'Enviando...';
-  google.script.run
-    .withSuccessHandler(resposta => {
-      dadosCodigoEncarregadoMotoristas = { email: email };
-      salvarCodigoEncarregadoMotoristasPendente(email);
-      document.getElementById('areaCodigoEncarregadoMotoristas').classList.remove('oculto');
-      document.getElementById('codigoEncarregadoMotoristas').focus();
-      botao.disabled = false;
-      botao.textContent = 'Reenviar código';
-      mostrarMensagem((resposta && resposta.mensagem) ||
-        'Se o e-mail estiver autorizado, o código de acesso será enviado.', 'sucesso');
-    })
-    .withFailureHandler(erro => {
-      botao.disabled = false;
-      botao.textContent = 'Enviar código';
-      mostrarMensagem('Não foi possível enviar o código: ' + erro.message, 'erro');
-    })
-    .enviarCodigoAcessoEncarregadoMotoristas(email);
+  LP_enviar_('encarregado');
 }
 
 function validarCodigoEncarregadoMotoristas() {
@@ -4486,17 +4599,23 @@ function validarCodigoEncarregadoMotoristas() {
   const botao = document.getElementById('btnValidarCodigoEncarregadoMotoristas');
   botao.disabled = true;
   botao.textContent = 'Validando...';
+  const lpValidacao=LP_iniciarValidacao_('encarregado');
+  if(!lpValidacao)return;
+  try {
   google.script.run
     .withSuccessHandler(resposta => {
+      if(!LP_mesmaSolicitacao_('encarregado',lpValidacao))return;
       const token = String(resposta && resposta.sessaoToken || '');
       const encerramentoPendente = resposta && resposta.encerramentoPendente
         ? resposta.encerramentoPendente : null;
       if (!token || !resposta || (!resposta.encarregado && !encerramentoPendente)) {
         botao.disabled = false;
         botao.textContent = 'Confirmar e assumir';
+        LP_falhouValidacao_('encarregado',lpValidacao);
         mostrarMensagem('O servidor não devolveu uma sessão válida. Tente novamente.', 'erro');
         return;
       }
+      LP_validado_('encarregado');
       localStorage.setItem('encarregado_motoristas_sessao_token', token);
       marcarInicioSessaoLocal('encarregado_motoristas_sessao_iniciada_em');
       sessaoEncarregadoMotoristasIdentificada = resposta.sessaoIdentificada === true ||
@@ -4539,11 +4658,13 @@ function validarCodigoEncarregadoMotoristas() {
       }
     })
     .withFailureHandler(erro => {
+      if(!LP_falhouValidacao_('encarregado',lpValidacao))return;
       botao.disabled = false;
       botao.textContent = 'Confirmar e assumir';
       mostrarMensagem('Não foi possível assumir a função: ' + erro.message, 'erro');
     })
     .validarCodigoAcessoEncarregadoMotoristas(email, codigo);
+  } catch(erro) { if(LP_falhouValidacao_('encarregado',lpValidacao))mostrarMensagem('Não foi possível iniciar a validação: '+(erro.message||erro),'erro'); }
 }
 
 function sairAcessoEncarregadoMotoristas(exibirMensagem = true) {
@@ -4731,25 +4852,15 @@ function encerrarServicoEncarregadoMotoristas(eventoSubmit) {
 }
 
 function salvarCodigoOficialPendente(email) {
-  localStorage.setItem('oficial_dia_email_pendente', email);
-  localStorage.setItem('oficial_dia_codigo_pendente_em', new Date().toISOString());
+  LP_guardarPendente_('oficial',email);
 }
 
 function limparCodigoOficialPendente() {
-  localStorage.removeItem('oficial_dia_email_pendente');
-  localStorage.removeItem('oficial_dia_codigo_pendente_em');
+  LP_limparPendente_('oficial');
 }
 
 function restaurarCodigoOficialPendente() {
-  const email = localStorage.getItem('oficial_dia_email_pendente');
-  const geradoEm = localStorage.getItem('oficial_dia_codigo_pendente_em');
-  if (!email || !geradoEm || Date.now() - new Date(geradoEm).getTime() > 10 * 60 * 1000) {
-    limparCodigoOficialPendente(); return;
-  }
-  document.getElementById('emailOficial').value = email;
-  document.getElementById('areaCodigoOficial').classList.remove('oculto');
-  dadosCodigoOficial = { email: email, militar: null, ticketAssuncao: '' };
-  alternarAcessoPainelOficial(true);
+  LP_restaurar_('oficial');
 }
 
 function salvarOficialLocal(oficial) {
@@ -4790,6 +4901,7 @@ function alternarAcessoPainelOficial(forcarAberto = null) {
   const painel = document.getElementById('areaAcessoPainelOficial');
   if (!painel) return;
   const abrir = forcarAberto === null ? painel.classList.contains('oculto') : !!forcarAberto;
+  if (abrir) LP_abrir_('oficial');
   if (abrir) expandirPerfilServico('perfilOficial', true);
   painel.classList.toggle('oculto', !abrir);
   atualizarRotuloAcessoPainelOficial();
@@ -4821,6 +4933,7 @@ function atualizarTelaAcessoOficial() {
       '</strong><br>Acesso às informações do serviço ativo neste aparelho.';
   }
   atualizarRotuloAcessoPainelOficial();
+  LP_renderizar_('oficial');
 }
 
 function sairAcessoOficial() {
@@ -4945,6 +5058,7 @@ function atualizarTelaComandante() {
   atualizarVisibilidadePainelComandante();
   atualizarVisibilidadeGuarnicoesServico();
   atualizarTelaOficial();
+  LP_renderizar_('comandante');
 }
 
 function atualizarVisibilidadePainelComandante() {
@@ -4991,6 +5105,7 @@ function atualizarVisibilidadePainelComandante() {
   atualizarObservacoesServico();
   atualizarVisibilidadePainelMotoristas();
   mestreAgendarInterface();
+  LP_renderizar_('consulta');
 }
 
 function formatarDataInputLocal(data) {
@@ -7280,32 +7395,11 @@ function mostrarAreaTrocaComandante() {
       : 'Informe seu e-mail cadastrado para assumir como Comandante da Guarda. A sessão anterior do comandante será encerrada após a confirmação.',
     'sucesso'
   );
+  LP_abrir_('comandante');
 }
 
 function enviarCodigoComandante() {
-  const email = document.getElementById('emailComandante').value.trim().toLowerCase();
-
-  if (!email || !email.includes('@')) {
-    mostrarMensagem('Informe um e-mail válido.', 'erro');
-    return;
-  }
-
-  google.script.run
-    .withSuccessHandler((resposta) => {
-      dadosCodigoComandante = {
-        email: email,
-        militar: null,
-        ticketAssuncao: ''
-      };
-
-      salvarCodigoComandantePendente(email);
-      document.getElementById('areaCodigoComandante').classList.remove('oculto');
-      mostrarMensagem('Se o e-mail estiver autorizado, o código será enviado.', 'sucesso');
-    })
-    .withFailureHandler((erro) => {
-      mostrarMensagem('Erro ao enviar código do comandante: ' + erro.message, 'erro');
-    })
-    .enviarCodigoAssumirComandante(email);
+  LP_enviar_('comandante');
 }
 
 function validarCodigoComandante() {
@@ -7317,8 +7411,13 @@ function validarCodigoComandante() {
     return;
   }
 
+  const lpValidacao=LP_iniciarValidacao_('comandante');
+  if(!lpValidacao)return;
+  try {
   google.script.run
     .withSuccessHandler((resposta) => {
+      if(!LP_mesmaSolicitacao_('comandante',lpValidacao))return;
+      LP_validado_('comandante');
       dadosCodigoComandante = {
         email: resposta.email,
         militar: resposta.militar || null,
@@ -7339,9 +7438,11 @@ function validarCodigoComandante() {
       mostrarMensagem('Comandante identificado com sucesso.', 'sucesso');
     })
     .withFailureHandler((erro) => {
+      if(!LP_falhouValidacao_('comandante',lpValidacao))return;
       mostrarMensagem('Erro ao validar comandante: ' + erro.message, 'erro');
     })
     .validarCodigoAssumirComandante(email, codigo);
+  } catch(erro) { if(LP_falhouValidacao_('comandante',lpValidacao))mostrarMensagem('Não foi possível iniciar a validação: '+(erro.message||erro),'erro'); }
 }
 
 function assumirComandante(encerrarAnterior = false) {
@@ -7553,6 +7654,7 @@ function mascararEmailComandante(email) {
 }
 
 function limparAreaComandante() {
+  LP_finalizar_('comandante');
   OBS_recolherRevisao_();
   dadosCodigoComandante = null;
   emailEncerramentoComandante = null;
@@ -7589,29 +7691,15 @@ function limparAreaComandante() {
 }
 
 function salvarCodigoComandantePendente(email) {
-  localStorage.setItem('comandante_email_pendente', email);
-  localStorage.setItem('comandante_codigo_pendente_em', new Date().toISOString());
+  LP_guardarPendente_('comandante',email);
 }
 
 function limparCodigoComandantePendente() {
-  localStorage.removeItem('comandante_email_pendente');
-  localStorage.removeItem('comandante_codigo_pendente_em');
+  LP_limparPendente_('comandante');
 }
 
 function restaurarCodigoComandantePendente() {
-  const email = localStorage.getItem('comandante_email_pendente');
-  const geradoEm = localStorage.getItem('comandante_codigo_pendente_em');
-
-  if (!email || !geradoEm) return;
-
-  if ((new Date() - new Date(geradoEm)) / 60000 > 10) {
-    limparCodigoComandantePendente();
-    return;
-  }
-
-  document.getElementById('emailComandante').value = email;
-  document.getElementById('areaCodigoComandante').classList.remove('oculto');
-  dadosCodigoComandante = { email: email, militar: null, ticketAssuncao: '' };
+  LP_restaurar_('comandante');
 }
 
 function salvarComandanteLocal(comandante) {
@@ -7728,6 +7816,7 @@ function fecharModalConfirmacao() {
     focoAntesModalConfirmacao.focus();
   }
   focoAntesModalConfirmacao = null;
+  LP_liberarConfirmacoes_();
 }
 
 function configurarDestinoModalConfirmacao_(configuracao) {
@@ -7889,28 +7978,7 @@ function obterSessaoConsultaEfetivo() {
 }
 
 function enviarCodigoConsultaEfetivo() {
-  const email = String(document.getElementById('emailConsultaEfetivo').value || '').trim().toLowerCase();
-  if (!email || !email.includes('@')) {
-    mostrarMensagem('Informe o e-mail cadastrado no efetivo do 1º GBM.', 'erro');
-    return;
-  }
-  const botao = document.getElementById('btnEnviarCodigoConsultaEfetivo');
-  botao.disabled = true;
-  botao.textContent = 'Enviando...';
-  google.script.run
-    .withSuccessHandler((resposta) => {
-      document.getElementById('areaCodigoConsultaEfetivo').classList.remove('oculto');
-      document.getElementById('codigoConsultaEfetivo').focus();
-      mostrarMensagem((resposta && resposta.mensagem) || 'Código enviado por e-mail.', 'sucesso');
-      botao.disabled = false;
-      botao.textContent = 'Reenviar código';
-    })
-    .withFailureHandler((erro) => {
-      mostrarMensagem('Não foi possível liberar a consulta: ' + erro.message, 'erro');
-      botao.disabled = false;
-      botao.textContent = 'Enviar código';
-    })
-    .enviarCodigoConsultaEfetivo(email);
+  LP_enviar_('consulta');
 }
 
 function validarCodigoConsultaEfetivo() {
@@ -7923,8 +7991,13 @@ function validarCodigoConsultaEfetivo() {
   const botao = document.getElementById('btnValidarConsultaEfetivo');
   botao.disabled = true;
   botao.textContent = 'Validando...';
+  const lpValidacao=LP_iniciarValidacao_('consulta');
+  if(!lpValidacao)return;
+  try {
   google.script.run
     .withSuccessHandler((resposta) => {
+      if(!LP_mesmaSolicitacao_('consulta',lpValidacao))return;
+      LP_validado_('consulta');
       if (resposta && resposta.mestre) {
         try {
           mestreAplicarRespostaSessao(resposta.mestre, resposta.sessaoToken);
@@ -7950,11 +8023,13 @@ function validarCodigoConsultaEfetivo() {
       botao.textContent = 'Entrar';
     })
     .withFailureHandler((erro) => {
+      if(!LP_falhouValidacao_('consulta',lpValidacao))return;
       mostrarMensagem('Não foi possível validar a consulta: ' + erro.message, 'erro');
       botao.disabled = false;
       botao.textContent = 'Entrar';
     })
     .validarCodigoConsultaEfetivo(email, codigo);
+  } catch(erro) { if(LP_falhouValidacao_('consulta',lpValidacao))mostrarMensagem('Não foi possível iniciar a validação: '+(erro.message||erro),'erro'); }
 }
 
 function restaurarConsultaEfetivo() {
@@ -8443,6 +8518,7 @@ function atualizarTelaToqueFogo() {
   }
 
   atualizarAcoesCoberturaEPermissoes();
+  LP_renderizar_('toque');
 }
 
 function escolherPeriodoPadraoToqueFogo() {
@@ -8484,6 +8560,7 @@ function mostrarAreaTrocaToqueFogo(periodoAlvo) {
       obterPeriodoAlvoToqueFogo().toLowerCase() + ' neste celular.',
     'sucesso'
   );
+  LP_abrir_('toque');
 }
 
 function alterarPeriodoAlvoToqueFogo() {
@@ -8502,35 +8579,11 @@ function alterarPeriodoAlvoToqueFogo() {
   if (haviaValidacao) {
     mostrarMensagem('O período foi alterado. Solicite um novo código para continuar.', 'erro');
   }
+  LP_alterarIdentificacao_('toque');
 }
 
 function enviarCodigoToqueFogo() {
-  const email = document.getElementById('emailToqueFogo').value.trim().toLowerCase();
-  const periodoAlvo = obterPeriodoAlvoToqueFogo();
-  if (!email || !email.includes('@')) {
-    mostrarMensagem('Informe um e-mail válido.', 'erro');
-    return;
-  }
-  const geracao = ++geracaoValidacaoToqueFogo;
-  google.script.run
-    .withSuccessHandler((resposta) => {
-      if (geracao !== geracaoValidacaoToqueFogo) return;
-      dadosCodigoToqueFogo = {
-        email: email,
-        encontradoNoEfetivo: false,
-        militar: null,
-        ticketAssuncao: '',
-        periodoAlvo: resposta.periodo || periodoAlvo
-      };
-      document.getElementById('areaCodigoToqueFogo').classList.remove('oculto');
-      mostrarMensagem(
-        'Se o e-mail estiver autorizado, o código do período ' +
-          periodoAlvo.toLowerCase() + ' será enviado.',
-        'sucesso'
-      );
-    })
-    .withFailureHandler((erro) => mostrarMensagem('Erro ao enviar código: ' + erro.message, 'erro'))
-    .enviarCodigoAssumirToqueFogo(email, periodoAlvo);
+  LP_enviar_('toque');
 }
 
 function validarCodigoToqueFogo() {
@@ -8546,9 +8599,14 @@ function validarCodigoToqueFogo() {
     return;
   }
   const geracao = geracaoValidacaoToqueFogo;
+  const lpValidacao=LP_iniciarValidacao_('toque');
+  if(!lpValidacao)return;
+  try {
   google.script.run
     .withSuccessHandler((resposta) => {
+      if(!LP_mesmaSolicitacao_('toque',lpValidacao))return;
       if (geracao !== geracaoValidacaoToqueFogo) return;
+      LP_validado_('toque');
       dadosCodigoToqueFogo = {
         email: resposta.email,
         encontradoNoEfetivo: resposta.encontradoNoEfetivo,
@@ -8571,8 +8629,9 @@ function validarCodigoToqueFogo() {
       atualizarTituloDefinicaoToqueFogo();
       mostrarMensagem('Código validado para o período ' + periodoAlvo.toLowerCase() + '.', 'sucesso');
     })
-    .withFailureHandler((erro) => mostrarMensagem('Erro ao validar código: ' + erro.message, 'erro'))
+    .withFailureHandler((erro) => {if(LP_falhouValidacao_('toque',lpValidacao))mostrarMensagem('Erro ao validar código: ' + erro.message, 'erro');})
     .validarCodigoAssumirToqueFogo(email, codigo, periodoAlvo);
+  } catch(erro) { if(LP_falhouValidacao_('toque',lpValidacao))mostrarMensagem('Não foi possível iniciar a validação: '+(erro.message||erro),'erro'); }
 }
 
 function assumirToqueFogo(encerrarAnterior = false, idToqueAnteriorEsperado = '') {
@@ -8630,6 +8689,7 @@ function assumirToqueFogo(encerrarAnterior = false, idToqueAnteriorEsperado = ''
 }
 
 function limparAreaToqueFogo() {
+  LP_finalizar_('toque');
   geracaoValidacaoToqueFogo += 1;
   dadosCodigoToqueFogo = null;
   loginToqueFogoAberto = false;
