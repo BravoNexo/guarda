@@ -3642,3 +3642,93 @@ body.modal-motoristas-aberto {
 }
 
 /* O realce de foco, textos, estados e avisos existentes são preservados. */
+
+
+/* Alterações do serviço recolhíveis — 27.1.16. Estado nativo, sem recriar o editor. */
+#painelAlteracoesServico {
+  margin: 0 0 14px;
+  border: 1px solid var(--funcao-borda, #e9d5ff);
+  border-radius: 12px;
+  background: #fff;
+}
+
+#painelAlteracoesServico > .botao-alternar-alteracoes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  padding: 12px;
+  list-style: none;
+  border-radius: 11px;
+  background: var(--funcao-cabecalho, #f3e8ff);
+  color: var(--funcao-titulo, #6b21a8);
+  cursor: pointer;
+}
+
+#painelAlteracoesServico > .botao-alternar-alteracoes::-webkit-details-marker {
+  display: none;
+}
+
+#painelAlteracoesServico > .botao-alternar-alteracoes:focus-visible {
+  outline: 3px solid var(--funcao-cor, #7e22ce);
+  outline-offset: 3px;
+}
+
+#painelAlteracoesServico .botao-alternar-alteracoes strong,
+#painelAlteracoesServico .botao-alternar-alteracoes small {
+  display: block;
+  line-height: 1.4;
+}
+
+#painelAlteracoesServico .botao-alternar-alteracoes strong {
+  font-size: 15px;
+}
+
+#painelAlteracoesServico .botao-alternar-alteracoes small {
+  margin-top: 3px;
+  font-size: 12px;
+  color: #475569;
+}
+
+#painelAlteracoesServico .icone-alteracoes-servico {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--funcao-cor, #7e22ce);
+  border-radius: 50%;
+  font-size: 20px;
+  line-height: 1;
+}
+
+#painelAlteracoesServico[open] > .botao-alternar-alteracoes {
+  border-radius: 11px 11px 0 0;
+  border-bottom: 1px solid var(--funcao-borda, #e9d5ff);
+}
+
+#painelAlteracoesServico[open] .icone-alteracoes-servico {
+  transform: rotate(180deg);
+}
+
+#painelAlteracoesServico:not([open]) .alteracoes-recolher,
+#painelAlteracoesServico[open] .alteracoes-abrir {
+  display: none;
+}
+
+#painelAlteracoesServico > #observacoesServicoHost {
+  padding: 12px;
+}
+
+#observacoesServicoHost > .observacoes-em-revisao {
+  display: none;
+}
+
+#observacoesServicoHost > .observacoes-em-revisao:only-child {
+  display: block;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #475569;
+}

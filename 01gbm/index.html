@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.1.15">
+  <link rel="stylesheet" href="style.css?v=27.1.16">
   </head>
 
   <body>
@@ -447,7 +447,17 @@
           </div>
           <div id="competenciasExclusivasComandante" class="conteudo-competencia oculto">
             <p class="descricao-competencia">Competências exclusivas do Comandante da Guarda deste serviço.</p>
+            <details id="painelAlteracoesServico" class="painel-alteracoes-servico">
+              <summary id="btnAlternarAlteracoesServico" class="botao-alternar-alteracoes" aria-controls="observacoesServicoHost">
+                <span>
+                  <strong>Alterações do serviço</strong>
+                  <small class="alteracoes-abrir">Abrir caixa de alterações</small>
+                  <small class="alteracoes-recolher">Recolher caixa de alterações</small>
+                </span>
+                <span class="icone-alteracoes-servico" aria-hidden="true">⌄</span>
+              </summary>
             <div id="observacoesServicoHost">
+              <p class="observacoes-em-revisao">As alterações estão abertas na revisão de encerramento, na Equipe de Serviço.</p>
               <div id="editorObservacoesServico" class="campo">
                 <label for="observacoesEncerramentoComandante"><strong>Alterações e observações do serviço</strong></label>
                 <p>Registre durante o serviço e salve quando desejar. No encerramento, este mesmo texto estará disponível para revisão.</p>
@@ -464,6 +474,7 @@
                 </details>
               </div>
             </div>
+            </details>
             <div id="acaoLancamentoRetroativo" class="acao-lancamento-retroativo oculto">
               <div>
                 <strong>Lançamento em horário anterior</strong>
