@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.1.16">
+  <link rel="stylesheet" href="style.css?v=27.1.17">
   </head>
 
   <body>
@@ -463,7 +463,7 @@
                 <p>Registre durante o serviço e salve quando desejar. No encerramento, este mesmo texto estará disponível para revisão.</p>
                 <textarea id="observacoesEncerramentoComandante" rows="6" maxlength="20000" oninput="alterarObservacoesServico()" placeholder="Ex.: alterações na guarnição, ocorrências relevantes, pendências ou sem alterações." readonly></textarea>
                 <div class="acoes-designacao-oficial">
-                  <button type="button" id="btnRecarregarObservacoesServico" onclick="recarregarObservacoesServico()">Recarregar texto salvo</button>
+                  <button type="button" id="btnRecarregarObservacoesServico" onclick="recarregarObservacoesServico()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 4v6h-6M19.2 15a8 8 0 1 1-1.9-8.3L21 10"/></svg><span>Recarregar texto salvo</span></button>
                   <button type="button" id="btnSalvarObservacoesServico" class="botao-secundario" onclick="salvarObservacoesServico()" disabled>Salvar observações</button>
                 </div>
                 <div id="statusObservacoesServico" role="status" aria-live="polite">Carregando observações...</div>
@@ -597,7 +597,6 @@
           aria-labelledby="tituloCompetenciaMotoristas">
           <div class="cabecalho-painel-motoristas">
             <div>
-              <span class="sobretitulo-painel-motoristas">Livro de serviço</span>
               <h2 id="tituloCompetenciaMotoristas">Encarregado de Motoristas</h2>
               <span id="cicloPainelMotoristas">Ciclo das 08h às 08h</span>
             </div>

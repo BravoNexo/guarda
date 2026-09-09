@@ -3732,3 +3732,62 @@ body.modal-motoristas-aberto {
   line-height: 1.5;
   color: #475569;
 }
+
+
+/* Botão Recarregar texto salvo — 27.1.17. Apenas apresentação. */
+#editorObservacoesServico > .acoes-designacao-oficial {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 10px;
+}
+
+#btnRecarregarObservacoesServico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #8b5cf6;
+  border-radius: 12px;
+  background: #faf5ff;
+  color: #6b21a8;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  cursor: pointer;
+}
+
+#btnRecarregarObservacoesServico > svg {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+}
+
+#btnRecarregarObservacoesServico > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+#btnRecarregarObservacoesServico:hover:not(:disabled) {
+  background: #f3e8ff;
+  border-color: #7e22ce;
+}
+
+#btnRecarregarObservacoesServico:focus-visible {
+  outline: 3px solid #7e22ce;
+  outline-offset: 2px;
+}
+
+#btnRecarregarObservacoesServico:disabled {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #64748b;
+  cursor: not-allowed;
+}
