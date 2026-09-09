@@ -3456,7 +3456,7 @@ function atualizarTelaOficial() {
   if (oficialAtual) {
     status.classList.add('ativo');
     status.innerHTML = oficialAtual.Nome_Oficial && oficialAtual.RG_Oficial
-      ? 'Oficial de Dia informado pelo Comandante:<br>' + escaparHtml(oficialAtual.Nome_Oficial) +
+      ? 'Oficial de Dia deste serviço:<br>' + escaparHtml(oficialAtual.Nome_Oficial) +
         ' — RG ' + escaparHtml(oficialAtual.RG_Oficial)
       : 'O Oficial de Dia já foi informado para este serviço.';
   } else {
