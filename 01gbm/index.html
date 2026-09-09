@@ -216,8 +216,7 @@
               <span id="cicloPainelComandante">Ciclo das 08h às 08h</span>
             </div>
             <div class="acoes-cabecalho-painel-gestao">
-              <button type="button" id="btnAbrirAcessoMestre" onclick="abrirLoginMestre()">Acesso Mestre</button>
-              <button type="button" id="btnSairAcessoMestre" class="botao-sair-painel oculto" onclick="sairAcessoMestre()">Sair do acesso Mestre</button>
+              <button type="button" id="btnSairAcessoMestre" class="botao-sair-painel oculto" onclick="sairAcessoMestre()">Sair deste acesso</button>
               <button type="button" id="btnSairConsultaEfetivo" class="botao-sair-painel oculto"
                 onclick="sairConsultaEfetivo()">Sair do painel</button>
               <button type="button" id="btnAtualizarPainelComandante" class="oculto"
@@ -227,9 +226,9 @@
 
           <div id="identidadeAcessoMestre" class="identidade-acesso-painel oculto" role="status" aria-live="polite"></div>
           <div id="areaLoginConsultaEfetivo" class="acesso-painel-gestao">
-            <p>Entre com o e-mail cadastrado para consultar as informações do serviço. Os acessos Mestre autorizados usam este mesmo formulário e não substituem a equipe de serviço.</p>
+            <p>Entre com seu e-mail e confirme o código recebido para consultar as informações do serviço.</p>
             <div class="campo campo-sem-margem">
-              <label for="emailConsultaEfetivo">E-mail cadastrado ou acesso Mestre autorizado</label>
+              <label for="emailConsultaEfetivo">E-mail</label>
               <div class="linha-busca">
                 <input type="email" id="emailConsultaEfetivo" placeholder="seu.email@..." autocomplete="email">
                 <button type="button" id="btnEnviarCodigoConsultaEfetivo"
@@ -1279,7 +1278,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.10"></script>
+  <script src="app.js?v=27.1.11"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&

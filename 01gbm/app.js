@@ -90,7 +90,7 @@ const DURACAO_SESSAO_LOCAL = {
   function mestreTratarErro(mensagem, token) {
     if (!/^MESTRE_SESSAO:/.test(String(mensagem)) || !token || token !== obterSessaoMestreTokenLocal()) return;
     mestreSessaoValidada = false;
-    mestreMensagemSessao = 'Acesso Mestre expirado. Entre novamente ou saia deste acesso para voltar à sua sessão anterior.';
+    mestreMensagemSessao = 'Acesso expirado. Entre novamente ou saia deste acesso para voltar à sua sessão anterior.';
     mestreLoginAberto = true;
     setTimeout(() => {
       if (!modoMestreAtivo() || mestreSessaoValidada) return;
@@ -146,7 +146,7 @@ const DURACAO_SESSAO_LOCAL = {
   async function restaurarSessaoMestre() {
     const token = obterSessaoMestreTokenLocal();
     if (!token) return;
-    mestreMensagemSessao = 'Verificando acesso Mestre...';
+    mestreMensagemSessao = 'Verificando acesso...';
     mestreAgendarInterface();
     try {
       const resposta = await chamarApi('getSessaoMestre');
@@ -156,7 +156,7 @@ const DURACAO_SESSAO_LOCAL = {
     } catch (erro) {
       if (token !== obterSessaoMestreTokenLocal()) return;
       mestreSessaoValidada = false;
-      mestreMensagemSessao = 'Não foi possível validar o acesso Mestre. Entre novamente ou saia deste acesso.';
+      mestreMensagemSessao = 'Não foi possível validar o acesso. Entre novamente ou saia deste acesso.';
       mestreLoginAberto = true;
       mestreAgendarInterface();
     }
@@ -179,7 +179,7 @@ const DURACAO_SESSAO_LOCAL = {
     } catch (erro) {
       if (!/^MESTRE_SESSAO:/.test(String(erro.message || ''))) {
         if (botao) botao.disabled = false;
-        mostrarMensagem('Não foi possível encerrar o acesso Mestre. Tente novamente; as sessões da equipe foram preservadas.', 'erro');
+        mostrarMensagem('Não foi possível encerrar este acesso. Tente novamente; as sessões da equipe foram preservadas.', 'erro');
         return;
       }
     }
@@ -193,7 +193,7 @@ const DURACAO_SESSAO_LOCAL = {
     mestreRevisaoContexto += 1;
     mestreAplicarInterface();
     mestreAtualizarPaineis();
-    mostrarMensagem('Acesso Mestre encerrado. Os responsáveis e suas sessões foram preservados.', 'sucesso');
+    mostrarMensagem('Acesso encerrado. Os responsáveis e suas sessões foram preservados.', 'sucesso');
   }
 
   function mestreAgendarInterface() {
@@ -211,13 +211,13 @@ const DURACAO_SESSAO_LOCAL = {
     if (aviso) {
       aviso.classList.toggle('oculto', !ativo);
       aviso.textContent = mestreMensagemSessao || (mestreAtual
-        ? mestreAtual.email + ' • Acesso Mestre — ' + (mestrePodeEscrever()
+        ? mestreAtual.email + ' • ' + (mestrePodeEscrever()
           ? 'lançamentos reais. Você não substitui a equipe de serviço.'
           : 'somente visualização. Nenhum registro será gerado.')
-        : 'Acesso Mestre — aguardando validação.');
+        : 'Aguardando validação do acesso.');
     }
     if (sair) sair.classList.toggle('oculto', !ativo);
-    if (abrir) abrir.textContent = mestreLoginAberto ? 'Fechar acesso' : (ativo ? 'Trocar acesso Mestre' : 'Acesso Mestre');
+    if (abrir) abrir.remove();
     if (login && mestreLoginAberto) login.classList.remove('oculto');
     const titulares = [
       'btnTrocarGuarda', 'btnEncerrarGuarda', 'btnRetomarPosto', 'btnAssumirGuarda',
@@ -4704,7 +4704,7 @@ function atualizarVisibilidadePainelComandante() {
   if (blocoComandante) blocoComandante.classList.toggle('oculto', !comandanteNesteAparelho);
   if (competencias) competencias.classList.toggle('oculto', !comandanteNesteAparelho);
   painel.classList.remove('oculto');
-  if (login) login.classList.toggle('oculto', possuiAcesso && !mestreLoginAberto);
+  if (login) login.classList.toggle('oculto', mestreAutenticado() && !mestreLoginAberto);
   if (conteudo) conteudo.classList.toggle('oculto', !possuiAcesso);
   if (botaoAtualizar) botaoAtualizar.classList.toggle('oculto', !possuiAcesso);
   atualizarTelaConsultaEfetivo();
@@ -7642,7 +7642,7 @@ function validarCodigoConsultaEfetivo() {
           mestreAplicarRespostaSessao(resposta.mestre, resposta.sessaoToken);
           limparCodigoAcessoDaUrl();
           mestreAtualizarPaineis();
-          mostrarMensagem(mestrePodeEscrever() ? "Acesso Mestre liberado para lançamentos reais, sem substituir a equipe." : "Acesso Mestre liberado somente para visualização.", "sucesso");
+          mostrarMensagem(mestrePodeEscrever() ? "Acesso liberado para lançamentos reais, sem substituir a equipe." : "Acesso liberado somente para visualização.", "sucesso");
         } catch (erro) { mostrarMensagem(erro.message, "erro"); }
         botao.disabled = false;
         botao.textContent = "Entrar";
