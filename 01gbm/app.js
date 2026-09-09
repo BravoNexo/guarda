@@ -17,12 +17,12 @@ const DURACAO_SESSAO_LOCAL = {
   const MESTRE_LEITURAS = new Set([
     'getListasFormulario', 'getEstadoEquipeServico', 'getGuardaAtivo',
     'getComandanteAtivo', 'getOficialDiaAtivo', 'getStatusToqueFogo',
-    'getDadosOficialDiaParaComandante', 'getPainelComandante', 'getPainelMotoristas',
+    'getPainelComandante', 'getPainelMotoristas',
     'consultarHistoricoMovimentacoes', 'getPessoasDentroGuarda',
     'getMovimentacoesRecentesGuarda', 'getDadosSOS', 'buscarPessoasPorRgCpf'
   ]);
   const MESTRE_ESCRITAS = new Set([
-    'designarOficialDia', 'registrarEventoMotoristas', 'registrarSaidaRapidaPessoa',
+    'registrarEventoMotoristas', 'registrarSaidaRapidaPessoa',
     'salvarGuarnicoesServico', 'registrarMovimentacaoSOS', 'registrarMovimentacao',
     'atualizarMovimentacao', 'corrigirIdentificacaoPessoa', 'registrarMovimentacaoRetroativa'
   ]);
@@ -268,6 +268,12 @@ function marcarInicioSessaoLocal(chaveInicio) {
 }
 
 async function chamarApi(acao, dados = {}) {
+  if (['assumirOficialDiaComEmailValidado', 'enviarCodigoEncerrarOficialDia', 'validarCodigoEEncerrarOficialDia'].includes(acao)) {
+    throw new Error('A indicação do Oficial de Dia é alterada exclusivamente pelo Comandante da Guarda no cartão Equipe de Serviço.');
+  }
+  if ((acao === 'designarOficialDia' || acao === 'getDadosOficialDiaParaComandante') && !aparelhoPodeAlterarOficialDia()) {
+    throw new Error('Somente o Comandante da Guarda autenticado pode informar ou alterar o Oficial de Dia.');
+  }
   const assinaturaMestre = mestreAssinaturaContexto();
   const tokenMestreEnviado = obterSessaoMestreTokenLocal();
   dados = mestrePrepararRequisicao(acao, dados);
@@ -3698,6 +3704,24 @@ function carregarOficialDiaAtivo(silencioso = false) {
   carregarIdentidadesEquipeServico(silencioso, true);
 }
 
+function aparelhoPodeAlterarOficialDia() {
+  // This appointment belongs only to the actual Commander on this browser.
+  // A separate administrative session never impersonates that duty holder.
+  return !modoMestreAtivo() && aparelhoAssumiuComandanteAtual();
+}
+
+function obterAssinaturaAlteracaoOficialDia() {
+  if (!aparelhoPodeAlterarOficialDia()) return '';
+  return obterSessaoTokenComandanteLocal() + '|' + (localStorage.getItem('comandante_id_local') || '');
+}
+
+function garantirPermissaoAlteracaoOficialDia() {
+  if (aparelhoPodeAlterarOficialDia()) return true;
+  fecharDesignacaoOficialDia();
+  mostrarMensagem('Somente o Comandante da Guarda autenticado pode informar ou alterar o Oficial de Dia.', 'erro');
+  return false;
+}
+
 function atualizarTelaOficial() {
   const status = document.getElementById('statusOficial');
   const btnEditar = document.getElementById('btnEditarOficialDia');
@@ -3715,9 +3739,10 @@ function atualizarTelaOficial() {
     status.textContent = 'Oficial de Dia ainda não informado para este serviço.';
   }
 
-  const comandantePodeEditar = podeExecutarCompetenciaComandante();
+  const comandantePodeEditar = aparelhoPodeAlterarOficialDia();
   if (btnEditar) {
     btnEditar.classList.toggle('oculto', !comandantePodeEditar);
+    btnEditar.textContent = areaDesignar && !areaDesignar.classList.contains('oculto') ? 'Fechar' : (oficialAtual ? 'Alterar' : 'Informar');
     btnEditar.title = comandantePodeEditar
       ? 'Informar ou alterar o Oficial de Dia'
       : 'Entre como Comandante da Guarda neste aparelho para informar o Oficial de Dia';
@@ -3730,22 +3755,13 @@ function atualizarTelaOficial() {
 }
 
 function mostrarDesignacaoOficialDia() {
-  if (!podeExecutarCompetenciaComandante()) {
-    expandirPerfilServico('perfilComandante', true);
-    mostrarAreaTrocaComandante();
-    mostrarMensagem(
-      'Para informar o Oficial de Dia neste aparelho, valide o e-mail do Comandante da Guarda.',
-      'sucesso'
-    );
-    const campoEmailComandante = document.getElementById('emailComandante');
-    if (campoEmailComandante) campoEmailComandante.focus();
-    return;
-  }
+  if (!garantirPermissaoAlteracaoOficialDia()) return;
   const area = document.getElementById('areaDesignarOficial');
   if (!area.classList.contains('oculto')) {
     fecharDesignacaoOficialDia();
     return;
   }
+  expandirPerfilServico('perfilOficial', true);
   area.classList.remove('oculto');
   atualizarEstadoDesignacaoOficialDia(true);
   carregarOpcoesOficialDia();
@@ -3754,7 +3770,7 @@ function mostrarDesignacaoOficialDia() {
 function atualizarEstadoDesignacaoOficialDia(aberta) {
   const botao = document.getElementById('btnEditarOficialDia');
   if (!botao) return;
-  botao.textContent = aberta ? 'Fechar' : 'Informar';
+  botao.textContent = aberta ? 'Fechar' : (oficialAtual ? 'Alterar' : 'Informar');
   botao.setAttribute('aria-expanded', String(aberta));
 }
 
@@ -3765,10 +3781,15 @@ function fecharDesignacaoOficialDia() {
 }
 
 function carregarOpcoesOficialDia() {
+  if (!garantirPermissaoAlteracaoOficialDia()) return;
+  const assinaturaComandante = obterAssinaturaAlteracaoOficialDia();
   const geracaoSessao = geracaoSessaoEquipe;
   google.script.run
     .withSuccessHandler((dados) => {
-      if (!respostaPertenceASessaoEquipe(geracaoSessao)) return;
+      if (!aparelhoPodeAlterarOficialDia() || assinaturaComandante !== obterAssinaturaAlteracaoOficialDia() || !respostaPertenceASessaoEquipe(geracaoSessao)) {
+        fecharDesignacaoOficialDia();
+        return;
+      }
       oficialAtual = dados && dados.oficialAtual ? dados.oficialAtual : oficialAtual;
       const select = document.getElementById('selectOficialDia');
       select.innerHTML = '<option value="">Selecione o oficial</option>';
@@ -3787,6 +3808,8 @@ function carregarOpcoesOficialDia() {
 }
 
 function salvarDesignacaoOficialDia() {
+  if (!garantirPermissaoAlteracaoOficialDia()) return;
+  const assinaturaComandante = obterAssinaturaAlteracaoOficialDia();
   const rg = document.getElementById('selectOficialDia').value;
   if (!rg) return mostrarMensagem('Selecione o Oficial de Dia.', 'erro');
   const geracaoSessao = geracaoSessaoEquipe;
@@ -3795,7 +3818,7 @@ function salvarDesignacaoOficialDia() {
   botao.textContent = 'Salvando...';
   google.script.run
     .withSuccessHandler((resposta) => {
-      if (!respostaPertenceASessaoEquipe(geracaoSessao)) {
+      if (!aparelhoPodeAlterarOficialDia() || assinaturaComandante !== obterAssinaturaAlteracaoOficialDia() || !respostaPertenceASessaoEquipe(geracaoSessao)) {
         botao.disabled = false;
         botao.textContent = 'Salvar Oficial de Dia';
         fecharDesignacaoOficialDia();

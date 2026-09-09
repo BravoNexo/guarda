@@ -441,24 +441,6 @@
           </div>
           <div id="competenciasExclusivasComandante" class="conteudo-competencia oculto">
             <p class="descricao-competencia">Competências exclusivas do Comandante da Guarda deste serviço.</p>
-            <div class="acao-competencia" id="acaoDesignacaoOficialDia">
-              <div>
-                <strong>Oficial de Dia</strong>
-                <span>Informar ou alterar o oficial responsável pelo ciclo atual.</span>
-              </div>
-              <button type="button" id="btnEditarOficialDia" class="botao-trocar oculto" aria-expanded="false" aria-controls="areaDesignarOficial" onclick="mostrarDesignacaoOficialDia()">Informar</button>
-            </div>
-          <div id="areaDesignarOficial" class="area-designar-oficial oculto">
-            <div class="campo campo-sem-margem">
-              <label>Oficial de Dia deste serviço</label>
-              <select id="selectOficialDia"><option value="">Selecione o oficial</option></select>
-            </div>
-            <div class="acoes-designacao-oficial">
-              <button type="button" class="botao-cancelar-designacao" onclick="fecharDesignacaoOficialDia()">Cancelar</button>
-              <button type="button" id="btnSalvarOficialDia" class="botao-secundario" onclick="salvarDesignacaoOficialDia()">Salvar Oficial de Dia</button>
-            </div>
-            <small>Informação válida para o ciclo atual, das 08h às 08h. O oficial indicado não precisa entrar no aplicativo.</small>
-          </div>
             <div id="acaoLancamentoRetroativo" class="acao-lancamento-retroativo oculto">
               <div>
                 <strong>Lançamento em horário anterior</strong>
@@ -476,11 +458,24 @@
           <div class="cabecalho-card-guarda">
             <h2>Oficial de Dia</h2>
             <div class="acoes-guarda">
+              <button type="button" id="btnEditarOficialDia" class="botao-trocar oculto" aria-expanded="false" aria-controls="areaDesignarOficial" onclick="mostrarDesignacaoOficialDia()">Alterar</button>
               <button type="button" id="btnAbrirAcessoOficial" class="botao-trocar oculto" aria-expanded="false" aria-controls="areaAcessoPainelOficial" onclick="alternarAcessoPainelOficial()">Acessar painel</button>
             </div>
           </div>
 
           <div id="statusOficial" class="status-guarda">Carregando Oficial de Dia...</div>
+
+          <div id="areaDesignarOficial" class="area-designar-oficial oculto">
+            <div class="campo campo-sem-margem">
+              <label>Oficial de Dia deste serviço</label>
+              <select id="selectOficialDia"><option value="">Selecione o oficial</option></select>
+            </div>
+            <div class="acoes-designacao-oficial">
+              <button type="button" class="botao-cancelar-designacao" onclick="fecharDesignacaoOficialDia()">Cancelar</button>
+              <button type="button" id="btnSalvarOficialDia" class="botao-secundario" onclick="salvarDesignacaoOficialDia()">Salvar Oficial de Dia</button>
+            </div>
+            <small>Informação válida para o ciclo atual, das 08h às 08h. O oficial indicado não precisa entrar no aplicativo.</small>
+          </div>
 
           <div id="areaAcessoPainelOficial" class="acesso-oficial-painel oculto">
             <div class="cabecalho-acesso-oficial">
@@ -1278,7 +1273,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.11"></script>
+  <script src="app.js?v=27.1.12"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&
