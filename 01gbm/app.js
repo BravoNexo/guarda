@@ -14,6 +14,241 @@ const DURACAO_SESSAO_LOCAL = {
   consultaEfetivo: 12 * 60 * 60 * 1000
 };
 
+  const MESTRE_LEITURAS = new Set([
+    'getListasFormulario', 'getEstadoEquipeServico', 'getGuardaAtivo',
+    'getComandanteAtivo', 'getOficialDiaAtivo', 'getStatusToqueFogo',
+    'getDadosOficialDiaParaComandante', 'getPainelComandante', 'getPainelMotoristas',
+    'consultarHistoricoMovimentacoes', 'getPessoasDentroGuarda',
+    'getMovimentacoesRecentesGuarda', 'getDadosSOS', 'buscarPessoasPorRgCpf'
+  ]);
+  const MESTRE_ESCRITAS = new Set([
+    'designarOficialDia', 'registrarEventoMotoristas', 'registrarSaidaRapidaPessoa',
+    'salvarGuarnicoesServico', 'registrarMovimentacaoSOS', 'registrarMovimentacao',
+    'atualizarMovimentacao', 'corrigirIdentificacaoPessoa', 'registrarMovimentacaoRetroativa'
+  ]);
+  const MESTRE_SNAPSHOTS_EQUIPE = new Set([
+    'getEstadoEquipeServico', 'getGuardaAtivo', 'getComandanteAtivo',
+    'getOficialDiaAtivo', 'getStatusToqueFogo'
+  ]);
+  const MESTRE_LOGIN = new Set(['enviarCodigoConsultaEfetivo', 'validarCodigoConsultaEfetivo']);
+  let mestreAtual = null;
+  let mestreSessaoValidada = false;
+  let mestreLoginAberto = false;
+  let mestreMensagemSessao = '';
+  let mestreRevisaoContexto = 0;
+  let mestreCicloPainel = null;
+  let mestreInterfaceAgendada = false;
+
+  function obterSessaoMestreTokenLocal() {
+    // A rejected/expired master remains selected until an explicit exit/relogin.
+    // Never silently fall back to another duty session on this browser.
+    return localStorage.getItem('mestre_sessao_token') || '';
+  }
+
+  function modoMestreAtivo() { return !!obterSessaoMestreTokenLocal(); }
+  function mestreAutenticado() { return modoMestreAtivo() && mestreSessaoValidada; }
+  function mestrePodeEscrever() {
+    return mestreAutenticado() && mestreAtual && mestreAtual.podeEditar === true;
+  }
+  function mestreAssinaturaContexto() {
+    return obterSessaoMestreTokenLocal() + '|' + mestreRevisaoContexto;
+  }
+  function mestrePermiteOuLegado(legado, escrita = true) {
+    return modoMestreAtivo() ? (escrita ? !!mestrePodeEscrever() : mestreAutenticado()) : !!legado;
+  }
+  function podeExecutarCompetenciaComandante() {
+    return mestrePermiteOuLegado(aparelhoAssumiuComandanteAtual());
+  }
+  function podeConsultarCompetenciasComandante() {
+    return mestrePermiteOuLegado(aparelhoAssumiuComandanteAtual(), false);
+  }
+  function aparelhoPodeConsultarGuarda() {
+    return mestrePermiteOuLegado(aparelhoPodeOperarGuardaAtual(), false);
+  }
+
+  function mestrePrepararRequisicao(acao, dados) {
+    if (!modoMestreAtivo() || MESTRE_LOGIN.has(acao)) return dados;
+    const sessao = acao === 'getSessaoMestre' || acao === 'revogarSessaoMestre';
+    if (!sessao && !MESTRE_LEITURAS.has(acao) && !MESTRE_ESCRITAS.has(acao)) {
+      throw new Error('MESTRE_ACAO: Saia do acesso Mestre para assumir, encerrar ou alterar a sessão de um titular.');
+    }
+    if (MESTRE_ESCRITAS.has(acao) && !mestrePodeEscrever()) {
+      throw new Error(mestreSessaoValidada
+        ? 'MESTRE_LEITURA: Este acesso é somente para visualização. Nenhum registro foi enviado.'
+        : 'MESTRE_SESSAO: Valide novamente o acesso Mestre antes de registrar.');
+    }
+    const resultado = Object.assign({}, dados || {});
+    if (!MESTRE_SNAPSHOTS_EQUIPE.has(acao)) {
+      Object.keys(resultado).forEach(chave => {
+        if (chave === 'sessaoToken' || /^sessao.*Token$/.test(chave)) delete resultado[chave];
+      });
+    }
+    resultado.sessaoMestreToken = obterSessaoMestreTokenLocal();
+    return resultado;
+  }
+
+  function mestreTratarErro(mensagem, token) {
+    if (!/^MESTRE_SESSAO:/.test(String(mensagem)) || !token || token !== obterSessaoMestreTokenLocal()) return;
+    mestreSessaoValidada = false;
+    mestreMensagemSessao = 'Acesso Mestre expirado. Entre novamente ou saia deste acesso para voltar à sua sessão anterior.';
+    mestreLoginAberto = true;
+    setTimeout(() => {
+      if (!modoMestreAtivo() || mestreSessaoValidada) return;
+      mestreInvalidarPaineis();
+      atualizarVisibilidadePainelComandante();
+      atualizarPermissaoLancamento();
+    }, 0);
+    mestreAgendarInterface();
+  }
+
+  function mestreAplicarRespostaSessao(mestre, token) {
+    if (!mestre || mestre.perfil !== 'Mestre' || !mestre.email || typeof mestre.podeEditar !== 'boolean' || !token) {
+      throw new Error('MESTRE_SESSAO: Resposta incompleta do acesso Mestre.');
+    }
+    mestreAtual = { email: String(mestre.email), perfil: 'Mestre', podeEditar: mestre.podeEditar };
+    localStorage.setItem('mestre_sessao_token', token);
+    localStorage.setItem('mestre_sessao_iniciada_em', String(Date.now()));
+    localStorage.setItem('mestre_usuario', JSON.stringify(mestreAtual));
+    mestreSessaoValidada = true;
+    mestreLoginAberto = false;
+    mestreMensagemSessao = '';
+    mestreRevisaoContexto += 1;
+    const botaoSair = document.getElementById('btnSairAcessoMestre');
+    if (botaoSair) botaoSair.disabled = false;
+  }
+
+  function mestreInvalidarPaineis() {
+    geracaoSessaoEquipe += 1;
+    invalidarConsultasEquipeServico();
+    painelComandanteCarregado = false;
+    permissoesPainelGestaoAtual = { podeLancarHorarioAnterior: false };
+    painelMotoristasAtual = null;
+    painelMotoristasCarregado = false;
+    painelMotoristasAutorizado = false;
+    assinaturaPainelMotoristasCarregado = '';
+    guarnicoesServicoCarregadas = false;
+    pessoasDentroGuardaCarregadas = false;
+    movimentacoesGuardaCarregadas = false;
+    mestreCicloPainel = null;
+    if (modoLancamentoRetroativoAtivo) cancelarLancamentoRetroativoPendente();
+    fecharModalEventoMotoristas(false);
+    fecharModalCorrecaoIdentificacaoPessoa(false);
+  }
+
+  function mestreAtualizarPaineis() {
+    mestreInvalidarPaineis();
+    carregarIdentidadesEquipeServico(true);
+    atualizarVisibilidadePainelComandante();
+    atualizarPermissaoLancamento();
+    mestreAgendarInterface();
+  }
+
+  async function restaurarSessaoMestre() {
+    const token = obterSessaoMestreTokenLocal();
+    if (!token) return;
+    mestreMensagemSessao = 'Verificando acesso Mestre...';
+    mestreAgendarInterface();
+    try {
+      const resposta = await chamarApi('getSessaoMestre');
+      if (token !== obterSessaoMestreTokenLocal()) return;
+      mestreAplicarRespostaSessao(resposta && resposta.mestre, token);
+      mestreAtualizarPaineis();
+    } catch (erro) {
+      if (token !== obterSessaoMestreTokenLocal()) return;
+      mestreSessaoValidada = false;
+      mestreMensagemSessao = 'Não foi possível validar o acesso Mestre. Entre novamente ou saia deste acesso.';
+      mestreLoginAberto = true;
+      mestreAgendarInterface();
+    }
+  }
+
+  function abrirLoginMestre() {
+    mestreLoginAberto = !mestreLoginAberto;
+    atualizarVisibilidadePainelComandante();
+    mestreAplicarInterface();
+    if (mestreLoginAberto) document.getElementById('emailConsultaEfetivo').focus();
+  }
+
+  async function sairAcessoMestre() {
+    const token = obterSessaoMestreTokenLocal();
+    if (!token) return;
+    const botao = document.getElementById('btnSairAcessoMestre');
+    if (botao) botao.disabled = true;
+    try {
+      await chamarApi('revogarSessaoMestre');
+    } catch (erro) {
+      if (!/^MESTRE_SESSAO:/.test(String(erro.message || ''))) {
+        if (botao) botao.disabled = false;
+        mostrarMensagem('Não foi possível encerrar o acesso Mestre. Tente novamente; as sessões da equipe foram preservadas.', 'erro');
+        return;
+      }
+    }
+    if (botao) botao.disabled = false;
+    if (token !== obterSessaoMestreTokenLocal()) return;
+    ['mestre_sessao_token', 'mestre_sessao_iniciada_em', 'mestre_usuario'].forEach(chave => localStorage.removeItem(chave));
+    mestreAtual = null;
+    mestreSessaoValidada = false;
+    mestreLoginAberto = false;
+    mestreMensagemSessao = '';
+    mestreRevisaoContexto += 1;
+    mestreAplicarInterface();
+    mestreAtualizarPaineis();
+    mostrarMensagem('Acesso Mestre encerrado. Os responsáveis e suas sessões foram preservados.', 'sucesso');
+  }
+
+  function mestreAgendarInterface() {
+    if (mestreInterfaceAgendada) return;
+    mestreInterfaceAgendada = true;
+    setTimeout(() => { mestreInterfaceAgendada = false; mestreAplicarInterface(); }, 0);
+  }
+
+  function mestreAplicarInterface() {
+    const ativo = modoMestreAtivo();
+    const aviso = document.getElementById('identidadeAcessoMestre');
+    const sair = document.getElementById('btnSairAcessoMestre');
+    const abrir = document.getElementById('btnAbrirAcessoMestre');
+    const login = document.getElementById('areaLoginConsultaEfetivo');
+    if (aviso) {
+      aviso.classList.toggle('oculto', !ativo);
+      aviso.textContent = mestreMensagemSessao || (mestreAtual
+        ? mestreAtual.email + ' • Acesso Mestre — ' + (mestrePodeEscrever()
+          ? 'lançamentos reais. Você não substitui a equipe de serviço.'
+          : 'somente visualização. Nenhum registro será gerado.')
+        : 'Acesso Mestre — aguardando validação.');
+    }
+    if (sair) sair.classList.toggle('oculto', !ativo);
+    if (abrir) abrir.textContent = mestreLoginAberto ? 'Fechar acesso' : (ativo ? 'Trocar acesso Mestre' : 'Acesso Mestre');
+    if (login && mestreLoginAberto) login.classList.remove('oculto');
+    const titulares = [
+      'btnTrocarGuarda', 'btnEncerrarGuarda', 'btnRetomarPosto', 'btnAssumirGuarda',
+      'btnTrocarToqueFogo', 'btnAssumirHoraToque', 'btnAssumirToqueFogo',
+      'btnTrocarComandante', 'btnEncerrarComandante', 'btnAssumirComandante',
+      'btnConfirmarEncerramentoComandante', 'btnSairAcessoOficial',
+      'btnSairAcessoEncarregadoMotoristas', 'btnSairConsultaEfetivo'
+    ];
+    const escritas = [
+      'btnRegistrarMovimentacao', 'btnSalvarGuarnicaoServico', 'btnSalvarEdicaoMovimentacao',
+      'btnSalvarCorrecaoIdentificacao', 'btnSalvarEventoMotoristas', 'btnSalvarOficialDia',
+      'btnEditarOficialDia', 'btnAbrirLancamentoRetroativo', 'btnNovoEventoMotoristas'
+    ];
+    const controlar = (elemento, bloquear) => {
+      if (!elemento) return;
+      if (bloquear) {
+        if (!elemento.hasAttribute('data-mestre-disabled')) elemento.setAttribute('data-mestre-disabled', String(elemento.disabled));
+        elemento.disabled = true;
+      } else if (elemento.hasAttribute('data-mestre-disabled')) {
+        elemento.disabled = elemento.getAttribute('data-mestre-disabled') === 'true';
+        elemento.removeAttribute('data-mestre-disabled');
+      }
+    };
+    titulares.forEach(id => controlar(document.getElementById(id), ativo));
+    escritas.forEach(id => controlar(document.getElementById(id), ativo && !mestrePodeEscrever()));
+    document.querySelectorAll('#areaAssumirGuarda button, #areaAssumirComandante button, #areaAssumirToqueFogo button, #areaAssumirOficial button, #areaAcessoEncarregadoMotoristas button, [onclick="abrirModalEncerrarServicoMotoristas()"]')
+      .forEach(elemento => controlar(elemento, ativo));
+    document.querySelectorAll('.botao-saida-rapida, .botao-editar-movimentacao')
+      .forEach(elemento => controlar(elemento, ativo && !mestrePodeEscrever()));
+  }
+
 function obterTokenSessaoLocal(chaveToken, chaveInicio, duracao) {
   const token = localStorage.getItem(chaveToken) || '';
   if (!token) return '';
@@ -33,6 +268,9 @@ function marcarInicioSessaoLocal(chaveInicio) {
 }
 
 async function chamarApi(acao, dados = {}) {
+  const assinaturaMestre = mestreAssinaturaContexto();
+  const tokenMestreEnviado = obterSessaoMestreTokenLocal();
+  dados = mestrePrepararRequisicao(acao, dados);
   let resposta;
 
   try {
@@ -55,8 +293,13 @@ async function chamarApi(acao, dados = {}) {
   }
 
   const resultado = await resposta.json();
+  if (!MESTRE_LOGIN.has(acao) && assinaturaMestre !== mestreAssinaturaContexto()) {
+    throw new Error("MESTRE_CONTEXTO: O acesso mudou; a resposta anterior foi descartada.");
+  }
+  mestreAgendarInterface();
 
   if (!resultado.sucesso) {
+    mestreTratarErro(resultado.mensagem, tokenMestreEnviado);
     throw new Error(resultado.mensagem || 'Erro ao executar a ação.');
   }
 
@@ -500,6 +743,8 @@ function criarExecutorAppsScript() {
     'getMovimentacoesRecentesGuarda',
     'enviarCodigoConsultaEfetivo',
     'validarCodigoConsultaEfetivo',
+    'getSessaoMestre',
+    'revogarSessaoMestre',
     'registrarSaidaRapidaPessoa',
     'getDadosSOS',
     'salvarGuarnicoesServico',
@@ -678,7 +923,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   };
 
   function aparelhoTemSessaoEquipeLocal() {
-    return !!(
+    return modoMestreAtivo() || !!(
       obterSessaoTokenLocal() ||
       obterSessaoTokenToqueLocal() ||
       obterSessaoTokenComandanteLocal() ||
@@ -806,6 +1051,7 @@ let tipoMovimentacaoAtual = 'Entrada';
 
   function obterAssinaturaSessoesEquipeLocal() {
     return [
+      mestreAssinaturaContexto(),
       obterSessaoTokenLocal(),
       obterSessaoTokenComandanteLocal(),
       obterSessaoTokenOficialLocal(),
@@ -970,6 +1216,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    restaurarSessaoMestre();
     inicializarEquipeServico();
     carregarListas();
     selecionarModoRegistro('Individual');
@@ -1111,7 +1358,7 @@ let tipoMovimentacaoAtual = 'Entrada';
 
       carregarIdentidadesEquipeServico(true, false);
 
-      if (aparelhoPodeOperarGuardaAtual()) {
+      if (aparelhoPodeConsultarGuarda()) {
         carregarPessoasDentroGuarda(true);
         carregarMovimentacoesGuarda(true);
       }
@@ -1689,7 +1936,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function aparelhoPodeConfigurarGuarnicoesServico() {
-    return aparelhoPodeOperarGuardaAtual() || aparelhoAssumiuComandanteAtual();
+    return mestrePermiteOuLegado(aparelhoPodeOperarGuardaAtual() || aparelhoAssumiuComandanteAtual());
   }
 
   function definirEditorGuarnicoesServicoRecolhido(recolhido) {
@@ -1752,7 +1999,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     if (!card) return;
 
     const estavaOculto = card.classList.contains('oculto');
-    const podeConfigurar = aparelhoPodeConfigurarGuarnicoesServico();
+    const podeConfigurar = mestreAutenticado() || aparelhoPodeConfigurarGuarnicoesServico();
     card.classList.toggle('oculto', !podeConfigurar);
 
     if (!podeConfigurar) {
@@ -2616,6 +2863,10 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function obterLimitesLancamentoRetroativo() {
+    if (modoMestreAtivo()) return {
+      inicio: interpretarDataHoraPainelLocal(mestreCicloPainel && mestreCicloPainel.inicio),
+      fim: interpretarDataHoraPainelLocal(mestreCicloPainel && mestreCicloPainel.fim)
+    };
     return {
       inicio: interpretarDataHoraPainelLocal(comandanteAtual && comandanteAtual.DataHora_Inicio_Ciclo),
       fim: interpretarDataHoraPainelLocal(comandanteAtual && comandanteAtual.DataHora_Fim_Ciclo)
@@ -2643,7 +2894,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function abrirLancamentoRetroativo() {
-    if (!aparelhoAssumiuComandanteAtual()) {
+    if (!podeExecutarCompetenciaComandante()) {
       atualizarVisibilidadePainelComandante();
       mostrarMensagem('Somente o Comandante da Guarda autenticado pode lançar um horário anterior.', 'erro');
       return;
@@ -2734,7 +2985,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function prepararDadosLancamentoRetroativo(dados) {
-    if (!aparelhoAssumiuComandanteAtual()) {
+    if (!podeExecutarCompetenciaComandante()) {
       mostrarMensagem('A sessão do Comandante expirou. Entre novamente antes de lançar.', 'erro');
       atualizarPermissaoLancamento();
       return null;
@@ -2856,7 +3107,7 @@ let tipoMovimentacaoAtual = 'Entrada';
 
   function registrarMovimentacao() {
     if (modoLancamentoRetroativoAtivo) {
-      if (!aparelhoAssumiuComandanteAtual()) {
+      if (!podeExecutarCompetenciaComandante()) {
         atualizarPermissaoLancamento();
         mostrarMensagem('A sessão do Comandante expirou. Entre novamente antes de lançar.', 'erro');
         return;
@@ -3464,7 +3715,7 @@ function atualizarTelaOficial() {
     status.textContent = 'Oficial de Dia ainda não informado para este serviço.';
   }
 
-  const comandantePodeEditar = aparelhoAssumiuComandanteAtual();
+  const comandantePodeEditar = podeExecutarCompetenciaComandante();
   if (btnEditar) {
     btnEditar.classList.toggle('oculto', !comandantePodeEditar);
     btnEditar.title = comandantePodeEditar
@@ -3479,7 +3730,7 @@ function atualizarTelaOficial() {
 }
 
 function mostrarDesignacaoOficialDia() {
-  if (!aparelhoAssumiuComandanteAtual()) {
+  if (!podeExecutarCompetenciaComandante()) {
     expandirPerfilServico('perfilComandante', true);
     mostrarAreaTrocaComandante();
     mostrarMensagem(
@@ -4319,6 +4570,7 @@ function sairAcessoOficial() {
 }
 
 function aparelhoTemAcessoPainelGestao() {
+  if (modoMestreAtivo()) return mestreAutenticado();
   const militarDoEfetivoAutenticado = !!(
     obterSessaoConsultaEfetivo() && consultaEfetivoAtual
   );
@@ -4340,6 +4592,7 @@ function aparelhoTemAcessoPainelGestao() {
 }
 
 function aparelhoTemOutroAcessoPainelGestao() {
+  if (modoMestreAtivo()) return mestreAutenticado();
   const guardaAutenticado = typeof aparelhoAssumiuGuardaAtual === 'function' &&
     aparelhoAssumiuGuardaAtual();
   const toqueAutenticado = !!(
@@ -4357,6 +4610,7 @@ function aparelhoTemOutroAcessoPainelGestao() {
 
 function obterAssinaturaCredenciaisPainelGestao() {
   return [
+      mestreAssinaturaContexto(),
     obterSessaoTokenComandanteLocal() || '',
     obterSessaoTokenLocal() || '',
     obterSessaoTokenToqueLocal() || '',
@@ -4417,7 +4671,7 @@ function atualizarTelaComandante() {
   }
 
   const modalCorrecao = document.getElementById('modalCorrigirIdentificacaoPessoa');
-  if (!aparelhoAssumiuComandanteAtual() && modalCorrecao &&
+  if (!podeExecutarCompetenciaComandante() && modalCorrecao &&
       !modalCorrecao.classList.contains('oculto') && !correcaoIdentificacaoSalvando) {
     fecharModalCorrecaoIdentificacaoPessoa(false);
     mostrarMensagem(
@@ -4444,18 +4698,18 @@ function atualizarVisibilidadePainelComandante() {
   if (!painel) return;
 
   const possuiAcesso = aparelhoTemAcessoPainelGestao();
-  const comandanteNesteAparelho = aparelhoAssumiuComandanteAtual();
-  const podeLancarHorarioAnterior = comandanteNesteAparelho &&
+  const comandanteNesteAparelho = podeConsultarCompetenciasComandante();
+  const podeLancarHorarioAnterior = podeExecutarCompetenciaComandante() &&
     permissoesPainelGestaoAtual.podeLancarHorarioAnterior === true;
   if (blocoComandante) blocoComandante.classList.toggle('oculto', !comandanteNesteAparelho);
   if (competencias) competencias.classList.toggle('oculto', !comandanteNesteAparelho);
   painel.classList.remove('oculto');
-  if (login) login.classList.toggle('oculto', possuiAcesso);
+  if (login) login.classList.toggle('oculto', possuiAcesso && !mestreLoginAberto);
   if (conteudo) conteudo.classList.toggle('oculto', !possuiAcesso);
   if (botaoAtualizar) botaoAtualizar.classList.toggle('oculto', !possuiAcesso);
   atualizarTelaConsultaEfetivo();
   if (acaoRetroativa) acaoRetroativa.classList.toggle('oculto', !podeLancarHorarioAnterior);
-  if (!comandanteNesteAparelho && modoLancamentoRetroativoAtivo) {
+  if (!podeExecutarCompetenciaComandante() && modoLancamentoRetroativoAtivo) {
     cancelarLancamentoRetroativoPendente();
     atualizarPermissaoLancamento();
   }
@@ -4473,6 +4727,7 @@ function atualizarVisibilidadePainelComandante() {
   }
 
   atualizarVisibilidadePainelMotoristas();
+  mestreAgendarInterface();
 }
 
 function formatarDataInputLocal(data) {
@@ -4695,7 +4950,7 @@ function carregarPainelComandante(silencioso = false) {
         );
       }
 
-      if (!respostaObsoleta && !aparelhoAssumiuComandanteAtual() && aparelhoAssumiuOficialAtual()) {
+      if (!modoMestreAtivo() && !/^MESTRE_/.test(mensagemErro) && !respostaObsoleta && !aparelhoAssumiuComandanteAtual() && aparelhoAssumiuOficialAtual()) {
         limparOficialLocal();
         atualizarTelaAcessoOficial();
         atualizarVisibilidadePainelComandante();
@@ -4721,11 +4976,12 @@ function carregarPainelComandante(silencioso = false) {
 
 function renderizarPainelComandante(painel) {
   const totais = painel.totais || {};
+  if (modoMestreAtivo()) mestreCicloPainel = { inicio: painel.cicloInicio, fim: painel.cicloFim };
   permissoesPainelGestaoAtual = painel && painel.permissoes
     ? painel.permissoes
     : { podeLancarHorarioAnterior: false };
   const acaoRetroativa = document.getElementById('acaoLancamentoRetroativo');
-  const podeLancarHorarioAnterior = aparelhoAssumiuComandanteAtual() &&
+  const podeLancarHorarioAnterior = podeExecutarCompetenciaComandante() &&
     permissoesPainelGestaoAtual.podeLancarHorarioAnterior === true;
   if (acaoRetroativa) acaoRetroativa.classList.toggle('oculto', !podeLancarHorarioAnterior);
 
@@ -5266,7 +5522,7 @@ function mostrarMensagemCorrecaoIdentificacao_(texto, tipo = 'erro') {
 function abrirModalCorrecaoIdentificacaoPessoa(movimentacao, botaoOrigem) {
   if (correcaoIdentificacaoSalvando) return;
   if (!movimentacao || movimentacao.podeCorrigirIdentificacao !== true ||
-      !aparelhoAssumiuComandanteAtual()) {
+      !podeExecutarCompetenciaComandante()) {
     mostrarMensagem(
       'Somente o Comandante da Guarda pode corrigir a identificação deste registro.',
       'erro'
@@ -5338,7 +5594,7 @@ function fecharModalCorrecaoIdentificacaoPessoa(restaurarFoco = true, forcar = f
 function salvarCorrecaoIdentificacaoPessoa(evento) {
   if (evento) evento.preventDefault();
   if (correcaoIdentificacaoSalvando) return;
-  if (!aparelhoAssumiuComandanteAtual()) {
+  if (!podeExecutarCompetenciaComandante()) {
     fecharModalCorrecaoIdentificacaoPessoa(false);
     mostrarMensagem(
       'A sessão do Comandante não está mais ativa. Entre novamente para fazer a correção.',
@@ -5516,7 +5772,7 @@ function criarEstadoVazioPainel(texto) {
 }
 
 function carregarPessoasDentroGuarda(silencioso = false) {
-  if (!aparelhoPodeOperarGuardaAtual()) {
+  if (!aparelhoPodeConsultarGuarda()) {
     atualizarVisibilidadePessoasDentroGuarda();
     return;
   }
@@ -5652,7 +5908,7 @@ function confirmarSaidaRapidaPessoa(pessoa, botao) {
   abrirModalConfirmacao(
     'Registrar saída',
     'Confirma a saída de <strong>' + escaparHtml(pessoa.nome || 'pessoa não identificada') +
-      '</strong>?<br><br>O registro ficará vinculado ao militar que está efetivamente no posto.',
+      '</strong>?<br><br>' + (modoMestreAtivo() ? 'Este lançamento real terá autoria do acesso Mestre, sem substituir o militar no posto.' : 'O registro ficará vinculado ao militar que está efetivamente no posto.'),
     dadosConfirmacao => registrarSaidaRapidaPessoaGuarda(
       pessoa.idMovimentacao,
       dadosConfirmacao.destino,
@@ -5741,6 +5997,7 @@ function inicializarPainelMotoristas() {
 }
 
 function obterAssinaturaSessaoPessoalMotoristas() {
+  if (modoMestreAtivo()) return mestreAutenticado() ? mestreAssinaturaContexto() : '';
   return obterSessaoTokenEncarregadoMotoristasLocal() || '';
 }
 
@@ -5919,11 +6176,11 @@ function renderizarPainelMotoristas(painel) {
   const podeEditar = permissoes.podeEditar === true;
   const podeEncerrar = permissoes.podeEncerrar === true;
 
-  if (podeEncerrar && painelMotoristasAtual.encerramentoPendente) {
+  if (!modoMestreAtivo() && podeEncerrar && painelMotoristasAtual.encerramentoPendente) {
     encerramentoEncarregadoMotoristasPendente = painelMotoristasAtual.encerramentoPendente;
     sessaoEncarregadoMotoristasIdentificada = true;
   }
-  encerramentoEncarregadoMotoristasConfirmado =
+  if (!modoMestreAtivo()) encerramentoEncarregadoMotoristasConfirmado =
     painelMotoristasAtual.encerramentoConfirmado || null;
 
   if (!podeEditar) fecharModalEventoMotoristas(false);
@@ -7296,7 +7553,7 @@ function salvarGuardaLocal(guarda) {
 }
 
 function carregarMovimentacoesGuarda(silencioso = false) {
-  if (!aparelhoPodeOperarGuardaAtual()) {
+  if (!aparelhoPodeConsultarGuarda()) {
     atualizarVisibilidadeMovimentacoesGuarda();
     return;
   }
@@ -7380,6 +7637,17 @@ function validarCodigoConsultaEfetivo() {
   botao.textContent = 'Validando...';
   google.script.run
     .withSuccessHandler((resposta) => {
+      if (resposta && resposta.mestre) {
+        try {
+          mestreAplicarRespostaSessao(resposta.mestre, resposta.sessaoToken);
+          limparCodigoAcessoDaUrl();
+          mestreAtualizarPaineis();
+          mostrarMensagem(mestrePodeEscrever() ? "Acesso Mestre liberado para lançamentos reais, sem substituir a equipe." : "Acesso Mestre liberado somente para visualização.", "sucesso");
+        } catch (erro) { mostrarMensagem(erro.message, "erro"); }
+        botao.disabled = false;
+        botao.textContent = "Entrar";
+        return;
+      }
       consultaEfetivoAtual = resposta && resposta.militar ? resposta.militar : null;
       localStorage.setItem('consulta_efetivo_sessao_token', resposta.sessaoToken || '');
       marcarInicioSessaoLocal('consulta_efetivo_sessao_iniciada_em');
@@ -7498,7 +7766,7 @@ function atualizarVisibilidadePessoasDentroGuarda() {
 
   if (!card) return;
 
-  if (aparelhoPodeOperarGuardaAtual()) {
+  if (aparelhoPodeConsultarGuarda()) {
     card.classList.remove('oculto');
     restaurarEstadoPessoasDentroGuarda();
 
@@ -7666,7 +7934,7 @@ function carregarStatusToqueFogo(silencioso = false) {
 function atualizarVisibilidadeMovimentacoesGuarda() {
   const card = document.getElementById('cardMovimentacoesGuarda');
   if (!card) return;
-  if (aparelhoPodeOperarGuardaAtual()) {
+  if (aparelhoPodeConsultarGuarda()) {
     card.classList.remove('oculto');
     restaurarEstadoMovimentacoesGuarda();
     if (!movimentacoesGuardaCarregadas) carregarMovimentacoesGuarda(true);
@@ -8119,10 +8387,16 @@ function aparelhoAssumiuToqueAtual() {
 }
 
 function aparelhoPodeOperarGuardaAtual() {
+  if (modoMestreAtivo()) return !!mestrePodeEscrever();
   return aparelhoAtuaComoGuardaTitular() || aparelhoAtuaComoToqueNaCobertura();
 }
 
 function garantirPermissaoOperacionalAtual() {
+  if (modoMestreAtivo()) {
+    if (mestrePodeEscrever()) return true;
+    mostrarMensagem("Acesso Mestre somente para visualização ou aguardando validação. Nenhum registro foi enviado.", "erro");
+    return false;
+  }
   if (guardaAtual && aparelhoPodeOperarGuardaAtual()) return true;
 
   atualizarAcoesCoberturaEPermissoes();
@@ -8290,9 +8564,10 @@ function atualizarPermissaoLancamento() {
     return;
   }
 
-  const podeLancar = guardaAtual && aparelhoPodeOperarGuardaAtual();
-  const podeLancarRetroativo = modoLancamentoRetroativoAtivo && aparelhoAssumiuComandanteAtual();
+  const podeLancar = modoMestreAtivo() ? mestreAutenticado() : guardaAtual && aparelhoPodeOperarGuardaAtual();
+  const podeLancarRetroativo = modoLancamentoRetroativoAtivo && podeExecutarCompetenciaComandante();
   const cobertura = obterCoberturaOperacionalAtual();
+  mestreAgendarInterface();
 
   if (modoLancamentoRetroativoAtivo && !podeLancarRetroativo) {
     cancelarLancamentoRetroativoPendente();
