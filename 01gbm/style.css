@@ -3515,3 +3515,130 @@ body.modal-motoristas-aberto {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Identidade visual das funções — 27.1.15. Sem alterações de acesso ou estado. */
+#perfilGuarda {
+  --funcao-cor: #2563eb;
+  --funcao-titulo: #1e40af;
+  --funcao-fundo: #eff6ff;
+  --funcao-borda: #bfdbfe;
+}
+
+#cardToqueFogo {
+  --funcao-cor: #b45309;
+  --funcao-titulo: #854d0e;
+  --funcao-fundo: #fffbeb;
+  --funcao-borda: #fde68a;
+}
+
+#perfilComandante,
+#blocoComandanteGuarda {
+  --funcao-cor: #7e22ce;
+  --funcao-titulo: #6b21a8;
+  --funcao-fundo: #faf5ff;
+  --funcao-cabecalho: #f3e8ff;
+  --funcao-borda: #e9d5ff;
+}
+
+#perfilOficial {
+  --funcao-cor: #15803d;
+  --funcao-titulo: #166534;
+  --funcao-fundo: #f0fdf4;
+  --funcao-borda: #bbf7d0;
+}
+
+#perfilEncarregadoMotoristas,
+#cardPainelMotoristas {
+  --funcao-cor: #0e7490;
+  --funcao-titulo: #155e75;
+  --funcao-fundo: #ecfeff;
+  --funcao-cabecalho: #cffafe;
+  --funcao-borda: #a5f3fc;
+}
+
+/* A borda e o título identificam a função mesmo quando há um aviso no cartão.
+   Os fundos !important de cobertura/encerramento continuam prevalecendo. */
+#conteudoEquipeServico > .perfil-servico {
+  border-left: 5px solid var(--funcao-cor, #64748b) !important;
+  border-bottom-color: var(--funcao-borda, #e5e7eb) !important;
+  background: var(--funcao-fundo, #f8fafc);
+}
+
+#conteudoEquipeServico > .perfil-servico .cabecalho-card-guarda h2 {
+  color: var(--funcao-titulo, #334155);
+}
+
+#conteudoEquipeServico > .perfil-servico .periodo-toque-fogo {
+  color: #475569;
+}
+
+/* Somente os blocos exclusivos recebem a identidade da função.
+   Nas áreas comuns, apenas as faixas decorativas antigas ficam neutras. */
+#cardPessoasDentroGuarda,
+#cardMovimentacoesGuarda,
+#cardGuarnicoesServico {
+  border-top-color: #cbd5e1;
+}
+
+#cardPessoasDentroGuarda::after,
+#cardMovimentacoesGuarda::after,
+#cardGuarnicoesServico::after {
+  background: #cbd5e1;
+}
+
+#blocoComandanteGuarda {
+  --cor-competencia: var(--funcao-cor);
+  --fundo-competencia: var(--funcao-cabecalho);
+  background: var(--funcao-fundo);
+  border-color: var(--funcao-borda);
+  border-top-color: var(--funcao-cor);
+}
+
+#blocoComandanteGuarda .cabecalho-competencia h2,
+#blocoComandanteGuarda .rotulo-competencia {
+  color: var(--funcao-titulo);
+}
+
+#cardPainelMotoristas {
+  background: var(--funcao-fundo);
+  border: 1px solid var(--funcao-borda);
+  border-top: 5px solid var(--funcao-cor);
+}
+
+#cardPainelMotoristas .cabecalho-painel-motoristas {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--funcao-cabecalho);
+}
+
+#cardPainelMotoristas .cabecalho-painel-motoristas h2 {
+  color: var(--funcao-titulo);
+}
+
+#cardPainelMotoristas .cabecalho-painel-motoristas > div > span {
+  color: #475569;
+}
+
+#cardPainelMotoristas .sobretitulo-painel-motoristas {
+  color: var(--funcao-titulo) !important;
+}
+
+#cardPainelMotoristas .identidade-encarregado-motoristas {
+  background: #fff;
+  border-color: var(--funcao-borda);
+}
+
+#cardPainelMotoristas .botao-atualizar-motoristas {
+  background: #fff;
+  border-color: var(--funcao-cor);
+  color: var(--funcao-titulo);
+}
+
+#cardPainelMotoristas .aba-motoristas.ativa {
+  background: var(--funcao-cor);
+  border-color: var(--funcao-cor);
+  color: #fff;
+}
+
+/* O realce de foco, textos, estados e avisos existentes são preservados. */
