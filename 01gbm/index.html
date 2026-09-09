@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Controle de Acesso - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.1.17">
+  <link rel="stylesheet" href="style.css?v=27.1.18">
   </head>
 
   <body>
@@ -801,8 +801,7 @@
             <label>Forma do registro</label>
             <div class="botoes-segmentados" id="botoesModoRegistro">
               <button type="button" class="ativo" id="btnModoIndividual" onclick="selecionarModoRegistro('Individual')">Individual</button>
-              <button type="button" id="btnModoViatura" onclick="selecionarModoRegistro('Viatura')">Auto/VTR</button>
-              <button type="button" id="btnModoSOS" onclick="selecionarModoRegistro('SOS')">SOS</button>
+              <button type="button" id="btnModoViatura" onclick="selecionarModoRegistro('SOS')">Auto/VTR</button>
             </div>
           </div>
 
@@ -814,6 +813,7 @@
             </div>
           </div>
 
+          <div id="origemFormularioPadrao">
           <div id="areaRegistroPadrao">
 
           <input type="hidden" id="tipoRegistro" value="Pessoa cadastrada">
@@ -861,6 +861,8 @@
           </div>
 
           <div id="areaOcupantesViatura" class="bloco-viatura oculto">
+            <details id="detalhesOcupantesExternos">
+            <summary>Ocupantes adicionais (opcional)</summary>
             <div class="titulo-bloco-viatura">
               <div>
                 <strong>Outros ocupantes do Auto/VTR</strong>
@@ -906,6 +908,7 @@
             <div class="dica-varios-ocupantes">
               Se o condutor estiver sozinho, não é necessário adicionar ninguém. Caso contrário, inclua os demais ocupantes acima.
             </div>
+            </details>
           </div>
 
           <div id="areaPessoaNaoEncontrada" class="oculto">
@@ -921,12 +924,12 @@
             <div class="dica-varios-ocupantes">O cadastro permanecerá ativo por 1 ano após a movimentação mais recente.</div>
           </div>
 
-          <div class="campo">
+          <div class="campo" id="campoDestinoPadrao">
             <label>Destino</label>
             <select id="destino"></select>
           </div>
 
-          <div class="campo">
+          <div class="campo" id="campoProcedenciaPadrao">
             <label>Procedência</label>
             <select id="procedencia" onchange="verificarComplementoProcedencia()"></select>
           </div>
@@ -936,7 +939,7 @@
             <input type="text" id="complementoProcedencia" placeholder="Informe o complemento">
           </div>
 
-          <div class="campo">
+          <div class="campo" id="campoPrefixoPlaca">
             <label id="labelPrefixoPlaca">Prefixo/Placa</label>
             <input type="text" id="prefixoPlaca" placeholder="Opcional" oninput="normalizarPrefixoPlaca(this)" autocomplete="off">
           </div>
@@ -946,18 +949,30 @@
             <textarea id="observacoes" placeholder="Opcional"></textarea>
           </div>
           </div>
+          </div>
 
           <div id="areaRegistroSOS" class="bloco-sos oculto">
+            <div class="cabecalho-frota-local">
+              <div><strong>Frota da unidade</strong><span>Viaturas operacionais e administrativas</span></div>
+              <button type="button" id="btnVeiculoExterno" onclick="abrirVeiculoExterno()">Veículo externo</button>
+            </div>
+            <div class="campo" id="campoDestinoViaturaLocal">
+              <label for="destinoViaturaLocal">Destino da saída *</label>
+              <select id="destinoViaturaLocal" onchange="atualizarRotuloRegistroViaturas()" required>
+                <option value="">Selecione o destino</option>
+                <option value="SOS">SOS</option>
+              </select>
+            </div>
             <div class="titulo-bloco-viatura">
               <div>
                 <strong id="tituloSelecaoSOS">Selecionar viaturas para saída</strong>
-                <span>É possível registrar várias viaturas no mesmo acionamento.</span>
+                <span>Selecione uma ou mais viaturas. Confira a composição sugerida e toque para editar.</span>
               </div>
             </div>
             <div id="listaViaturasSOS" class="lista-selecao-sos"></div>
             <div id="configuracoesViaturasSOS" class="configuracoes-sos"></div>
             <div class="campo campo-sem-margem">
-              <label>Observações do SOS</label>
+              <label for="observacoesSOS">Observações</label>
               <textarea id="observacoesSOS" placeholder="Ocorrência, endereço ou informação opcional"></textarea>
             </div>
           </div>
@@ -971,6 +986,23 @@
         </section>
       </main>
     </div>
+
+    <dialog id="modalVeiculoExterno" class="modal-veiculo-externo" aria-labelledby="tituloVeiculoExterno">
+      <div class="cabecalho-veiculo-externo">
+        <div><h2 id="tituloVeiculoExterno">Veículo externo</h2><p>Informe o veículo, o condutor e os demais ocupantes, se houver.</p></div>
+        <button type="button" id="btnFecharVeiculoExterno" onclick="fecharVeiculoExterno()" aria-label="Fechar veículo externo">Fechar</button>
+      </div>
+      <div class="campo">
+        <label>Movimentação</label>
+        <div class="botoes-segmentados">
+          <button type="button" id="btnEntradaVeiculoExterno" onclick="selecionarMovimentacao('Entrada')">Entrada</button>
+          <button type="button" id="btnSaidaVeiculoExterno" onclick="selecionarMovimentacao('Saída')">Saída</button>
+        </div>
+      </div>
+      <div id="conteudoVeiculoExterno"></div>
+      <div id="mensagemVeiculoExterno" class="mensagem-sistema oculto" role="status" aria-live="polite" aria-atomic="true"></div>
+      <button type="button" id="btnRegistrarVeiculoExterno" class="botao-principal" onclick="registrarMovimentacao()">Registrar veículo externo</button>
+    </dialog>
 
     <div id="modalConfirmacao" class="modal-fundo oculto" role="dialog" aria-modal="true"
       aria-labelledby="modalTitulo" aria-describedby="modalTexto">
@@ -1310,7 +1342,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.14"></script>
+  <script src="app.js?v=27.1.18"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&

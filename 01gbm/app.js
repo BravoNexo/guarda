@@ -1249,6 +1249,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   let pessoaSelecionada = null;
   let temporizadorSugestaoPessoa = null;
   let numeroBuscaPessoa = 0;
+  let numeroBuscaOcupante = 0;
   let condutorExternoAtivo = false;
   let ocupantesViatura = [];
   let destinos = [];
@@ -1257,6 +1258,10 @@ let tipoMovimentacaoAtual = 'Entrada';
   let militaresSOS = [];
   let selecoesViaturasSOS = {};
   let edicoesViaturasSOSAbertas = new Set();
+  let geracaoDadosViaturas = 0;
+  let salvandoVeiculoExterno = false;
+  let tipoMovimentacaoAntesVeiculoExterno = 'Saída';
+  let revisaoFormularioMovimentacao = 0;
   let guarnicoesServico = [];
   let cicloGuarnicoesServico = null;
   let idsGuarnicaoServicoEdicao = [];
@@ -1683,6 +1688,11 @@ let tipoMovimentacaoAtual = 'Entrada';
   restaurarConsultaEfetivo();
 
     const campoBuscaPessoa = document.getElementById('rgCpfBusca');
+    const modalVeiculoExterno = document.getElementById('modalVeiculoExterno');
+    modalVeiculoExterno.addEventListener('cancel', evento => {
+      evento.preventDefault();
+      fecharVeiculoExterno();
+    });
     campoBuscaPessoa.addEventListener('input', sugerirPessoasEnquantoDigita);
     campoBuscaPessoa.addEventListener('keydown', evento => {
       if (evento.key === 'Enter') {
@@ -1900,15 +1910,20 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function selecionarMovimentacao(tipo) {
+    revisaoFormularioMovimentacao += 1;
     tipoMovimentacaoAtual = tipo;
 
     document.getElementById('btnEntrada').classList.toggle('ativo', tipo === 'Entrada');
     document.getElementById('btnSaida').classList.toggle('ativo', tipo === 'Saída');
+    document.getElementById('btnEntradaVeiculoExterno').classList.toggle('ativo', tipo === 'Entrada');
+    document.getElementById('btnSaidaVeiculoExterno').classList.toggle('ativo', tipo === 'Saída');
 
     preencherDestinos();
     preencherProcedencias();
 
     if (modoRegistroAtual === 'SOS') {
+      selecoesViaturasSOS = {};
+      edicoesViaturasSOSAbertas.clear();
       renderizarSelecaoViaturasSOS();
     }
   }
@@ -1926,10 +1941,13 @@ let tipoMovimentacaoAtual = 'Entrada';
     }
 
     modoRegistroAtual = ['Viatura', 'SOS'].includes(modo) ? modo : 'Individual';
+    revisaoFormularioMovimentacao += 1;
+    numeroBuscaPessoa += 1;
+    numeroBuscaOcupante += 1;
+    clearTimeout(temporizadorSugestaoPessoa);
 
     document.getElementById('btnModoIndividual').classList.toggle('ativo', modoRegistroAtual === 'Individual');
-    document.getElementById('btnModoViatura').classList.toggle('ativo', modoRegistroAtual === 'Viatura');
-    document.getElementById('btnModoSOS').classList.toggle('ativo', modoRegistroAtual === 'SOS');
+    document.getElementById('btnModoViatura').classList.toggle('ativo', modoRegistroAtual !== 'Individual');
 
     const isViatura = modoRegistroAtual === 'Viatura';
     const isSOS = modoRegistroAtual === 'SOS';
@@ -1941,6 +1959,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       edicoesViaturasSOSAbertas.clear();
       document.getElementById('btnEntrada').classList.remove('ativo');
       document.getElementById('btnSaida').classList.add('ativo');
+      preencherDestinosViaturaLocal();
       carregarDadosSOS();
     } else if (isViatura) {
       tipoRegistro.value = 'Pessoa cadastrada';
@@ -1952,7 +1971,7 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     document.getElementById('areaRegistroPadrao').classList.toggle('oculto', isSOS);
     document.getElementById('areaRegistroSOS').classList.toggle('oculto', !isSOS);
-    document.getElementById('labelTipoMovimentacao').textContent = isSOS ? 'Movimentação de SOS' : 'Tipo de movimentação';
+    document.getElementById('labelTipoMovimentacao').textContent = isSOS ? 'Movimentação da viatura' : 'Tipo de movimentação';
     document.getElementById('textoBtnEntrada').textContent = isSOS ? 'Retorno' : 'Entrada';
     document.getElementById('textoBtnSaida').textContent = 'Saída';
 
@@ -1973,12 +1992,103 @@ let tipoMovimentacaoAtual = 'Entrada';
     document.getElementById('btnRegistrarMovimentacao').textContent = isViatura
       ? 'Registrar Auto/VTR'
       : isSOS
-        ? 'Registrar saída SOS'
+        ? 'Registrar saída da viatura'
         : 'Registrar';
 
     if (!isSOS) {
       alternarTipoRegistro();
+    } else {
+      renderizarSelecaoViaturasSOS();
     }
+  }
+
+  function abrirVeiculoExterno() {
+    if (!garantirPermissaoOperacionalAtual()) return;
+    const modal = document.getElementById('modalVeiculoExterno');
+    if (modal.open) return;
+    tipoMovimentacaoAntesVeiculoExterno = tipoMovimentacaoAtual;
+    selecionarModoRegistro('Viatura');
+    condutorExternoAtivo = false;
+    ocupantesViatura = [];
+    document.getElementById('prefixoPlaca').value = '';
+    document.getElementById('rgCpfBusca').value = '';
+    document.getElementById('nomeCondutorExterno').value = '';
+    document.getElementById('rgCondutorExterno').value = '';
+    document.getElementById('observacoes').value = '';
+    document.getElementById('detalhesOcupantesExternos').open = false;
+    document.getElementById('mensagemVeiculoExterno').classList.add('oculto');
+    renderizarOcupantesViatura();
+    document.getElementById('conteudoVeiculoExterno').appendChild(document.getElementById('areaRegistroPadrao'));
+    selecionarMovimentacao(tipoMovimentacaoAtual);
+    modal.showModal();
+    document.getElementById('prefixoPlaca').focus();
+  }
+
+  function fecharVeiculoExterno(restaurarModo = true) {
+    if (salvandoVeiculoExterno) return;
+    const modal = document.getElementById('modalVeiculoExterno');
+    numeroBuscaPessoa += 1;
+    clearTimeout(temporizadorSugestaoPessoa);
+    document.getElementById('origemFormularioPadrao').appendChild(document.getElementById('areaRegistroPadrao'));
+    if (modal.open) modal.close();
+    condutorExternoAtivo = false;
+    ocupantesViatura = [];
+    pessoaSelecionada = null;
+    if (restaurarModo) {
+      selecionarModoRegistro('SOS');
+      selecionarMovimentacao(tipoMovimentacaoAntesVeiculoExterno);
+      document.getElementById('btnVeiculoExterno').focus();
+    }
+  }
+
+  function preencherDestinosViaturaLocal() {
+    const select = document.getElementById('destinoViaturaLocal');
+    const atual = select.value;
+    select.innerHTML = '';
+    const incluir = (valor, texto) => {
+      const opcao = document.createElement('option');
+      opcao.value = valor;
+      opcao.textContent = texto;
+      select.appendChild(opcao);
+    };
+    incluir('', 'Selecione o destino');
+    incluir('SOS', 'SOS');
+    const vistos = new Set(['SOS']);
+    destinos.filter(item => String(item.Ativo).toLowerCase() === 'sim' && item.Tipo_Movimentacao === 'Saída')
+      .sort((a, b) => Number(a.Ordem || 999) - Number(b.Ordem || 999))
+      .forEach(item => {
+        const destino = String(item.Destino || '').trim();
+        const chave = normalizarTextoSeletorGuarnicao(destino);
+        if (!destino || vistos.has(chave)) return;
+        vistos.add(chave);
+        incluir(destino, destino);
+      });
+    select.value = Array.from(select.options).some(opcao => opcao.value === atual) ? atual : '';
+    atualizarRotuloRegistroViaturas();
+  }
+
+  function atualizarRotuloRegistroViaturas() {
+    if (modoRegistroAtual !== 'SOS') return;
+    const retorno = tipoMovimentacaoAtual === 'Entrada';
+    document.getElementById('campoDestinoViaturaLocal').classList.toggle('oculto', retorno);
+    document.getElementById('destinoViaturaLocal').required = !retorno;
+    const sos = document.getElementById('destinoViaturaLocal').value === 'SOS';
+    const botao = document.getElementById('btnRegistrarMovimentacao');
+    if (!botao.disabled) botao.textContent = retorno ? 'Registrar retorno' : (sos ? 'Registrar saída SOS' : 'Registrar saída');
+  }
+
+  function contextoViaturasAindaValido(geracao, assinatura) {
+    return respostaPertenceASessaoEquipe(geracao) && assinatura === obterAssinaturaSessoesEquipeLocal();
+  }
+
+  function aplicarDadosViaturas(dados) {
+    viaturasSOS = dados.viaturas || [];
+    militaresSOS = dados.militares || [];
+    guarnicoesServico = dados.guarnicoesServico || [];
+    cicloGuarnicoesServico = dados.ciclo || null;
+    guarnicoesServicoCarregadas = true;
+    renderizarEditorGuarnicoesServico();
+    if (modoRegistroAtual === 'SOS') renderizarSelecaoViaturasSOS();
   }
 
   function alternarTipoRegistro() {
@@ -2004,6 +2114,7 @@ let tipoMovimentacaoAtual = 'Entrada';
         procedencias = dados.procedencias || [];
         preencherDestinos();
         preencherProcedencias();
+        preencherDestinosViaturaLocal();
       })
       .withFailureHandler((erro) => {
         mostrarMensagem('Erro ao carregar listas: ' + erro.message, 'erro');
@@ -2012,18 +2123,17 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function carregarDadosSOS() {
+    const geracao = geracaoSessaoEquipe;
+    const assinatura = obterAssinaturaSessoesEquipeLocal();
+    const consulta = ++geracaoDadosViaturas;
     google.script.run
       .withSuccessHandler((dados) => {
-        viaturasSOS = dados.viaturas || [];
-        militaresSOS = dados.militares || [];
-        guarnicoesServico = dados.guarnicoesServico || [];
-        cicloGuarnicoesServico = dados.ciclo || null;
-        guarnicoesServicoCarregadas = true;
-        renderizarSelecaoViaturasSOS();
-        renderizarEditorGuarnicoesServico();
+        if (consulta !== geracaoDadosViaturas || !contextoViaturasAindaValido(geracao, assinatura)) return;
+        aplicarDadosViaturas(dados);
       })
       .withFailureHandler((erro) => {
-        mostrarMensagem('Erro ao carregar viaturas de SOS: ' + erro.message, 'erro');
+        if (consulta !== geracaoDadosViaturas || !contextoViaturasAindaValido(geracao, assinatura)) return;
+        mostrarMensagem('Erro ao carregar a frota: ' + erro.message, 'erro');
       })
       .getDadosSOS();
   }
@@ -2035,14 +2145,13 @@ let tipoMovimentacaoAtual = 'Entrada';
     if (!lista || !configuracoes) return;
 
     const retorno = tipoMovimentacaoAtual === 'Entrada';
-    const situacaoNecessaria = retorno ? 'Em ocorrência' : 'No quartel';
-    const disponiveis = viaturasSOS.filter(item => item.Situacao_Atual === situacaoNecessaria);
+    const disponiveis = viaturasSOS.filter(item => retorno
+      ? ['Em ocorrência', 'Fora da unidade'].includes(item.Situacao_Atual)
+      : item.Situacao_Atual === 'No quartel');
     document.getElementById('tituloSelecaoSOS').textContent = retorno
       ? 'Selecionar viaturas que retornaram'
       : 'Selecionar viaturas para saída';
-    document.getElementById('btnRegistrarMovimentacao').textContent = retorno
-      ? 'Registrar retorno SOS'
-      : 'Registrar saída SOS';
+    atualizarRotuloRegistroViaturas();
 
     Object.keys(selecoesViaturasSOS).forEach(id => {
       if (!disponiveis.some(item => item.ID_Viatura === id)) {
@@ -2056,7 +2165,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     if (!disponiveis.length) {
       lista.appendChild(criarEstadoVazioPainel(
         retorno
-          ? 'Não há viaturas em ocorrência.'
+          ? 'Não há viaturas fora da unidade.'
           : 'Não há viaturas disponíveis no quartel.'
       ));
       configuracoes.innerHTML = '';
@@ -2075,7 +2184,8 @@ let tipoMovimentacaoAtual = 'Entrada';
       const prefixo = document.createElement('strong');
       prefixo.textContent = viatura.Prefixo;
       const descricao = document.createElement('small');
-      descricao.textContent = viatura.Descricao || viatura.Situacao_Atual;
+      descricao.textContent = [viatura.Descricao, retorno ? (viatura.Destino_Atual || viatura.Situacao_Atual) : '']
+        .filter(Boolean).join(' • ') || viatura.Situacao_Atual;
       texto.appendChild(prefixo);
       texto.appendChild(descricao);
       rotulo.appendChild(checkbox);
@@ -2098,6 +2208,9 @@ let tipoMovimentacaoAtual = 'Entrada';
         IDs_Guarnicao: tipoMovimentacaoAtual === 'Entrada'
           ? (viatura.IDs_Guarnicao_Atual || []).slice()
           : (padrao ? (padrao.IDs_Guarnicao || []).slice() : []),
+        ...(tipoMovimentacaoAtual === 'Entrada' ? {
+          ID_Movimentacao_Aberta: viatura.ID_Movimentacao_Aberta || viatura.ID_Ultimo_SOS || ''
+        } : {}),
         AtualizarGuarnicaoServico: false
       };
       if (!selecoesViaturasSOS[viatura.ID_Viatura].ID_Condutor) {
@@ -2172,10 +2285,14 @@ let tipoMovimentacaoAtual = 'Entrada';
         : '';
       const nomeCondutor = condutor ? condutor.Nome : nomeCondutorFallback;
       const condutorPendente = !selecao.ID_Condutor;
-      const nomesGuarnicao = selecao.IDs_Guarnicao
-        .map(id => obterMilitarSOSPorId(id))
-        .filter(Boolean)
-        .map(militar => militar.Nome);
+      const nomeIntegrante = id => {
+        const militar = obterMilitarSOSPorId(id);
+        if (militar) return militar.Nome;
+        const indiceSaida = (viatura.IDs_Guarnicao_Atual || []).indexOf(id);
+        const nomesSaida = Array.isArray(viatura.Nomes_Guarnicao_Atual) ? viatura.Nomes_Guarnicao_Atual : [];
+        return (tipoMovimentacaoAtual === 'Entrada' && nomesSaida[indiceSaida]) || ('Integrante da composição (' + id + ')');
+      };
+      const nomesGuarnicao = selecao.IDs_Guarnicao.map(nomeIntegrante);
 
       const resumo = document.createElement('button');
       resumo.type = 'button';
@@ -2191,7 +2308,7 @@ let tipoMovimentacaoAtual = 'Entrada';
           edicoesViaturasSOSAbertas.delete(chaveEdicao);
         }
         resumo.setAttribute('aria-expanded', String(abrirEditor));
-        textoAcao.textContent = abrirEditor ? 'Fechar edição' : 'Toque para editar';
+        textoAcao.textContent = abrirEditor ? 'Fechar' : (tipoMovimentacaoAtual === 'Entrada' ? 'Ver composição da saída' : 'Toque para editar');
         editor.hidden = !abrirEditor;
       };
 
@@ -2211,7 +2328,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       const acaoResumo = document.createElement('span');
       acaoResumo.className = 'acao-resumo-guarnicao-sos';
       const textoAcao = document.createElement('small');
-      textoAcao.textContent = editorAberto ? 'Fechar edição' : 'Toque para editar';
+      textoAcao.textContent = editorAberto ? 'Fechar' : (tipoMovimentacaoAtual === 'Entrada' ? 'Ver composição da saída' : 'Toque para editar');
       const iconeAcao = document.createElement('span');
       iconeAcao.className = 'icone-resumo-guarnicao-sos';
       iconeAcao.setAttribute('aria-hidden', 'true');
@@ -2229,6 +2346,13 @@ let tipoMovimentacaoAtual = 'Entrada';
       const labelCondutor = document.createElement('label');
       labelCondutor.textContent = 'Condutor';
       const selectCondutor = criarSelectMilitaresSOS(selecao.ID_Condutor, 'Selecione o condutor');
+      if (selecao.ID_Condutor && !Array.from(selectCondutor.options).some(opcao => opcao.value === selecao.ID_Condutor)) {
+        const condutorSaida = document.createElement('option');
+        condutorSaida.value = selecao.ID_Condutor;
+        condutorSaida.textContent = nomeCondutor || ('Condutor da saída (' + selecao.ID_Condutor + ')');
+        condutorSaida.selected = true;
+        selectCondutor.appendChild(condutorSaida);
+      }
       selectCondutor.disabled = tipoMovimentacaoAtual === 'Entrada';
       selectCondutor.onchange = () => {
         selecao.ID_Condutor = selectCondutor.value;
@@ -2240,7 +2364,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       if (tipoMovimentacaoAtual === 'Entrada') {
         const avisoCondutorRetorno = document.createElement('small');
         avisoCondutorRetorno.className = 'aviso-condutor-retorno-sos';
-        avisoCondutorRetorno.textContent = 'No retorno, permanece o condutor registrado na saída.';
+        avisoCondutorRetorno.textContent = 'No retorno, permanece a composição registrada na saída.';
         editor.appendChild(avisoCondutorRetorno);
       }
 
@@ -2250,6 +2374,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       const linhaAdicionar = document.createElement('div');
       linhaAdicionar.className = 'linha-adicionar-guarnicao';
       const selectGuarnicao = criarSelectMilitaresSOS('', 'Selecione um integrante');
+      selectGuarnicao.disabled = tipoMovimentacaoAtual === 'Entrada';
       Array.from(selectGuarnicao.options).forEach(option => {
         if (option.value && (
           option.value === selecao.ID_Condutor ||
@@ -2261,6 +2386,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       const adicionar = document.createElement('button');
       adicionar.type = 'button';
       adicionar.textContent = 'Adicionar';
+      adicionar.disabled = tipoMovimentacaoAtual === 'Entrada';
       adicionar.onclick = () => {
         if (selectGuarnicao.value) {
           selecao.IDs_Guarnicao.push(selectGuarnicao.value);
@@ -2274,11 +2400,10 @@ let tipoMovimentacaoAtual = 'Entrada';
       const chips = document.createElement('div');
       chips.className = 'chips-guarnicao';
       selecao.IDs_Guarnicao.forEach(id => {
-        const militar = militaresSOS.find(item => item.ID_Pessoa === id);
-        if (!militar) return;
         const chip = document.createElement('button');
         chip.type = 'button';
-        chip.textContent = militar.Nome + ' ×';
+        chip.textContent = nomeIntegrante(id) + (tipoMovimentacaoAtual === 'Entrada' ? '' : ' ×');
+        chip.disabled = tipoMovimentacaoAtual === 'Entrada';
         chip.onclick = () => {
           selecao.IDs_Guarnicao = selecao.IDs_Guarnicao.filter(item => item !== id);
           renderizarConfiguracoesSOS();
@@ -2297,7 +2422,7 @@ let tipoMovimentacaoAtual = 'Entrada';
           selecao.AtualizarGuarnicaoServico = checkboxAtualizar.checked;
         };
         const textoAtualizar = document.createElement('span');
-        textoAtualizar.textContent = 'Usar esta composição também nas próximas saídas até as 08h. Desmarcado, vale somente para este SOS.';
+       textoAtualizar.textContent = 'Usar esta composição também nas próximas saídas até as 08h. Desmarcado, vale somente para esta saída.';
         opcaoAtualizar.appendChild(checkboxAtualizar);
         opcaoAtualizar.appendChild(textoAtualizar);
         editor.appendChild(opcaoAtualizar);
@@ -2310,6 +2435,14 @@ let tipoMovimentacaoAtual = 'Entrada';
   function registrarSOS() {
     if (!garantirPermissaoOperacionalAtual()) return;
     const geracaoSessao = geracaoSessaoEquipe;
+    const assinaturaSessao = obterAssinaturaSessoesEquipeLocal();
+    const revisaoFormulario = revisaoFormularioMovimentacao;
+    const destino = tipoMovimentacaoAtual === 'Saída' ? document.getElementById('destinoViaturaLocal').value : '';
+    if (tipoMovimentacaoAtual === 'Saída' && !destino) {
+      mostrarMensagem('Selecione o destino da saída.', 'erro');
+      document.getElementById('destinoViaturaLocal').focus();
+      return;
+    }
 
     const viaturas = Object.values(selecoesViaturasSOS);
 
@@ -2341,12 +2474,13 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     google.script.run
       .withSuccessHandler((resposta) => {
-        if (!respostaPertenceASessaoEquipe(geracaoSessao)) {
+        if (!contextoViaturasAindaValido(geracaoSessao, assinaturaSessao)) {
           botao.disabled = false;
           carregarIdentidadesEquipeServico(true);
           return;
         }
         mostrarMensagem(resposta.mensagem || 'SOS registrado com sucesso.', 'sucesso');
+        geracaoDadosViaturas += 1;
         viaturasSOS = resposta.dadosSOS ? resposta.dadosSOS.viaturas || [] : viaturasSOS;
         militaresSOS = resposta.dadosSOS ? resposta.dadosSOS.militares || [] : militaresSOS;
         guarnicoesServico = resposta.dadosSOS ? resposta.dadosSOS.guarnicoesServico || [] : guarnicoesServico;
@@ -2359,9 +2493,11 @@ let tipoMovimentacaoAtual = 'Entrada';
           estadoToqueFogoCarregado = true;
           atualizarTelaToqueFogo();
         }
-        selecoesViaturasSOS = {};
-        edicoesViaturasSOSAbertas.clear();
-        document.getElementById('observacoesSOS').value = '';
+        if (revisaoFormulario === revisaoFormularioMovimentacao) {
+          selecoesViaturasSOS = {};
+          edicoesViaturasSOSAbertas.clear();
+          document.getElementById('observacoesSOS').value = '';
+        }
         renderizarSelecaoViaturasSOS();
         renderizarEditorGuarnicoesServico();
         carregarPessoasDentroGuarda(true);
@@ -2369,14 +2505,17 @@ let tipoMovimentacaoAtual = 'Entrada';
         carregarPainelComandante(true);
         carregarIdentidadesEquipeServico(true);
         botao.disabled = false;
+        atualizarRotuloRegistroViaturas();
       })
       .withFailureHandler((erro) => {
-        mostrarMensagem('Erro ao registrar SOS: ' + erro.message, 'erro');
         botao.disabled = false;
+        if (!contextoViaturasAindaValido(geracaoSessao, assinaturaSessao)) return;
+        mostrarMensagem('Erro ao registrar a viatura: ' + erro.message, 'erro');
         renderizarSelecaoViaturasSOS();
       })
       .registrarMovimentacaoSOS({
         tipoSOS: tipoMovimentacaoAtual === 'Entrada' ? 'Retorno' : 'Saída',
+        destino: destino,
         viaturas: viaturas,
         observacoes: document.getElementById('observacoesSOS').value.trim(),
         motivoAlteracaoGuarnicao: document.getElementById('observacoesSOS').value.trim()
@@ -2465,6 +2604,9 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function carregarGuarnicoesServico(silencioso = false) {
+    const geracao = geracaoSessaoEquipe;
+    const assinatura = obterAssinaturaSessoesEquipeLocal();
+    const consulta = ++geracaoDadosViaturas;
     const botao = document.getElementById('btnAtualizarGuarnicoesServico');
     if (botao) {
       botao.disabled = true;
@@ -2473,23 +2615,20 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     google.script.run
       .withSuccessHandler((dados) => {
-        viaturasSOS = dados.viaturas || [];
-        militaresSOS = dados.militares || [];
-        guarnicoesServico = dados.guarnicoesServico || [];
-        cicloGuarnicoesServico = dados.ciclo || null;
-        guarnicoesServicoCarregadas = true;
-        renderizarEditorGuarnicoesServico();
         if (botao) {
           botao.disabled = false;
           botao.textContent = 'Atualizar';
         }
+        if (consulta !== geracaoDadosViaturas || !contextoViaturasAindaValido(geracao, assinatura)) return;
+        aplicarDadosViaturas(dados);
       })
       .withFailureHandler((erro) => {
-        if (!silencioso) mostrarMensagem('Erro ao carregar guarnições: ' + erro.message, 'erro');
         if (botao) {
           botao.disabled = false;
           botao.textContent = 'Atualizar';
         }
+        if (consulta !== geracaoDadosViaturas || !contextoViaturasAindaValido(geracao, assinatura)) return;
+        if (!silencioso) mostrarMensagem('Erro ao carregar guarnições: ' + erro.message, 'erro');
       })
       .getDadosSOS();
   }
@@ -2998,6 +3137,8 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function buscarPessoa(somenteSugestao = false) {
+    const geracaoSessao = geracaoSessaoEquipe;
+    const assinaturaSessao = obterAssinaturaSessoesEquipeLocal();
     if (!somenteSugestao) {
       clearTimeout(temporizadorSugestaoPessoa);
     }
@@ -3013,7 +3154,7 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     google.script.run
       .withSuccessHandler((pessoas) => {
-        if (idBusca !== numeroBuscaPessoa) return;
+        if (idBusca !== numeroBuscaPessoa || !contextoViaturasAindaValido(geracaoSessao, assinaturaSessao)) return;
         const resultado = document.getElementById('resultadoPessoa');
         resultado.classList.remove('oculto', 'erro');
         resultado.innerHTML = '';
@@ -3056,7 +3197,7 @@ let tipoMovimentacaoAtual = 'Entrada';
         });
       })
       .withFailureHandler((erro) => {
-        if (idBusca === numeroBuscaPessoa && !somenteSugestao) {
+        if (idBusca === numeroBuscaPessoa && contextoViaturasAindaValido(geracaoSessao, assinaturaSessao) && !somenteSugestao) {
           mostrarMensagem('Erro ao buscar pessoa: ' + erro.message, 'erro');
         }
       })
@@ -3122,6 +3263,10 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function buscarOcupanteViatura() {
+    const geracao = geracaoSessaoEquipe;
+    const assinatura = obterAssinaturaSessoesEquipeLocal();
+    const revisaoFormulario = revisaoFormularioMovimentacao;
+    const numeroBusca = ++numeroBuscaOcupante;
     const rgCpf = document.getElementById('rgCpfBuscaOcupante').value.trim();
 
     if (!rgCpf || rgCpf.replace(/\D/g, '').length < 3) {
@@ -3131,6 +3276,7 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     google.script.run
       .withSuccessHandler((pessoas) => {
+        if (modoRegistroAtual !== 'Viatura' || revisaoFormulario !== revisaoFormularioMovimentacao || numeroBusca !== numeroBuscaOcupante || !contextoViaturasAindaValido(geracao, assinatura)) return;
         const resultado = document.getElementById('resultadoOcupanteViatura');
         resultado.classList.remove('oculto', 'erro');
         resultado.innerHTML = '';
@@ -3155,6 +3301,7 @@ let tipoMovimentacaoAtual = 'Entrada';
         });
       })
       .withFailureHandler((erro) => {
+        if (modoRegistroAtual !== 'Viatura' || revisaoFormulario !== revisaoFormularioMovimentacao || numeroBusca !== numeroBuscaOcupante || !contextoViaturasAindaValido(geracao, assinatura)) return;
         mostrarMensagem('Erro ao buscar ocupante: ' + erro.message, 'erro');
       })
       .buscarPessoasPorRgCpf(rgCpf);
@@ -3338,7 +3485,8 @@ let tipoMovimentacaoAtual = 'Entrada';
       : 'Registrar Movimentação';
     if (botao && !botao.disabled) botao.textContent = modoLancamentoRetroativoAtivo
       ? 'Registrar horário anterior'
-      : (modoRegistroAtual === 'Viatura' ? 'Registrar Auto/VTR' : 'Registrar');
+       : (modoRegistroAtual === 'Viatura' ? 'Registrar Auto/VTR' : 'Registrar');
+    atualizarRotuloRegistroViaturas();
   }
 
   function abrirLancamentoRetroativo() {
@@ -3516,13 +3664,33 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function enviarMovimentacao(dados, retroativa) {
-    const botao = document.getElementById('btnRegistrarMovimentacao');
+    const externo = modoRegistroAtual === 'Viatura';
+    const geracao = geracaoSessaoEquipe;
+    const assinatura = obterAssinaturaSessoesEquipeLocal();
+    const revisaoFormulario = revisaoFormularioMovimentacao;
+    const botao = document.getElementById(externo ? 'btnRegistrarVeiculoExterno' : 'btnRegistrarMovimentacao');
+    if (botao.disabled) return;
+    if (externo) definirEnvioVeiculoExterno(true);
     botao.disabled = true;
     botao.textContent = 'Registrando...';
     if (retroativa) definirControlesFechamentoRetroativoBloqueados(true);
 
     const executor = google.script.run
       .withSuccessHandler((resposta) => {
+        botao.disabled = false;
+        if (externo) definirEnvioVeiculoExterno(false);
+        if (retroativa) definirControlesFechamentoRetroativoBloqueados(false);
+        if (!contextoViaturasAindaValido(geracao, assinatura)) {
+          carregarIdentidadesEquipeServico(true);
+          return;
+        }
+        if (revisaoFormulario !== revisaoFormularioMovimentacao) {
+          mostrarMensagem('Movimentação anterior registrada. O preenchimento atual foi mantido.', 'sucesso');
+          carregarPessoasDentroGuarda(true);
+          carregarMovimentacoesGuarda(true);
+          atualizarInterfaceLancamentoRetroativo();
+          return;
+        }
         mostrarMensagem(resposta.mensagem || 'Movimentação registrada com sucesso.', 'sucesso');
         limparFormulario();
         carregarPessoasDentroGuarda(true);
@@ -3543,14 +3711,25 @@ let tipoMovimentacaoAtual = 'Entrada';
         atualizarInterfaceLancamentoRetroativo();
       })
       .withFailureHandler((erro) => {
-        mostrarMensagem('Erro ao registrar movimentação: ' + erro.message, 'erro');
         botao.disabled = false;
+        if (externo) definirEnvioVeiculoExterno(false);
+        if (retroativa) definirControlesFechamentoRetroativoBloqueados(false);
+        if (!contextoViaturasAindaValido(geracao, assinatura)) return;
+        mostrarMensagem('Erro ao registrar movimentação: ' + erro.message, 'erro');
         if (retroativa) definirControlesFechamentoRetroativoBloqueados(false);
         atualizarInterfaceLancamentoRetroativo();
       });
 
     if (retroativa) executor.registrarMovimentacaoRetroativa(dados);
     else executor.registrarMovimentacao(dados);
+  }
+
+  function definirEnvioVeiculoExterno(enviando) {
+    salvandoVeiculoExterno = enviando;
+    document.getElementById('modalVeiculoExterno').querySelectorAll('button, input, select, textarea').forEach(campo => {
+      campo.disabled = enviando;
+    });
+    document.getElementById('btnRegistrarVeiculoExterno').textContent = enviando ? 'Registrando...' : 'Registrar veículo externo';
   }
 
   function registrarMovimentacao() {
@@ -3616,7 +3795,7 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     }
 
-    if (tipoRegistro === 'Pessoa cadastrada' && !pessoaSelecionada) {
+    if (tipoRegistro === 'Pessoa cadastrada' && !pessoaSelecionada && !(modoRegistroAtual === 'Viatura' && condutorExternoAtivo)) {
       mostrarMensagem('Busque e selecione uma pessoa antes de registrar.', 'erro');
       return;
     }
@@ -3671,6 +3850,8 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function limparFormulario() {
+    const eraVeiculoExterno = modoRegistroAtual === 'Viatura';
+    if (eraVeiculoExterno) fecharVeiculoExterno(false);
     pessoaSelecionada = null;
     condutorExternoAtivo = false;
     ocupantesViatura = [];
@@ -3698,10 +3879,18 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     document.getElementById('tipoRegistro').value = 'Pessoa cadastrada';
     selecionarCategoriaPessoa('Militar');
-    selecionarModoRegistro('Individual');
+    selecionarModoRegistro(eraVeiculoExterno ? 'SOS' : 'Individual');
   }
 
   function mostrarMensagem(texto, tipo = 'sucesso') {
+    const modalVeiculo = document.getElementById('modalVeiculoExterno');
+    if (modalVeiculo && modalVeiculo.open) {
+      const mensagemModal = document.getElementById('mensagemVeiculoExterno');
+      mensagemModal.textContent = texto;
+      mensagemModal.classList.remove('oculto', 'sucesso', 'erro');
+      mensagemModal.classList.add(tipo);
+      mensagemModal.setAttribute('role', tipo === 'erro' ? 'alert' : 'status');
+    }
     const mensagem = document.getElementById('mensagemSistema');
 
     if (!mensagem) {

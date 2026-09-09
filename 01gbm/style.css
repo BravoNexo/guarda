@@ -3791,3 +3791,60 @@ body.modal-motoristas-aberto {
   color: #64748b;
   cursor: not-allowed;
 }
+/* Unified local fleet and compact external vehicle registration. */
+.cabecalho-frota-local,
+.cabecalho-veiculo-externo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.cabecalho-frota-local span {
+  display: block;
+  color: #64748b;
+  font-size: 13px;
+  margin-top: 4px;
+}
+.cabecalho-frota-local button,
+.cabecalho-veiculo-externo > button {
+  flex-shrink: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 13px;
+  background: #fff;
+  color: #1e3a5f;
+  font-weight: 700;
+  cursor: pointer;
+}
+.modal-veiculo-externo {
+  width: min(620px, calc(100% - 24px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  border: 0;
+  border-radius: 18px;
+  padding: 24px;
+  background: #fff;
+  color: #172033;
+  box-shadow: 0 24px 80px rgb(15 23 42 / 30%);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.modal-veiculo-externo::backdrop { background: rgb(15 23 42 / 65%); }
+.cabecalho-veiculo-externo h2 { margin: 0 0 6px; font-size: 21px; }
+.cabecalho-veiculo-externo p { margin: 0; font-size: 13px; color: #64748b; }
+.modal-veiculo-externo #areaRegistroPadrao { display: flex; flex-direction: column; }
+.modal-veiculo-externo #campoPrefixoPlaca { order: -2; }
+.modal-veiculo-externo #areaPessoaCadastrada { order: -1; }
+.modal-veiculo-externo #areaOcupantesViatura { margin-bottom: 18px; }
+.modal-veiculo-externo details > summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+.modal-veiculo-externo details[open] > summary { margin-bottom: 14px; }
+.modal-veiculo-externo input,
+.modal-veiculo-externo select,
+.modal-veiculo-externo textarea { max-width: 100%; }
+.modal-veiculo-externo .mensagem-sistema { margin-bottom: 14px; }
+@media (max-width: 480px) {
+  .modal-veiculo-externo { padding: 18px; }
+  .cabecalho-frota-local { flex-wrap: wrap; }
+  .cabecalho-frota-local button { width: 100%; }
+}
