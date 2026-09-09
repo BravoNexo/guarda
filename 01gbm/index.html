@@ -958,10 +958,11 @@
             </div>
             <div class="campo" id="campoDestinoViaturaLocal">
               <label for="destinoViaturaLocal">Destino da saída *</label>
-              <select id="destinoViaturaLocal" onchange="atualizarRotuloRegistroViaturas()" required>
-                <option value="">Selecione o destino</option>
-                <option value="SOS">SOS</option>
+              <select id="destinoViaturaLocal" onchange="atualizarRotuloRegistroViaturas()" required disabled>
+                <option value="">Carregando destinos...</option>
               </select>
+              <p id="statusDestinosViaturaLocal" class="dica-varios-ocupantes" role="status" aria-live="polite">Carregando os destinos disponíveis...</p>
+              <button type="button" id="btnRecarregarDestinosViatura" class="botao-secundario oculto" onclick="carregarListas()">Recarregar opções</button>
             </div>
             <div class="titulo-bloco-viatura">
               <div>
@@ -1342,7 +1343,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.18"></script>
+  <script src="app.js?v=27.1.19"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&

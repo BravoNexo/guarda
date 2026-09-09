@@ -1254,6 +1254,9 @@ let tipoMovimentacaoAtual = 'Entrada';
   let ocupantesViatura = [];
   let destinos = [];
   let procedencias = [];
+  let estadoListasFormulario = 'carregando';
+  let geracaoListasFormulario = 0;
+  let botaoRegistroBloqueadoPorListas = false;
   let viaturasSOS = [];
   let militaresSOS = [];
   let selecoesViaturasSOS = {};
@@ -1672,9 +1675,9 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    restaurarSessaoMestre();
+    const restauracaoMestre = restaurarSessaoMestre();
     inicializarEquipeServico();
-    carregarListas();
+    Promise.resolve(restauracaoMestre).then(() => carregarListas());
     selecionarModoRegistro('Individual');
     alternarTipoRegistro();
     carregarIdentidadesEquipeServico();
@@ -1951,6 +1954,9 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     const isViatura = modoRegistroAtual === 'Viatura';
     const isSOS = modoRegistroAtual === 'SOS';
+    if (!isSOS && botaoRegistroBloqueadoPorListas) {
+      liberarBloqueioRegistroPorListas();
+    }
     const tipoRegistro = document.getElementById('tipoRegistro');
 
     if (isSOS) {
@@ -2051,6 +2057,20 @@ let tipoMovimentacaoAtual = 'Entrada';
       opcao.textContent = texto;
       select.appendChild(opcao);
     };
+    if (estadoListasFormulario !== 'pronto') {
+      incluir('', estadoListasFormulario === 'erro' ? 'Opções indisponíveis' : 'Carregando destinos...');
+      select.disabled = true;
+      document.getElementById('statusDestinosViaturaLocal').textContent = estadoListasFormulario === 'erro'
+        ? 'Não foi possível carregar os destinos. Recarregue as opções para registrar uma saída.'
+        : 'Carregando os destinos disponíveis...';
+      document.getElementById('statusDestinosViaturaLocal').classList.remove('oculto');
+      document.getElementById('btnRecarregarDestinosViatura').classList.toggle('oculto', estadoListasFormulario !== 'erro');
+      atualizarRotuloRegistroViaturas();
+      return;
+    }
+    select.disabled = false;
+    document.getElementById('statusDestinosViaturaLocal').classList.add('oculto');
+    document.getElementById('btnRecarregarDestinosViatura').classList.add('oculto');
     incluir('', 'Selecione o destino');
     incluir('SOS', 'SOS');
     const vistos = new Set(['SOS']);
@@ -2067,6 +2087,13 @@ let tipoMovimentacaoAtual = 'Entrada';
     atualizarRotuloRegistroViaturas();
   }
 
+  function liberarBloqueioRegistroPorListas() {
+    const botao = document.getElementById('btnRegistrarMovimentacao');
+    botaoRegistroBloqueadoPorListas = false;
+    if (botao.hasAttribute('data-mestre-disabled')) botao.setAttribute('data-mestre-disabled', 'false');
+    botao.disabled = modoMestreAtivo() && !mestrePodeEscrever();
+  }
+
   function atualizarRotuloRegistroViaturas() {
     if (modoRegistroAtual !== 'SOS') return;
     const retorno = tipoMovimentacaoAtual === 'Entrada';
@@ -2074,6 +2101,13 @@ let tipoMovimentacaoAtual = 'Entrada';
     document.getElementById('destinoViaturaLocal').required = !retorno;
     const sos = document.getElementById('destinoViaturaLocal').value === 'SOS';
     const botao = document.getElementById('btnRegistrarMovimentacao');
+    const bloquearPorListas = !retorno && estadoListasFormulario !== 'pronto';
+    if (bloquearPorListas && !botao.disabled) {
+      botao.disabled = true;
+      botaoRegistroBloqueadoPorListas = true;
+    } else if (!bloquearPorListas && botaoRegistroBloqueadoPorListas) {
+      liberarBloqueioRegistroPorListas();
+    }
     if (!botao.disabled) botao.textContent = retorno ? 'Registrar retorno' : (sos ? 'Registrar saída SOS' : 'Registrar saída');
   }
 
@@ -2107,18 +2141,36 @@ let tipoMovimentacaoAtual = 'Entrada';
     preencherProcedencias();
   }
 
-  function carregarListas() {
+  function carregarListas(tentativasContexto = 1) {
+    const consulta = ++geracaoListasFormulario;
+    estadoListasFormulario = 'carregando';
+    preencherDestinosViaturaLocal();
+    const falhar = erro => {
+      if (consulta !== geracaoListasFormulario) return;
+      if (tentativasContexto > 0 && /^MESTRE_CONTEXTO:/.test(String(erro.message || erro))) {
+        carregarListas(tentativasContexto - 1);
+        return;
+      }
+      estadoListasFormulario = 'erro';
+      preencherDestinosViaturaLocal();
+      mostrarMensagem('Erro ao carregar listas: ' + (erro.message || erro), 'erro');
+    };
     google.script.run
       .withSuccessHandler((dados) => {
-        destinos = dados.destinos || [];
-        procedencias = dados.procedencias || [];
+        if (consulta !== geracaoListasFormulario) return;
+        if (!dados || !Array.isArray(dados.destinos) || !Array.isArray(dados.procedencias) ||
+            !dados.destinos.some(item => item && String(item.Ativo).toLowerCase() === 'sim' && item.Tipo_Movimentacao === 'Saída')) {
+          falhar(new Error('Resposta sem opções válidas de destino.'));
+          return;
+        }
+        destinos = dados.destinos;
+        procedencias = dados.procedencias;
+        estadoListasFormulario = 'pronto';
         preencherDestinos();
         preencherProcedencias();
         preencherDestinosViaturaLocal();
       })
-      .withFailureHandler((erro) => {
-        mostrarMensagem('Erro ao carregar listas: ' + erro.message, 'erro');
-      })
+      .withFailureHandler(falhar)
       .getListasFormulario();
   }
 
@@ -2434,6 +2486,10 @@ let tipoMovimentacaoAtual = 'Entrada';
 
   function registrarSOS() {
     if (!garantirPermissaoOperacionalAtual()) return;
+    if (tipoMovimentacaoAtual === 'Saída' && estadoListasFormulario !== 'pronto') {
+      mostrarMensagem('Aguarde o carregamento dos destinos ou recarregue as opções antes de registrar a saída.', 'erro');
+      return;
+    }
     const geracaoSessao = geracaoSessaoEquipe;
     const assinaturaSessao = obterAssinaturaSessoesEquipeLocal();
     const revisaoFormulario = revisaoFormularioMovimentacao;
