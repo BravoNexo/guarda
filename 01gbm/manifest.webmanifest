@@ -1,0 +1,32 @@
+{
+  "id": "/guarda/01gbm/",
+  "name": "Gestão de Serviço - 1º GBM",
+  "short_name": "Gestão de Serviço",
+  "description": "Registro e acompanhamento do serviço diário do 1º GBM.",
+  "lang": "pt-BR",
+  "start_url": "/guarda/01gbm/",
+  "scope": "/guarda/01gbm/",
+  "display": "browser",
+  "theme_color": "#111827",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "icons/gestao-servico-192-v1.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/gestao-servico-512-v1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/gestao-servico-maskable-512-v1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
