@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Gestão de Serviço - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.1.18">
+  <link rel="stylesheet" href="style.css?v=27.1.22">
   </head>
 
   <body>
@@ -478,12 +478,37 @@
             <div id="acaoLancamentoRetroativo" class="acao-lancamento-retroativo oculto">
               <div>
                 <strong>Lançamento em horário anterior</strong>
-                <span>Corrigir uma movimentação individual que ocorreu dentro do ciclo atual.</span>
+                <span>Registrar uma movimentação que ocorreu no seu ciclo e ainda não foi lançada.</span>
               </div>
               <button type="button" id="btnAbrirLancamentoRetroativo" onclick="abrirLancamentoRetroativo()"
                 aria-controls="blocoLancamentoRetroativo" aria-expanded="false">
                 Lançar horário anterior
               </button>
+            </div>
+            <div id="acaoEdicaoComandante" class="acao-edicao-comandante oculto">
+              <div class="cabecalho-acao-edicao-comandante">
+                <div>
+                  <strong>Correção de lançamento</strong>
+                  <span>Edite entradas individuais do seu ciclo, mesmo após a troca do guarda.</span>
+                </div>
+                <button type="button" id="btnAbrirEdicaoComandante" onclick="alternarEdicaoComandante()"
+                  aria-controls="areaEdicaoComandante" aria-expanded="false">Editar lançamento</button>
+              </div>
+              <div id="areaEdicaoComandante" class="area-edicao-comandante oculto">
+                <div class="cabecalho-lista-edicao-comandante">
+                  <strong>Entradas individuais do seu ciclo</strong>
+                  <button type="button" id="btnFecharEdicaoComandante" onclick="fecharEdicaoComandante()"
+                    aria-label="Fechar área de edição de lançamentos">Fechar</button>
+                </div>
+                <p id="cicloEdicaoComandante" class="contexto-edicao-comandante"></p>
+                <div class="campo campo-sem-margem">
+                  <label for="buscaEdicaoComandante">Buscar por nome ou RG/CPF</label>
+                  <input type="search" id="buscaEdicaoComandante" placeholder="Nome ou RG/CPF"
+                    autocomplete="off" oninput="renderizarEdicaoComandante()">
+                </div>
+                <p id="resumoEdicaoComandante" class="contexto-edicao-comandante" role="status" aria-live="polite"></p>
+                <div id="listaEdicaoComandante" class="lista-painel lista-edicao-comandante"></div>
+              </div>
             </div>
           </div>
         </section>
@@ -1348,7 +1373,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.21"></script>
+  <script src="app.js?v=27.1.22"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&

@@ -118,6 +118,8 @@ const DURACAO_SESSAO_LOCAL = {
   }
 
   function mestreInvalidarPaineis() {
+    invalidarEdicaoComandante_();
+    if (movimentacaoEmEdicao) fecharModalEdicaoMovimentacao(false, true);
     geracaoSessaoEquipe += 1;
     invalidarConsultasEquipeServico();
     painelComandanteCarregado = false;
@@ -1304,6 +1306,10 @@ let tipoMovimentacaoAtual = 'Entrada';
   let painelComandanteEmCarregamento = false;
   let atualizacaoPainelComandantePendente = false;
   let permissoesPainelGestaoAtual = { podeLancarHorarioAnterior: false };
+  let edicaoComandanteAtual = null;
+  let assinaturaEdicaoComandante = '';
+  let edicaoComandanteAberta = false;
+  let mensagemEdicaoComandante = '';
   let painelMotoristasAtual = null;
   let painelMotoristasCarregado = false;
   let painelMotoristasEmCarregamento = false;
@@ -1349,6 +1355,8 @@ let tipoMovimentacaoAtual = 'Entrada';
   let focoAntesModalEdicaoMovimentacao = null;
   let edicaoMovimentacaoSalvando = false;
   let geracaoEdicaoMovimentacao = 0;
+  let assinaturaModalEdicaoMovimentacao = '';
+  let modalEdicaoExigeComandante = false;
   let movimentacaoCorrecaoIdentificacao = null;
   let focoAntesModalCorrecaoIdentificacao = null;
   let correcaoIdentificacaoSalvando = false;
@@ -5360,6 +5368,10 @@ function atualizarVisibilidadePainelComandante() {
   if (botaoAtualizar) botaoAtualizar.classList.toggle('oculto', !possuiAcesso);
   atualizarTelaConsultaEfetivo();
   if (acaoRetroativa) acaoRetroativa.classList.toggle('oculto', !podeLancarHorarioAnterior);
+  atualizarVisibilidadeEdicaoComandante_();
+  if (movimentacaoEmEdicao && !contextoModalEdicaoMovimentacaoVigente_()) {
+    fecharModalEdicaoMovimentacao(false, true);
+  }
   if (!podeExecutarCompetenciaComandante() && modoLancamentoRetroativoAtivo) {
     cancelarLancamentoRetroativoPendente();
     atualizarPermissaoLancamento();
@@ -5556,6 +5568,10 @@ function carregarPainelComandante(silencioso = false) {
   );
   atualizacaoPainelComandantePendente = false;
   painelComandanteEmCarregamento = true;
+  if (edicaoComandanteAberta) {
+    mensagemEdicaoComandante = 'Atualizando lançamentos...';
+    renderizarEdicaoComandante();
+  }
 
   if (botao) {
     botao.disabled = true;
@@ -5593,6 +5609,11 @@ function carregarPainelComandante(silencioso = false) {
       const sessaoConsultaInvalida = !respostaObsoleta &&
         consultaEfetivoEraUnicoAcesso &&
         /valide o e-mail de um militar do 1º gbm para acessar o painel de gestão/i.test(mensagemErro);
+
+      if (!respostaObsoleta && !atualizacaoPendente && edicaoComandanteAberta) {
+        mensagemEdicaoComandante = 'Não foi possível atualizar os lançamentos. Feche e abra esta área para tentar novamente.';
+        renderizarEdicaoComandante();
+      }
 
       if (!silencioso && !respostaObsoleta && !atualizacaoPendente) {
         mostrarMensagem(
@@ -5638,6 +5659,18 @@ function renderizarPainelComandante(painel) {
     permissoesPainelGestaoAtual.podeLancarHorarioAnterior === true;
   if (acaoRetroativa) acaoRetroativa.classList.toggle('oculto', !podeLancarHorarioAnterior);
 
+  if (podeExecutarCompetenciaComandante() &&
+      permissoesPainelGestaoAtual.podeEditarLancamentos === true &&
+      painel.edicaoComandante && Array.isArray(painel.edicaoComandante.movimentacoes)) {
+    edicaoComandanteAtual = painel.edicaoComandante;
+    assinaturaEdicaoComandante = obterAssinaturaCredenciaisPainelGestao();
+    mensagemEdicaoComandante = '';
+  } else {
+    invalidarEdicaoComandante_();
+  }
+  atualizarVisibilidadeEdicaoComandante_();
+  renderizarEdicaoComandante();
+
   document.getElementById('totalPessoasDentro').textContent = totais.pessoasDentro || 0;
   document.getElementById('totalViaturasDentro').textContent = totais.viaturasDentro || 0;
   document.getElementById('totalViaturasDisponiveis').textContent = totais.viaturasDisponiveis || 0;
@@ -5653,6 +5686,102 @@ function renderizarPainelComandante(painel) {
   renderizarListaPessoasDentro(painel.dentro || []);
   renderizarListaMovimentacoesRecentes(painel.recentes || []);
   renderizarViaturasQuartelPainel(painel.viaturasQuartel || []);
+}
+
+function podeEditarLancamentosComandante_() {
+  return podeExecutarCompetenciaComandante() &&
+    permissoesPainelGestaoAtual.podeEditarLancamentos === true &&
+    !!edicaoComandanteAtual &&
+    assinaturaEdicaoComandante === obterAssinaturaCredenciaisPainelGestao();
+}
+
+function invalidarEdicaoComandante_() {
+  edicaoComandanteAtual = null;
+  assinaturaEdicaoComandante = '';
+  mensagemEdicaoComandante = '';
+  permissoesPainelGestaoAtual.podeEditarLancamentos = false;
+  fecharEdicaoComandante(false);
+  const acao = document.getElementById('acaoEdicaoComandante');
+  if (acao) acao.classList.add('oculto');
+  if (movimentacaoEmEdicao && modalEdicaoExigeComandante) {
+    fecharModalEdicaoMovimentacao(false, true);
+  }
+}
+
+function atualizarVisibilidadeEdicaoComandante_() {
+  if (!podeEditarLancamentosComandante_()) {
+    invalidarEdicaoComandante_();
+    return;
+  }
+  const acao = document.getElementById('acaoEdicaoComandante');
+  if (acao) acao.classList.remove('oculto');
+}
+
+function fecharEdicaoComandante(restaurarFoco = true) {
+  edicaoComandanteAberta = false;
+  const area = document.getElementById('areaEdicaoComandante');
+  const botao = document.getElementById('btnAbrirEdicaoComandante');
+  const busca = document.getElementById('buscaEdicaoComandante');
+  if (area) area.classList.add('oculto');
+  if (botao) botao.setAttribute('aria-expanded', 'false');
+  if (busca) busca.value = '';
+  ['listaEdicaoComandante', 'resumoEdicaoComandante', 'cicloEdicaoComandante'].forEach(id => {
+    const elemento = document.getElementById(id);
+    if (elemento) elemento.textContent = '';
+  });
+  if (restaurarFoco && botao) botao.focus();
+}
+
+function alternarEdicaoComandante() {
+  if (edicaoComandanteAberta) {
+    fecharEdicaoComandante();
+    return;
+  }
+  if (!podeEditarLancamentosComandante_()) {
+    invalidarEdicaoComandante_();
+    return;
+  }
+  edicaoComandanteAberta = true;
+  document.getElementById('areaEdicaoComandante').classList.remove('oculto');
+  document.getElementById('btnAbrirEdicaoComandante').setAttribute('aria-expanded', 'true');
+  renderizarEdicaoComandante();
+  document.getElementById('buscaEdicaoComandante').focus();
+  // A consulta em andamento já carrega esta lista; não enfileirar outra igual.
+  if (!painelComandanteEmCarregamento) carregarPainelComandante(true);
+}
+
+function renderizarEdicaoComandante() {
+  if (!edicaoComandanteAberta || !podeEditarLancamentosComandante_()) return;
+  const dados = edicaoComandanteAtual;
+  const busca = document.getElementById('buscaEdicaoComandante');
+  const termo = normalizarTextoSeletorGuarnicao(busca && busca.value);
+  const documento = termo.replace(/\D/g, '');
+  const registros = dados.movimentacoes.filter(item => {
+    if (item.podeEditar !== true) return false;
+    return !termo || normalizarTextoSeletorGuarnicao(item.nome).includes(termo) ||
+      (documento && String(item.documento || '').replace(/\D/g, '').includes(documento));
+  });
+  document.getElementById('cicloEdicaoComandante').textContent =
+    [dados.cicloInicio, dados.cicloFim].filter(Boolean).join(' até ') +
+    ' • Toda correção fica registrada com seu responsável e motivo.';
+  document.getElementById('resumoEdicaoComandante').textContent = mensagemEdicaoComandante ||
+    (registros.length === 1 ? '1 entrada disponível para edição.' :
+      `${registros.length} entradas disponíveis para edição.`);
+  renderizarListaMovimentacoesRecentes(registros, 'listaEdicaoComandante');
+  if (!registros.length) {
+    const lista = document.getElementById('listaEdicaoComandante');
+    lista.textContent = '';
+    lista.appendChild(criarEstadoVazioPainel(termo
+      ? 'Nenhuma entrada encontrada para essa busca.'
+      : 'Nenhuma entrada individual disponível para edição neste ciclo.'));
+  }
+}
+
+function contextoModalEdicaoMovimentacaoVigente_() {
+  return assinaturaModalEdicaoMovimentacao === obterAssinaturaCredenciaisPainelGestao() &&
+    (modalEdicaoExigeComandante
+      ? podeExecutarCompetenciaComandante()
+      : aparelhoPodeOperarGuardaAtual());
 }
 
 function renderizarViaturasQuartelPainel(viaturas) {
@@ -5925,7 +6054,8 @@ function definirEstadoSalvamentoEdicaoMovimentacao_(salvando) {
 
 function abrirModalEdicaoMovimentacao(movimentacao, botaoOrigem) {
   if (edicaoMovimentacaoSalvando) return;
-  if (!movimentacao || movimentacao.podeEditar !== true) {
+  if (!movimentacao || movimentacao.podeEditar !== true ||
+      (!podeExecutarCompetenciaComandante() && !aparelhoPodeOperarGuardaAtual())) {
     mostrarMensagem(
       'Este registro não está mais disponível para edição nesta sessão.',
       'erro'
@@ -5939,6 +6069,8 @@ function abrirModalEdicaoMovimentacao(movimentacao, botaoOrigem) {
 
   geracaoEdicaoMovimentacao += 1;
   movimentacaoEmEdicao = Object.assign({}, movimentacao);
+  assinaturaModalEdicaoMovimentacao = obterAssinaturaCredenciaisPainelGestao();
+  modalEdicaoExigeComandante = podeExecutarCompetenciaComandante();
   focoAntesModalEdicaoMovimentacao = botaoOrigem || document.activeElement;
   definirEstadoSalvamentoEdicaoMovimentacao_(false);
 
@@ -6005,6 +6137,8 @@ function fecharModalEdicaoMovimentacao(restaurarFoco = true, forcar = false) {
   if (formulario) formulario.reset();
   if (app) app.removeAttribute('inert');
   movimentacaoEmEdicao = null;
+  assinaturaModalEdicaoMovimentacao = '';
+  modalEdicaoExigeComandante = false;
   focoAntesModalEdicaoMovimentacao = null;
 
   if (restaurarFoco && focoAnterior && typeof focoAnterior.focus === 'function' &&
@@ -6017,7 +6151,8 @@ function fecharModalEdicaoMovimentacao(restaurarFoco = true, forcar = false) {
 function salvarEdicaoMovimentacao(evento) {
   if (evento) evento.preventDefault();
   if (edicaoMovimentacaoSalvando) return;
-  if (!movimentacaoEmEdicao || movimentacaoEmEdicao.podeEditar !== true) {
+  if (!movimentacaoEmEdicao || movimentacaoEmEdicao.podeEditar !== true ||
+      !contextoModalEdicaoMovimentacaoVigente_()) {
     fecharModalEdicaoMovimentacao(false);
     mostrarMensagem('Atualize a lista antes de tentar editar novamente.', 'erro');
     return;
@@ -6080,6 +6215,10 @@ function salvarEdicaoMovimentacao(evento) {
 
   google.script.run
     .withSuccessHandler(resposta => {
+      if (!contextoModalEdicaoMovimentacaoVigente_()) {
+        fecharModalEdicaoMovimentacao(false, true);
+        return;
+      }
       if (geracaoSolicitacao !== geracaoEdicaoMovimentacao ||
           !movimentacaoEmEdicao ||
           String(movimentacaoEmEdicao.idMovimentacao || '') !== String(idMovimentacao || '')) {
@@ -6101,6 +6240,10 @@ function salvarEdicaoMovimentacao(evento) {
       carregarIdentidadesEquipeServico(true);
     })
     .withFailureHandler(erro => {
+      if (!contextoModalEdicaoMovimentacaoVigente_()) {
+        fecharModalEdicaoMovimentacao(false, true);
+        return;
+      }
       if (geracaoSolicitacao !== geracaoEdicaoMovimentacao ||
           !movimentacaoEmEdicao ||
           String(movimentacaoEmEdicao.idMovimentacao || '') !== String(idMovimentacao || '')) {
@@ -7998,6 +8141,7 @@ function limparComandanteLocal() {
   localStorage.removeItem('comandante_email_local');
   localStorage.removeItem('comandante_sessao_token');
   localStorage.removeItem('comandante_sessao_iniciada_em');
+  invalidarEdicaoComandante_();
 }
 
 function aparelhoAssumiuComandanteAtual() {

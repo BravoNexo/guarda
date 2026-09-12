@@ -3255,6 +3255,111 @@ body.modal-motoristas-aberto {
   }
 }
 
+/* Correção de entradas do ciclo pelo Comandante — 27.1.22. */
+.acao-edicao-comandante {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #c4b5fd;
+  border-radius: 12px;
+  background: #faf5ff;
+  color: #581c87;
+}
+
+.cabecalho-acao-edicao-comandante,
+.cabecalho-lista-edicao-comandante {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cabecalho-acao-edicao-comandante > div {
+  min-width: 0;
+}
+
+.cabecalho-acao-edicao-comandante strong,
+.cabecalho-acao-edicao-comandante span {
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.cabecalho-acao-edicao-comandante strong {
+  margin-bottom: 3px;
+}
+
+.cabecalho-acao-edicao-comandante > button,
+.cabecalho-lista-edicao-comandante > button {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid #7e22ce;
+  border-radius: 10px;
+  background: #7e22ce;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cabecalho-lista-edicao-comandante > button {
+  background: #fff;
+  color: #6b21a8;
+}
+
+.area-edicao-comandante {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #ddd6fe;
+  min-width: 0;
+}
+
+.cabecalho-lista-edicao-comandante > strong {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.contexto-edicao-comandante {
+  margin: 9px 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.lista-edicao-comandante {
+  max-height: 520px;
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding: 2px;
+  color: #0f172a;
+}
+
+.lista-edicao-comandante .cabecalho-item-painel,
+.lista-edicao-comandante .detalhes-item-painel {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.cabecalho-acao-edicao-comandante > button:focus-visible,
+.cabecalho-lista-edicao-comandante > button:focus-visible {
+  outline: 3px solid #a78bfa;
+  outline-offset: 2px;
+}
+
+@media (max-width: 420px) {
+  .cabecalho-acao-edicao-comandante {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cabecalho-acao-edicao-comandante > button {
+    width: 100%;
+  }
+}
+
 /* Edição auditada das movimentações do posto */
 .acoes-item-movimentacao {
   display: flex;
