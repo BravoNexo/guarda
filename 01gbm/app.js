@@ -27,7 +27,7 @@ const PRAZO_LEITURA_EQUIPE_MS = 25000;
     'getComandanteAtivo', 'getOficialDiaAtivo', 'getStatusToqueFogo',
     'getObservacoesServicoComandante', 'getPainelComandante', 'getPainelMotoristas',
     'consultarHistoricoMovimentacoes', 'getPessoasDentroGuarda',
-    'getMovimentacoesRecentesGuarda', 'getDadosSOS', 'buscarPessoasPorRgCpf'
+    'getDadosSOS', 'buscarPessoasPorRgCpf'
   ]);
   const MESTRE_ESCRITAS = new Set([
     'salvarObservacoesServicoComandante', 'registrarEventoMotoristas', 'registrarSaidaRapidaPessoa',
@@ -138,7 +138,6 @@ const PRAZO_LEITURA_EQUIPE_MS = 25000;
     assinaturaPainelMotoristasCarregado = '';
     guarnicoesServicoCarregadas = false;
     pessoasDentroGuardaCarregadas = false;
-    movimentacoesGuardaCarregadas = false;
     mestreCicloPainel = null;
     if (modoLancamentoRetroativoAtivo) cancelarLancamentoRetroativoPendente();
     fecharModalEventoMotoristas(false);
@@ -1028,8 +1027,6 @@ function montarDadosChamadaApi(nome, argumentos) {
       };
     case 'getPessoasDentroGuarda':
       return { sessaoToken: sessaoToken, sessaoToqueToken: sessaoToqueToken };
-    case 'getMovimentacoesRecentesGuarda':
-      return { sessaoToken: sessaoToken, sessaoToqueToken: sessaoToqueToken };
     case 'enviarCodigoConsultaEfetivo':
       return { email: argumentos[0] };
     case 'validarCodigoConsultaEfetivo':
@@ -1318,7 +1315,6 @@ function criarExecutorAppsScript() {
     'encerrarServicoEncarregadoMotoristas',
     'consultarHistoricoMovimentacoes',
     'getPessoasDentroGuarda',
-    'getMovimentacoesRecentesGuarda',
     'enviarCodigoConsultaEfetivo',
     'validarCodigoConsultaEfetivo',
     'getSessaoMestre',
@@ -1419,6 +1415,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   let comandanteAtual = null;
   let emailEncerramentoComandante = null;
   let painelComandanteCarregado = false;
+  let assinaturaOperacionalLista48h = '';
   let painelComandanteEmCarregamento = false;
   let atualizacaoPainelComandantePendente = false;
   let permissoesPainelGestaoAtual = { podeLancarHorarioAnterior: false };
@@ -1450,7 +1447,6 @@ let tipoMovimentacaoAtual = 'Entrada';
   let oficialAcessoAtual = null;
   let emailEncerramentoOficial = null;
   let pessoasDentroGuardaCarregadas = false;
-  let movimentacoesGuardaCarregadas = false;
   let statusToqueFogoAtual = null;
   let estadoToqueFogoCarregado = false;
   let geracaoConsultaGuarda = 0;
@@ -2002,7 +1998,6 @@ let tipoMovimentacaoAtual = 'Entrada';
 
       if (aparelhoPodeConsultarGuarda()) {
         carregarPessoasDentroGuarda(true);
-        carregarMovimentacoesGuarda(true);
       }
 
       if (aparelhoTemAcessoPainelGestao()) {
@@ -2749,7 +2744,6 @@ let tipoMovimentacaoAtual = 'Entrada';
         renderizarSelecaoViaturasSOS();
         renderizarEditorGuarnicoesServico();
         carregarPessoasDentroGuarda(true);
-        carregarMovimentacoesGuarda(true);
         carregarPainelComandante(true);
         carregarIdentidadesEquipeServico(true);
         botao.disabled = false;
@@ -3935,14 +3929,13 @@ let tipoMovimentacaoAtual = 'Entrada';
         if (revisaoFormulario !== revisaoFormularioMovimentacao) {
           mostrarMensagem('Movimentação anterior registrada. O preenchimento atual foi mantido.', 'sucesso');
           carregarPessoasDentroGuarda(true);
-          carregarMovimentacoesGuarda(true);
+          if (aparelhoTemAcessoPainelGestao()) carregarPainelComandante(true);
           atualizarInterfaceLancamentoRetroativo();
           return;
         }
         mostrarMensagem(resposta.mensagem || 'Movimentação registrada com sucesso.', 'sucesso');
         limparFormulario();
         carregarPessoasDentroGuarda(true);
-        carregarMovimentacoesGuarda(true);
 
         if (aparelhoTemAcessoPainelGestao()) {
           carregarPainelComandante(true);
@@ -4347,9 +4340,10 @@ let tipoMovimentacaoAtual = 'Entrada';
         // Old-post editing cannot stay open after a new operational session starts.
         if (movimentacaoEmEdicao) fecharModalEdicaoMovimentacao(false, true);
         pessoasDentroGuardaCarregadas = false;
-        movimentacoesGuardaCarregadas = false;
+        painelComandanteCarregado = false;
         limparAreaGuarda();
         atualizarTelaGuarda();
+        atualizarVisibilidadePainelComandante();
         carregarIdentidadesEquipeServico(true, true);
         mostrarMensagem(resposta.mensagem || 'Guarda assumida. Seu acesso permanece válido para este ciclo.', 'sucesso');
       })
@@ -4525,6 +4519,7 @@ function enviarCodigoGuarda() {
           salvarGuardaLocal(resposta.guarda);
 
           atualizarTelaGuarda();
+          atualizarVisibilidadePainelComandante();
           carregarIdentidadesEquipeServico(true);
         }
 
@@ -5697,6 +5692,7 @@ function atualizarVisibilidadePainelComandante() {
 
   if (!painel) return;
 
+  const contextoListaMudou = atualizarContextoListaMovimentacoes48h_();
   const possuiAcesso = aparelhoTemAcessoPainelGestao();
   const comandanteNesteAparelho = podeConsultarCompetenciasComandante();
   const podeLancarHorarioAnterior = podeExecutarCompetenciaComandante() &&
@@ -5721,7 +5717,7 @@ function atualizarVisibilidadePainelComandante() {
   if (possuiAcesso) {
     if (historico) historico.classList.remove('oculto');
 
-    if (!painelComandanteCarregado) {
+    if (!painelComandanteCarregado && (!painelComandanteEmCarregamento || contextoListaMudou)) {
       carregarPainelComandante(true);
     }
   } else {
@@ -5734,6 +5730,24 @@ function atualizarVisibilidadePainelComandante() {
   atualizarVisibilidadePainelMotoristas();
   mestreAgendarInterface();
   LP_renderizar_('consulta');
+}
+
+function atualizarContextoListaMovimentacoes48h_() {
+  const cobertura = obterCoberturaOperacionalAtual();
+  const assinatura = [
+    obterAssinaturaCredenciaisPainelGestao(),
+    String(guardaAtual && guardaAtual.ID_GuardaServico || ''),
+    String(cobertura && cobertura.ID_Cobertura || ''),
+    aparelhoPodeOperarGuardaAtual() ? 'operador' : 'consulta'
+  ].join('|');
+  if (assinatura === assinaturaOperacionalLista48h) return false;
+  assinaturaOperacionalLista48h = assinatura;
+  // This is now the guard's single list too. Old-post editing buttons cannot
+  // remain on screen while the new context's permissions are being refreshed.
+  painelComandanteCarregado = false;
+  const lista = document.getElementById('listaMovimentacoesRecentes');
+  if (lista) lista.textContent = '';
+  return true;
 }
 
 function formatarDataInputLocal(data) {
@@ -6502,7 +6516,6 @@ function salvarEdicaoMovimentacao(evento) {
   const versaoEsperada = movimentacaoEmEdicao.versao;
   if (versaoEsperada === undefined || versaoEsperada === null || versaoEsperada === '') {
     fecharModalEdicaoMovimentacao(false);
-    carregarMovimentacoesGuarda(true);
     if (aparelhoTemAcessoPainelGestao()) carregarPainelComandante(true);
     mostrarMensagem('O registro foi atualizado. Abra-o novamente para editar.', 'erro');
     return;
@@ -6573,7 +6586,6 @@ function salvarEdicaoMovimentacao(evento) {
       );
 
       carregarPessoasDentroGuarda(true);
-      carregarMovimentacoesGuarda(true);
       if (aparelhoTemAcessoPainelGestao()) {
         painelComandanteCarregado = false;
         carregarPainelComandante(true);
@@ -6826,7 +6838,6 @@ function salvarCorrecaoIdentificacaoPessoa(evento) {
       );
 
       carregarPessoasDentroGuarda(true);
-      carregarMovimentacoesGuarda(true);
       painelComandanteCarregado = false;
       carregarPainelComandante(true);
       carregarIdentidadesEquipeServico(true);
@@ -7122,7 +7133,7 @@ function registrarSaidaRapidaPessoaGuarda(idMovimentacaoEntrada, destino, botao)
       }
 
       carregarPessoasDentroGuarda(true);
-      carregarMovimentacoesGuarda(true);
+      if (aparelhoTemAcessoPainelGestao()) carregarPainelComandante(true);
     })
     .registrarSaidaRapidaPessoa(idMovimentacaoEntrada, destino);
 }
@@ -8689,50 +8700,6 @@ function salvarGuardaLocal(guarda) {
   if (token) marcarInicioSessaoLocal('guarda_sessao_iniciada_em');
 }
 
-function carregarMovimentacoesGuarda(silencioso = false) {
-  if (!aparelhoPodeConsultarGuarda()) {
-    atualizarVisibilidadeMovimentacoesGuarda();
-    return;
-  }
-
-  const botao = document.getElementById('btnAtualizarMovimentacoesGuarda');
-  if (botao) {
-    botao.disabled = true;
-    botao.textContent = 'Atualizando...';
-  }
-
-  google.script.run
-    .withSuccessHandler((resposta) => {
-      const movimentacoes = resposta && resposta.movimentacoes ? resposta.movimentacoes : [];
-      renderizarListaMovimentacoesRecentes(movimentacoes, 'listaMovimentacoesGuarda');
-      movimentacoesGuardaCarregadas = true;
-
-      const total = Number(resposta && resposta.total || 0);
-      const resumo = document.getElementById('resumoMovimentacoesGuarda');
-      if (resumo) resumo.textContent = total === 1 ? '1 registro nas últimas 24h' : total + ' registros nas últimas 24h';
-
-      const ciclo = document.getElementById('cicloMovimentacoesGuarda');
-      if (ciclo && resposta && resposta.periodoInicio && resposta.periodoFim) {
-        ciclo.textContent = 'Período: ' + resposta.periodoInicio + ' até ' + resposta.periodoFim + '.';
-      }
-
-      const atualizado = document.getElementById('atualizadoEmMovimentacoesGuarda');
-      if (atualizado) atualizado.textContent = resposta && resposta.atualizadoEm ? 'Atualizado em ' + resposta.atualizadoEm : '';
-      if (botao) {
-        botao.disabled = false;
-        botao.textContent = 'Atualizar';
-      }
-    })
-    .withFailureHandler((erro) => {
-      if (!silencioso) mostrarMensagem('Erro ao carregar movimentações: ' + erro.message, 'erro');
-      if (botao) {
-        botao.disabled = false;
-        botao.textContent = 'Atualizar';
-      }
-    })
-    .getMovimentacoesRecentesGuarda();
-}
-
 function obterSessaoConsultaEfetivo() {
   return obterSessaoTokenConsultaEfetivoLocal();
 }
@@ -8839,29 +8806,6 @@ function sairConsultaEfetivo(exibirMensagem = true) {
   if (exibirMensagem) mostrarMensagem('Acesso do efetivo encerrado neste aparelho.', 'sucesso');
 }
 
-
-function definirMovimentacoesGuardaRecolhido(recolhido) {
-  const card = document.getElementById('cardMovimentacoesGuarda');
-  const conteudo = document.getElementById('conteudoMovimentacoesGuarda');
-  const botao = document.getElementById('btnAlternarMovimentacoesGuarda');
-  if (!card || !conteudo || !botao) return;
-  conteudo.hidden = recolhido;
-  card.classList.toggle('recolhido', recolhido);
-  botao.setAttribute('aria-expanded', recolhido ? 'false' : 'true');
-  localStorage.setItem('movimentacoes_guarda_recolhido', recolhido ? 'sim' : 'nao');
-}
-
-function alternarMovimentacoesGuarda() {
-  const conteudo = document.getElementById('conteudoMovimentacoesGuarda');
-  if (!conteudo) return;
-  definirMovimentacoesGuardaRecolhido(!conteudo.hidden);
-}
-
-function restaurarEstadoMovimentacoesGuarda() {
-  definirMovimentacoesGuardaRecolhido(
-    localStorage.getItem('movimentacoes_guarda_recolhido') !== 'nao'
-  );
-}
 
 function limparGuardaLocal(encerrarAcessoDiario = false) {
   localStorage.removeItem('guarda_id_local');
@@ -9062,19 +9006,6 @@ function obterEstadoAcaoToqueFogo_() {
 
 function carregarStatusToqueFogo(silencioso = false) {
   carregarIdentidadesEquipeServico(silencioso, true);
-}
-
-function atualizarVisibilidadeMovimentacoesGuarda() {
-  const card = document.getElementById('cardMovimentacoesGuarda');
-  if (!card) return;
-  if (aparelhoPodeConsultarGuarda()) {
-    card.classList.remove('oculto');
-    restaurarEstadoMovimentacoesGuarda();
-    if (!movimentacoesGuardaCarregadas) carregarMovimentacoesGuarda(true);
-  } else {
-    card.classList.add('oculto');
-    movimentacoesGuardaCarregadas = false;
-  }
 }
 
 function obterProgramacaoToqueFogoExibicao() {
@@ -9627,6 +9558,7 @@ function assumirHoraToqueFogo() {
       }
       estadoToqueFogoCarregado = true;
       atualizarTelaToqueFogo();
+      atualizarVisibilidadePainelComandante();
       carregarIdentidadesEquipeServico(true);
       mostrarMensagem(resposta.mensagem || 'Hora assumida pelo Toque de Fogo.', 'sucesso');
     })
@@ -9666,6 +9598,7 @@ function retomarPostoAposSOS(idCobertura) {
       statusToqueFogoAtual = resposta.statusToque || statusToqueFogoAtual || {};
       estadoToqueFogoCarregado = true;
       atualizarTelaToqueFogo();
+      atualizarVisibilidadePainelComandante();
       carregarIdentidadesEquipeServico(true);
       mostrarMensagem(resposta.mensagem || 'Posto retomado pelo guarda.', 'sucesso');
     })
@@ -9696,7 +9629,6 @@ function atualizarPermissaoLancamento() {
   }
 
   atualizarVisibilidadePessoasDentroGuarda();
-  atualizarVisibilidadeMovimentacoesGuarda();
   atualizarVisibilidadeGuarnicoesServico();
 
   if (podeLancar || podeLancarRetroativo) {

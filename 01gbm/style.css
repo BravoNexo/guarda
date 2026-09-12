@@ -237,10 +237,6 @@
     border-top: 4px solid #16a34a;
   }
 
-  .card-movimentacoes-guarda {
-    border-top-color: #2563eb;
-  }
-
   .card-pessoas-dentro-guarda::after,
   .card-guarnicoes-servico::after {
     content: '';
@@ -250,10 +246,6 @@
     margin: 12px auto -8px;
     border-radius: 999px;
     background: #86efac;
-  }
-
-  .card-movimentacoes-guarda::after {
-    background: #93c5fd;
   }
 
   .card-guarnicoes-servico::after {
@@ -3695,13 +3687,11 @@ body.modal-motoristas-aberto {
 /* Somente os blocos exclusivos recebem a identidade da função.
    Nas áreas comuns, apenas as faixas decorativas antigas ficam neutras. */
 #cardPessoasDentroGuarda,
-#cardMovimentacoesGuarda,
 #cardGuarnicoesServico {
   border-top-color: #cbd5e1;
 }
 
 #cardPessoasDentroGuarda::after,
-#cardMovimentacoesGuarda::after,
 #cardGuarnicoesServico::after {
   background: #cbd5e1;
 }

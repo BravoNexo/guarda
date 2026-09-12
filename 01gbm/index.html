@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Gestão de Serviço - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.1.24">
+  <link rel="stylesheet" href="style.css?v=27.1.25">
   </head>
 
   <body>
@@ -191,30 +191,6 @@
             </div>
 
             <div id="atualizadoEmPessoasDentroGuarda" class="rodape-painel-comandante"></div>
-          </div>
-        </section>
-
-        <section class="card card-pessoas-dentro-guarda card-movimentacoes-guarda oculto" id="cardMovimentacoesGuarda">
-          <div class="cabecalho-pessoas-dentro-guarda">
-            <button type="button" id="btnAlternarMovimentacoesGuarda" class="botao-alternar-pessoas-dentro"
-              aria-expanded="false" aria-controls="conteudoMovimentacoesGuarda"
-              onclick="alternarMovimentacoesGuarda()">
-              <span>
-                <span class="titulo-pessoas-dentro">Movimentações recentes</span>
-                <span id="resumoMovimentacoesGuarda" class="resumo-pessoas-dentro">Carregando...</span>
-              </span>
-              <span class="icone-alternar-pessoas-dentro" aria-hidden="true">⌄</span>
-            </button>
-            <button type="button" id="btnAtualizarMovimentacoesGuarda" class="botao-atualizar-painel-operacional"
-              onclick="carregarMovimentacoesGuarda()">Atualizar</button>
-          </div>
-
-          <div id="conteudoMovimentacoesGuarda" class="conteudo-pessoas-dentro-guarda" hidden>
-            <p id="cicloMovimentacoesGuarda" class="descricao-pessoas-dentro-guarda">Movimentações registradas nas últimas 24 horas.</p>
-            <div id="listaMovimentacoesGuarda" class="lista-painel">
-              <div class="estado-vazio-painel">Carregando...</div>
-            </div>
-            <div id="atualizadoEmMovimentacoesGuarda" class="rodape-painel-comandante"></div>
           </div>
         </section>
 
@@ -1378,7 +1354,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.24"></script>
+  <script src="app.js?v=27.1.25"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&
