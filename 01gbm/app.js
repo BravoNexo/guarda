@@ -715,28 +715,45 @@ async function chamarApi(acao, dados = {}) {
   const assinaturaMestre = mestreAssinaturaContexto();
   const tokenMestreEnviado = obterSessaoMestreTokenLocal();
   dados = mestrePrepararRequisicao(acao, dados);
-  let resposta;
-
+  const gravacaoMotoristas = acao === 'registrarEventoMotoristas';
+  const controlador = gravacaoMotoristas ? new AbortController() : null;
+  let temporizador;
+  let prazoEsgotado = false;
+  let resultado;
   try {
-    resposta = await fetch(URL_API, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8'
-      },
-      body: JSON.stringify({
-        acao: acao,
-        dados: dados
-      })
-    });
+    const consulta = (async () => {
+      let resposta;
+      try {
+        resposta = await fetch(URL_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ acao: acao, dados: dados }),
+          ...(controlador ? { signal: controlador.signal } : {})
+        });
+      } catch (erro) {
+        throw new Error('Não foi possível conectar ao servidor. Verifique a internet e tente novamente.');
+      }
+      if (!resposta.ok) throw new Error('Falha de comunicação com o servidor.');
+      return resposta.json();
+    })();
+    resultado = gravacaoMotoristas
+      ? await Promise.race([consulta, new Promise((resolver, rejeitar) => {
+        temporizador = setTimeout(() => {
+          prazoEsgotado = true;
+          controlador.abort();
+          rejeitar(new Error('Prazo de confirmação esgotado.'));
+        }, 45000);
+      })])
+      : await consulta;
   } catch (erro) {
-    throw new Error('Não foi possível conectar ao servidor. Verifique a internet e tente novamente.');
+    if (gravacaoMotoristas) {
+      throw new Error((prazoEsgotado ? 'A confirmação demorou mais que o esperado. ' : 'Não foi possível confirmar o salvamento. ') +
+        'Confira a conexão e a lista de lançamentos antes de fazer outro registro. Os dados preenchidos foram mantidos.');
+    }
+    throw erro;
+  } finally {
+    if (temporizador) clearTimeout(temporizador);
   }
-
-  if (!resposta.ok) {
-    throw new Error('Falha de comunicação com o servidor.');
-  }
-
-  const resultado = await resposta.json();
   if (!MESTRE_LOGIN.has(acao) && assinaturaMestre !== mestreAssinaturaContexto()) {
     throw new Error("MESTRE_CONTEXTO: O acesso mudou; a resposta anterior foi descartada.");
   }
@@ -1227,7 +1244,8 @@ function criarExecutorAppsScript() {
     'validarCodigoEEncerrarComandante'
   ].forEach(nome => {
     executor[nome] = (...argumentos) => {
-      chamarApi(nome, montarDadosChamadaApi(nome, argumentos))
+      Promise.resolve()
+        .then(() => chamarApi(nome, montarDadosChamadaApi(nome, argumentos)))
         .then(resposta => sucesso(ajustarRespostaApi(nome, resposta)))
         .catch(erro => falha({ message: erro.message }));
     };
@@ -1623,7 +1641,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       if (document.visibilityState === 'visible') {
         carregarIdentidadesEquipeServico(true, true);
         if (aparelhoTemAcessoPainelGestao()) carregarPainelComandante(true);
-        if (obterSessaoTokenEncarregadoMotoristasLocal()) carregarPainelMotoristas(true);
+        if (obterAssinaturaSessaoPessoalMotoristas()) carregarPainelMotoristas(true);
       }
       agendarProximaViradaServico();
     }, Math.max(250, proxima.getTime() - Date.now()));
@@ -1830,7 +1848,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       }
 
       atualizarVisibilidadePainelMotoristas();
-      if (obterSessaoTokenEncarregadoMotoristasLocal()) {
+      if (obterAssinaturaSessaoPessoalMotoristas()) {
         carregarPainelMotoristas(true);
       }
 
@@ -1839,6 +1857,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         atualizarVisibilidadePainelMotoristas();
+        if (obterAssinaturaSessaoPessoalMotoristas()) carregarPainelMotoristas(true);
         carregarIdentidadesEquipeServico(true, true);
         if (aparelhoTemAcessoPainelGestao()) {
           carregarPainelComandante(true);
