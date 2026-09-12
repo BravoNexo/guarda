@@ -422,15 +422,14 @@
 
   .acao-lancamento-retroativo strong {
     margin-bottom: 3px;
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    font-size: 12px;
+    line-height: 1.4;
   }
 
   .acao-lancamento-retroativo span {
     color: #92400e;
-    font-size: 11px;
-    line-height: 1.35;
+    font-size: 12px;
+    line-height: 1.4;
   }
 
   .acao-lancamento-retroativo button {
@@ -1918,15 +1917,6 @@
 }
 
 @media (max-width: 360px) {
-  .acao-lancamento-retroativo {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .acao-lancamento-retroativo button {
-    width: 100%;
-  }
-
   .grade-data-hora-retroativa {
     grid-template-columns: 1fr;
   }
@@ -3314,6 +3304,15 @@ body.modal-motoristas-aberto {
   color: #6b21a8;
 }
 
+/* Ações do Comandante com a mesma dimensão, preservando as cores de cada função. */
+.acao-lancamento-retroativo > button,
+.cabecalho-acao-edicao-comandante > button {
+  width: 154px;
+  min-height: 44px;
+  padding: 6px 12px;
+  line-height: 1.2;
+}
+
 .area-edicao-comandante {
   margin-top: 12px;
   padding-top: 12px;
@@ -3356,11 +3355,13 @@ body.modal-motoristas-aberto {
 }
 
 @media (max-width: 420px) {
+  .acao-lancamento-retroativo,
   .cabecalho-acao-edicao-comandante {
     flex-direction: column;
     align-items: stretch;
   }
 
+  .acao-lancamento-retroativo > button,
   .cabecalho-acao-edicao-comandante > button {
     width: 100%;
   }
