@@ -80,7 +80,7 @@ const DURACAO_SESSAO_LOCAL = {
     const resultado = Object.assign({}, dados || {});
     if (!MESTRE_SNAPSHOTS_EQUIPE.has(acao)) {
       Object.keys(resultado).forEach(chave => {
-        if (chave === 'sessaoToken' || /^sessao.*Token$/.test(chave)) delete resultado[chave];
+        if (chave === 'sessaoToken' || chave === 'sessaoDiariaGuarda' || /^sessao.*Token$/.test(chave)) delete resultado[chave];
       });
     }
     resultado.sessaoMestreToken = obterSessaoMestreTokenLocal();
@@ -579,6 +579,10 @@ const DURACAO_SESSAO_LOCAL = {
   }
   function LP_renderizar_(perfil) {
     const e=LP_estado_(perfil),c=LP_CONFIG[perfil];
+    if (perfil === 'guarda' && obterSessaoDiariaGuardaLocal()) {
+      LP_no_(c.area)?.classList.add('oculto');
+      return;
+    }
     if (e.pendente && (!Number.isFinite(e.solicitadoEm)||Date.now()-e.solicitadoEm>=LP_TTL||e.solicitadoEm>Date.now())) {
       LP_invalidar_(perfil);e.aberto=true;e.mensagem='O prazo desta solicitação terminou. Use Enviar código para solicitar outro.';
     }
@@ -770,11 +774,59 @@ async function chamarApi(acao, dados = {}) {
 }
 
 function obterSessaoTokenLocal() {
-  return obterTokenSessaoLocal(
-    'guarda_sessao_token',
-    'guarda_sessao_iniciada_em',
-    DURACAO_SESSAO_LOCAL.guarda
-  );
+  // Only the server can end an ongoing post: the guard may still be awaiting relief.
+  return localStorage.getItem('guarda_sessao_token') || '';
+}
+
+function obterSessaoDiariaGuardaLocal() {
+  return localStorage.getItem('guarda_sessao_diaria') || '';
+}
+
+function instanteAcessoDiario_(valor) {
+  return typeof valor === 'number' ? valor : Date.parse(valor || '');
+}
+
+function acessoDiarioGuardaDentroDoPrazo_() {
+  if (!acessoDiarioGuardaAtual) return false;
+  const fim = instanteAcessoDiario_(acessoDiarioGuardaAtual.expiraEm);
+  const servidor = instanteAcessoDiario_(acessoDiarioGuardaAtual.servidorAgora);
+  return Number.isFinite(fim) && Number.isFinite(servidor) &&
+    servidor + Math.max(0, Date.now() - acessoDiarioGuardaRecebidoEm) < fim;
+}
+
+function aparelhoTemAcessoDiarioGuarda_() {
+  return !!(obterSessaoDiariaGuardaLocal() && acessoDiarioGuardaAtual &&
+    acessoDiarioGuardaAtual.autenticado === true &&
+    (acessoDiarioGuardaDentroDoPrazo_() ||
+      acessoDiarioGuardaAtual.continuidadePosto === true && aparelhoAtuaComoGuardaTitular()));
+}
+
+function podeAssumirGuardaComAcessoDiario_() {
+  return !modoMestreAtivo() && aparelhoTemAcessoDiarioGuarda_() &&
+    acessoDiarioGuardaAtual.podeAssumir === true && acessoDiarioGuardaDentroDoPrazo_();
+}
+
+function aplicarAcessoDiarioGuarda_(resposta) {
+  if (!resposta || !Object.prototype.hasOwnProperty.call(resposta, 'acessoDiarioGuarda')) return;
+  const acesso = resposta.acessoDiarioGuarda || {};
+  if (acesso.autenticado !== true) {
+    localStorage.removeItem('guarda_sessao_diaria');
+    acessoDiarioGuardaAtual = null;
+    return;
+  }
+  if (typeof resposta.sessaoDiariaGuarda === 'string' && resposta.sessaoDiariaGuarda) {
+    localStorage.setItem('guarda_sessao_diaria', resposta.sessaoDiariaGuarda);
+  }
+  acessoDiarioGuardaAtual = Object.assign({}, acesso);
+  acessoDiarioGuardaRecebidoEm = Date.now();
+  if (temporizadorAcessoDiarioGuarda) clearTimeout(temporizadorAcessoDiarioGuarda);
+  const intervalo = instanteAcessoDiario_(acesso.expiraEm) - instanteAcessoDiario_(acesso.servidorAgora);
+  if (Number.isFinite(intervalo) && intervalo > 0) {
+    temporizadorAcessoDiarioGuarda = setTimeout(() => {
+      atualizarTelaAcessoDiarioGuarda_();
+      carregarIdentidadesEquipeServico(true, true);
+    }, intervalo + 100);
+  }
 }
 
 function obterSessaoTokenComandanteLocal() {
@@ -786,11 +838,7 @@ function obterSessaoTokenComandanteLocal() {
 }
 
 function obterSessaoTokenToqueLocal() {
-  return obterTokenSessaoLocal(
-    'toque_fogo_sessao_token',
-    'toque_fogo_sessao_iniciada_em',
-    DURACAO_SESSAO_LOCAL.toque
-  );
+  return localStorage.getItem('toque_fogo_sessao_token') || '';
 }
 
 function obterSessaoTokenOficialLocal() {
@@ -830,6 +878,7 @@ function montarDadosChamadaApi(nome, argumentos) {
       return {};
     case 'getEstadoEquipeServico':
       return {
+        sessaoDiariaGuarda: obterSessaoDiariaGuardaLocal(),
         sessaoGuardaToken: sessaoToken,
         sessaoComandanteToken: sessaoComandanteToken,
         sessaoOficialToken: sessaoOficialToken,
@@ -839,6 +888,7 @@ function montarDadosChamadaApi(nome, argumentos) {
       };
     case 'getGuardaAtivo':
       return {
+        sessaoDiariaGuarda: obterSessaoDiariaGuardaLocal(),
         sessaoToken: sessaoToken,
         sessaoGuardaToken: sessaoToken,
         sessaoToqueToken: sessaoToqueToken,
@@ -849,6 +899,7 @@ function montarDadosChamadaApi(nome, argumentos) {
       };
     case 'getComandanteAtivo':
       return {
+        sessaoDiariaGuarda: obterSessaoDiariaGuardaLocal(),
         sessaoToken: sessaoComandanteToken,
         sessaoGuardaToken: sessaoToken,
         sessaoToqueToken: sessaoToqueToken,
@@ -859,6 +910,7 @@ function montarDadosChamadaApi(nome, argumentos) {
       };
     case 'getOficialDiaAtivo':
       return {
+        sessaoDiariaGuarda: obterSessaoDiariaGuardaLocal(),
         sessaoGuardaToken: sessaoToken,
         sessaoToqueToken: sessaoToqueToken,
         sessaoComandanteToken: sessaoComandanteToken,
@@ -872,6 +924,7 @@ function montarDadosChamadaApi(nome, argumentos) {
       return { rgOficial: argumentos[0], sessaoToken: sessaoComandanteToken };
     case 'getStatusToqueFogo':
       return {
+        sessaoDiariaGuarda: obterSessaoDiariaGuardaLocal(),
         sessaoToken: sessaoToqueToken,
         sessaoGuardaToken: sessaoToken,
         sessaoToqueToken: sessaoToqueToken,
@@ -882,6 +935,7 @@ function montarDadosChamadaApi(nome, argumentos) {
       };
     case 'getPainelComandante':
       return {
+        sessaoDiariaGuarda: obterSessaoDiariaGuardaLocal(),
         sessaoToken: sessaoComandanteToken,
         sessaoComandanteToken: sessaoComandanteToken,
         sessaoGuardaToken: sessaoToken,
@@ -909,6 +963,7 @@ function montarDadosChamadaApi(nome, argumentos) {
       };
     case 'consultarHistoricoMovimentacoes':
       return {
+        sessaoDiariaGuarda: obterSessaoDiariaGuardaLocal(),
         filtros: argumentos[0] || {},
         sessaoToken: sessaoComandanteToken,
         sessaoComandanteToken: sessaoComandanteToken,
@@ -1009,10 +1064,15 @@ function montarDadosChamadaApi(nome, argumentos) {
       return { email: argumentos[0], codigo: argumentos[1] };
     case 'assumirGuardaComEmailValidado':
       return argumentos[0] || {};
+    case 'assumirGuardaComSessaoDiaria':
+      return Object.assign({}, argumentos[0] || {}, { sessaoDiariaGuarda: obterSessaoDiariaGuardaLocal() });
+    case 'revogarSessaoDiariaGuarda':
+      return { sessaoDiariaGuarda: argumentos[0] || obterSessaoDiariaGuardaLocal() };
     case 'enviarCodigoEncerrarGuarda':
       return { sessaoToken: sessaoToken };
     case 'validarCodigoEEncerrarGuarda':
       return {
+        sessaoDiariaGuarda: obterSessaoDiariaGuardaLocal(),
         email: argumentos[0],
         codigo: argumentos[1],
         sessaoToken: sessaoToken
@@ -1093,6 +1153,10 @@ function ajustarRespostaApi(nome, resposta) {
       oficial: oficial,
       statusToque: statusToque
     };
+    if (Object.prototype.hasOwnProperty.call(estado, 'acessoDiarioGuarda')) {
+      estadoAjustado.acessoDiarioGuarda = estado.acessoDiarioGuarda;
+      estadoAjustado.sessaoDiariaGuarda = estado.sessaoDiariaGuarda || '';
+    }
     if (possuiBlocoEncarregadoMotoristas) {
       estadoAjustado.encarregadoMotoristas = encarregadoMotoristas;
       estadoAjustado.sessaoEncarregadoMotoristasIdentificada =
@@ -1140,7 +1204,7 @@ function ajustarRespostaApi(nome, resposta) {
   }
 
   if (
-    nome === 'assumirGuardaComEmailValidado' &&
+    (nome === 'assumirGuardaComEmailValidado' || nome === 'assumirGuardaComSessaoDiaria') &&
     resposta &&
     resposta.guarda &&
     resposta.sessaoToken
@@ -1232,6 +1296,8 @@ function criarExecutorAppsScript() {
     'enviarCodigoAssumirGuarda',
     'validarCodigoAssumirGuarda',
     'assumirGuardaComEmailValidado',
+    'assumirGuardaComSessaoDiaria',
+    'revogarSessaoDiariaGuarda',
     'enviarCodigoEncerrarGuarda',
     'validarCodigoEEncerrarGuarda',
     'enviarCodigoAssumirComandante',
@@ -1298,6 +1364,12 @@ let tipoMovimentacaoAtual = 'Entrada';
 
   let dadosCodigoGuarda = null;
   let guardaAtual = null;
+  let acessoDiarioGuardaAtual = null;
+  let acessoDiarioGuardaRecebidoEm = 0;
+  let temporizadorAcessoDiarioGuarda = null;
+  let assuncaoDiariaGuardaEmAndamento = false;
+  let solicitacaoAssuncaoDiariaGuarda = null;
+  let geracaoAcessoDiarioGuarda = 0;
   let emailEncerramentoGuarda = null;
   let dadosCodigoComandante = null;
   let comandanteAtual = null;
@@ -1410,6 +1482,7 @@ let tipoMovimentacaoAtual = 'Entrada';
 
   function aparelhoTemSessaoEquipeLocal() {
     return modoMestreAtivo() || !!(
+      obterSessaoDiariaGuardaLocal() ||
       obterSessaoTokenLocal() ||
       obterSessaoTokenToqueLocal() ||
       obterSessaoTokenComandanteLocal() ||
@@ -1538,6 +1611,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   function obterAssinaturaSessoesEquipeLocal() {
     return [
       mestreAssinaturaContexto(),
+      obterSessaoDiariaGuardaLocal(),
       obterSessaoTokenLocal(),
       obterSessaoTokenComandanteLocal(),
       obterSessaoTokenOficialLocal(),
@@ -1605,6 +1679,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function aplicarEstadoEquipeServico(estado) {
+    aplicarAcessoDiarioGuarda_(estado);
     guardaAtual = estado && Object.prototype.hasOwnProperty.call(estado, 'guarda')
       ? estado.guarda
       : null;
@@ -1656,6 +1731,11 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function carregarIdentidadesEquipeServico(silencioso = false, invalidarEmAndamento = true) {
+    // Do not let an earlier view of the post race the answer to a new assumption.
+    if (assuncaoDiariaGuardaEmAndamento) {
+      atualizacaoEstadoEquipeServicoPendente = true;
+      return;
+    }
     aplicarVisibilidadePublicaEquipeLocal();
 
     if (estadoEquipeServicoEmCarregamento) {
@@ -4068,14 +4148,179 @@ let tipoMovimentacaoAtual = 'Entrada';
       atualizarAcoesCoberturaEPermissoes();
     }
   LP_renderizar_('guarda');
+    atualizarTelaAcessoDiarioGuarda_();
   }
 
   function mostrarAreaTrocaGuarda() {
+    if (obterSessaoDiariaGuardaLocal()) {
+      if (podeAssumirGuardaComAcessoDiario_()) {
+        confirmarAssuncaoGuardaDiaria_();
+      } else {
+        carregarIdentidadesEquipeServico(true, true);
+        mostrarMensagem('Confirmando a validade do seu acesso para este ciclo. Aguarde a atualização.', 'sucesso');
+      }
+      return;
+    }
     expandirPerfilServico('perfilGuarda', true);
     document.getElementById('areaAssumirGuarda').classList.remove('oculto');
     mostrarMensagem('Informe seu e-mail para assumir a Guarda neste celular. A sessão anterior será encerrada após a confirmação.', 'sucesso');
   LP_abrir_('guarda');
   }  
+
+  function atualizarTelaAcessoDiarioGuarda_() {
+    const token = obterSessaoDiariaGuardaLocal();
+    const identificado = aparelhoTemAcessoDiarioGuarda_();
+    const noPostoTitular = aparelhoAssumiuGuardaAtual();
+    const area = document.getElementById('acessoDiarioGuarda');
+    const identidade = document.getElementById('identidadeAcessoDiarioGuarda');
+    const sair = document.getElementById('btnSairAcessoDiarioGuarda');
+    const trocar = document.getElementById('btnTrocarGuarda');
+    if (trocar) trocar.classList.toggle('botao-assumir-diario', !!token && !noPostoTitular);
+    if (area) area.classList.toggle('oculto', !token);
+    if (identidade && token) {
+      identidade.textContent = identificado
+        ? (acessoDiarioGuardaAtual.nome || 'Seu acesso') + ' • ' +
+          (acessoDiarioGuardaAtual.continuidadePosto === true
+            ? 'Você permanece no posto até ser rendido. O próximo serviço exigirá nova validação.'
+            : 'Acesso validado até as 8h. Ao voltar para a hora, use Assumir guarda, sem novo código.')
+        : 'Confirmando seu acesso ao ciclo de serviço…';
+    }
+    if (sair) {
+      sair.classList.toggle('oculto', !token || noPostoTitular);
+      sair.disabled = assuncaoDiariaGuardaEmAndamento;
+    }
+    if (token) {
+      document.getElementById('areaAssumirGuarda')?.classList.add('oculto');
+      if (trocar) {
+        trocar.classList.toggle('oculto', noPostoTitular);
+        trocar.disabled = assuncaoDiariaGuardaEmAndamento || !podeAssumirGuardaComAcessoDiario_();
+        trocar.textContent = assuncaoDiariaGuardaEmAndamento ? 'Assumindo…' : 'Assumir guarda';
+      }
+    } else if (trocar) {
+      trocar.disabled = false;
+    }
+  }
+
+  function confirmarAssuncaoGuardaDiaria_(postoEsperado, guardaEsperada, coberturaEsperada) {
+    if (!podeAssumirGuardaComAcessoDiario_() || assuncaoDiariaGuardaEmAndamento ||
+        aparelhoAssumiuGuardaAtual()) return;
+    if (!solicitacaoAssuncaoDiariaGuarda) {
+      solicitacaoAssuncaoDiariaGuarda = {
+        idRequisicao: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID() : 'guarda_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+        token: obterSessaoDiariaGuardaLocal()
+      };
+    }
+    const cobertura = obterCoberturaOperacionalAtual();
+    const esperado = postoEsperado || {
+      idGuarda: String(guardaAtual && guardaAtual.ID_GuardaServico || ''),
+      idCobertura: String(cobertura && cobertura.ID_Cobertura || '')
+    };
+    const atual = postoEsperado ? guardaEsperada : guardaAtual;
+    const coberturaNaConfirmacao = postoEsperado ? coberturaEsperada : cobertura;
+    const nomeAtual = esperado.idCobertura
+      ? coberturaNaConfirmacao && coberturaNaConfirmacao.Nome_Toque || 'Toque de Fogo cobrindo o posto'
+      : atual && atual.Nome_Guarda;
+    const token = obterSessaoDiariaGuardaLocal();
+    const geracao = geracaoAcessoDiarioGuarda;
+    abrirModalConfirmacao(
+      'Assumir guarda',
+      'Confirma que <strong>' + escaparHtml(acessoDiarioGuardaAtual.nome || 'você') +
+        '</strong> está no quartel e vai assumir o posto agora?' +
+        (nomeAtual ? '<br><br>No posto: <strong>' + escaparHtml(nomeAtual) + '</strong>.' : '') +
+        '<br><br>Os lançamentos ficarão disponíveis neste celular após a confirmação da rendição.',
+      () => {
+        if (token !== obterSessaoDiariaGuardaLocal() || geracao !== geracaoAcessoDiarioGuarda) return;
+        assumirGuardaDiaria_(esperado);
+      }
+    );
+  }
+
+  function assumirGuardaDiaria_(postoEsperado) {
+    if (assuncaoDiariaGuardaEmAndamento || !podeAssumirGuardaComAcessoDiario_()) {
+      carregarIdentidadesEquipeServico(true, true);
+      return;
+    }
+    const solicitacao = solicitacaoAssuncaoDiariaGuarda;
+    const token = obterSessaoDiariaGuardaLocal();
+    const geracao = geracaoAcessoDiarioGuarda;
+    if (!solicitacao || solicitacao.token !== token) return;
+    assuncaoDiariaGuardaEmAndamento = true;
+    invalidarConsultasEquipeServico();
+    atualizarTelaAcessoDiarioGuarda_();
+    google.script.run
+      .withSuccessHandler(resposta => {
+        if (token !== obterSessaoDiariaGuardaLocal() || geracao !== geracaoAcessoDiarioGuarda) return;
+        assuncaoDiariaGuardaEmAndamento = false;
+        if (resposta && resposta.requerConfirmacaoTroca) {
+          atualizarTelaAcessoDiarioGuarda_();
+          confirmarAssuncaoGuardaDiaria_(resposta.postoEsperado, resposta.guardaAtivo || null, resposta.coberturaAtiva || null);
+          mostrarMensagem('O posto mudou. Confira quem está na hora e confirme novamente.', 'sucesso');
+          return;
+        }
+        if (!resposta || resposta.sucesso === false || !resposta.guarda || !resposta.sessaoToken) {
+          atualizarTelaAcessoDiarioGuarda_();
+          carregarIdentidadesEquipeServico(true, true);
+          mostrarMensagem(resposta && resposta.mensagem || 'Não foi possível confirmar a assunção. Tente novamente.', 'erro');
+          return;
+        }
+        geracaoSessaoEquipe += 1;
+        invalidarConsultasEquipeServico();
+        aplicarAcessoDiarioGuarda_(resposta);
+        guardaAtual = resposta.guarda;
+        salvarGuardaLocal(resposta.guarda);
+        solicitacaoAssuncaoDiariaGuarda = null;
+        // Old-post editing cannot stay open after a new operational session starts.
+        if (movimentacaoEmEdicao) fecharModalEdicaoMovimentacao(false, true);
+        pessoasDentroGuardaCarregadas = false;
+        movimentacoesGuardaCarregadas = false;
+        limparAreaGuarda();
+        atualizarTelaGuarda();
+        carregarIdentidadesEquipeServico(true, true);
+        mostrarMensagem(resposta.mensagem || 'Guarda assumida. Seu acesso permanece válido para este ciclo.', 'sucesso');
+      })
+      .withFailureHandler(erro => {
+        if (token !== obterSessaoDiariaGuardaLocal() || geracao !== geracaoAcessoDiarioGuarda) return;
+        assuncaoDiariaGuardaEmAndamento = false;
+        // A confirmed old attempt must not be reused for a later, distinct turn.
+        // Unknown delivery/network failures keep the key to avoid double assumption.
+        if (/Esta tentativa já foi concluída e o posto mudou/i.test(String(erro.message || ''))) {
+          solicitacaoAssuncaoDiariaGuarda = null;
+        }
+        atualizarTelaAcessoDiarioGuarda_();
+        carregarIdentidadesEquipeServico(true, true);
+        mostrarMensagem('Não foi possível confirmar a assunção: ' + erro.message +
+          ' Confira o posto antes de tentar novamente.', 'erro');
+      })
+      .assumirGuardaComSessaoDiaria({
+        encerrarAnterior: true,
+        postoEsperado: postoEsperado,
+        idRequisicao: solicitacao.idRequisicao
+      });
+  }
+
+  function sairAcessoDiarioGuarda() {
+    if (assuncaoDiariaGuardaEmAndamento) return;
+    if (aparelhoAssumiuGuardaAtual()) {
+      mostrarMensagem('Você ainda está vinculado ao posto. Aguarde a rendição ou use Sair na Guarda.', 'erro');
+      return;
+    }
+    const token = obterSessaoDiariaGuardaLocal();
+    if (!token) return;
+    abrirModalConfirmacao('Sair deste acesso',
+      'Deseja sair do acesso da Guarda neste celular? Para assumir novamente, será necessário validar um novo código.',
+      () => {
+        if (token !== obterSessaoDiariaGuardaLocal()) return;
+        limparGuardaLocal(true);
+        limparAreaGuarda();
+        atualizarTelaGuarda();
+        atualizarVisibilidadePainelComandante();
+        carregarIdentidadesEquipeServico(true, true);
+        google.script.run.withSuccessHandler(() => {})
+          .withFailureHandler(() => mostrarMensagem('Você saiu deste celular. A confirmação no servidor não foi recebida; verifique a conexão.', 'erro'))
+          .revogarSessaoDiariaGuarda(token);
+      });
+  }
 
 function enviarCodigoGuarda() {
   LP_enviar_('guarda');
@@ -4138,13 +4383,15 @@ function enviarCodigoGuarda() {
   } catch(erro) { if(LP_falhouValidacao_('guarda',lpValidacao))mostrarMensagem('Não foi possível iniciar a validação: '+(erro.message||erro),'erro'); }
   }
 
-  function assumirGuarda(encerrarAnterior = false) {
+  function assumirGuarda(encerrarAnterior = false, postoEsperado = null) {
     if (!dadosCodigoGuarda) {
       mostrarMensagem('Valide o e-mail antes de assumir a Guarda.', 'erro');
       return;
     }
 
     const botao = document.getElementById('btnAssumirGuarda');
+    const validacao = dadosCodigoGuarda;
+    const geracaoAcesso = geracaoAcessoDiarioGuarda;
     botao.disabled = true;
     botao.textContent = 'Assumindo...';
 
@@ -4155,33 +4402,49 @@ function enviarCodigoGuarda() {
       rgManual: document.getElementById('rgGuardaManual').value.trim(),
       nomeManual: document.getElementById('nomeGuardaManual').value.trim(),
       ticketAssuncao: dadosCodigoGuarda.ticketAssuncao || '',
-      encerrarAnterior: encerrarAnterior
+      encerrarAnterior: encerrarAnterior,
+      postoEsperado: postoEsperado
     };
 
     google.script.run
       .withSuccessHandler((resposta) => {
+        if (dadosCodigoGuarda !== validacao || geracaoAcesso !== geracaoAcessoDiarioGuarda) return;
         botao.disabled = false;
         botao.textContent = 'Assumir neste celular';
 
-        if (resposta && resposta.requerConfirmacaoTroca && resposta.guardaAtivo) {
+        if (resposta && resposta.requerConfirmacaoTroca) {
           const g = resposta.guardaAtivo;
+          const cobertura = resposta.coberturaAtiva;
+          const nome = cobertura ? cobertura.Nome_Toque || 'Toque de Fogo cobrindo o posto'
+            : g && g.Nome_Guarda || '';
 
           abrirModalConfirmacao(
-            'Guarda já assumida',
-            `Já existe um guarda ativo:<br><br>
-            <strong>${escaparHtml(g.Nome_Guarda)} — RG ${escaparHtml(g.RG_Guarda)}</strong><br><br>
-            Deseja encerrar a sessão anterior e assumir a Guarda neste celular?`,
-            () => assumirGuarda(true),
-            true
+            'Confirmar assunção da Guarda',
+            (nome ? 'No posto agora:<br><strong>' + escaparHtml(nome) + '</strong><br><br>'
+              : 'O posto está sem guarda ativo neste momento.<br><br>') +
+              'Confirma que está no quartel e vai assumir a Guarda neste celular?',
+            () => assumirGuarda(true, resposta.postoEsperado || null),
+            false
           );
 
+          return;
+        }
+
+        if (!resposta || resposta.sucesso === false || !resposta.guarda || !resposta.sessaoToken) {
+          mostrarMensagem(resposta && resposta.mensagem || 'Não foi possível confirmar a assunção. Tente novamente.', 'erro');
+          carregarIdentidadesEquipeServico(true, true);
           return;
         }
 
         mostrarMensagem(resposta.mensagem || 'Guarda assumida com sucesso.', 'sucesso');
 
         if (resposta && resposta.guarda) {
-          geracaoConsultaGuarda += 1;
+          geracaoAcessoDiarioGuarda += 1;
+          solicitacaoAssuncaoDiariaGuarda = null;
+          assuncaoDiariaGuardaEmAndamento = false;
+          geracaoSessaoEquipe += 1;
+          invalidarConsultasEquipeServico();
+          aplicarAcessoDiarioGuarda_(resposta);
           guardaAtual = resposta.guarda;
 
           // Autoriza o celular pessoal usado pelo guarda durante este serviço.
@@ -4194,6 +4457,7 @@ function enviarCodigoGuarda() {
         limparAreaGuarda();
       })
       .withFailureHandler((erro) => {
+        if (dadosCodigoGuarda !== validacao || geracaoAcesso !== geracaoAcessoDiarioGuarda) return;
         mostrarMensagem('Erro ao assumir Guarda: ' + erro.message, 'erro');
 
         botao.disabled = false;
@@ -4223,7 +4487,7 @@ function enviarCodigoGuarda() {
 
         geracaoConsultaGuarda += 1;
         guardaAtual = null;
-        limparGuardaLocal();
+        limparGuardaLocal(true);
 
         limparAreaGuarda();
         atualizarTelaGuarda();
@@ -5245,12 +5509,14 @@ function aparelhoTemAcessoPainelGestao() {
     aparelhoAssumiuOficialAtual() ||
     encarregadoMotoristasAutenticado ||
     militarDoEfetivoAutenticado ||
+    aparelhoTemAcessoDiarioGuarda_() ||
     guardaAutenticado ||
     toqueAutenticado;
 }
 
 function aparelhoTemOutroAcessoPainelGestao() {
   if (modoMestreAtivo()) return mestreAutenticado();
+  if (aparelhoTemAcessoDiarioGuarda_()) return true;
   const guardaAutenticado = typeof aparelhoAssumiuGuardaAtual === 'function' &&
     aparelhoAssumiuGuardaAtual();
   const toqueAutenticado = !!(
@@ -5269,6 +5535,7 @@ function aparelhoTemOutroAcessoPainelGestao() {
 function obterAssinaturaCredenciaisPainelGestao() {
   return [
       mestreAssinaturaContexto(),
+    obterSessaoDiariaGuardaLocal(),
     obterSessaoTokenComandanteLocal() || '',
     obterSessaoTokenLocal() || '',
     obterSessaoTokenToqueLocal() || '',
@@ -8319,7 +8586,7 @@ function validarCodigoEEncerrarGuarda() {
       guardaAtual = null;
       emailEncerramentoGuarda = null;
 
-      limparGuardaLocal();
+      limparGuardaLocal(true);
 
       document.getElementById('codigoEncerrarGuarda').value = '';
       document.getElementById('areaCodigoEncerrarGuarda').classList.add('oculto');
@@ -8522,13 +8789,23 @@ function restaurarEstadoMovimentacoesGuarda() {
   );
 }
 
-function limparGuardaLocal() {
+function limparGuardaLocal(encerrarAcessoDiario = false) {
   localStorage.removeItem('guarda_id_local');
   localStorage.removeItem('guarda_nome_local');
   localStorage.removeItem('guarda_rg_local');
   localStorage.removeItem('guarda_email_local');
   localStorage.removeItem('guarda_sessao_token');
   localStorage.removeItem('guarda_sessao_iniciada_em');
+  if (encerrarAcessoDiario) {
+    localStorage.removeItem('guarda_sessao_diaria');
+    acessoDiarioGuardaAtual = null;
+    geracaoAcessoDiarioGuarda += 1;
+    geracaoSessaoEquipe += 1;
+    invalidarConsultasEquipeServico();
+    assuncaoDiariaGuardaEmAndamento = false;
+    solicitacaoAssuncaoDiariaGuarda = null;
+    if (temporizadorAcessoDiarioGuarda) clearTimeout(temporizadorAcessoDiarioGuarda);
+  }
 }
 
 function aparelhoAssumiuGuardaAtual() {
@@ -8861,9 +9138,11 @@ function atualizarTelaToqueFogo() {
   const idToqueLocal = normalizarIdOperacional(localStorage.getItem('toque_fogo_id_local'));
   const tokenToqueArmazenado = localStorage.getItem('toque_fogo_sessao_token') || '';
   const idContinuaProgramado = !!obterItemProgramacaoToqueLocal_();
-  if (idToqueLocal && !idContinuaProgramado) {
+  const permaneceNaCobertura = status.sessaoCoberturaAtiva === true && cobertura &&
+    String(cobertura.ID_ToqueFogo || '') === idToqueLocal;
+  if (idToqueLocal && !idContinuaProgramado && !permaneceNaCobertura) {
     limparToqueFogoLocal();
-  } else if (tokenToqueArmazenado && status.sessaoValida === false) {
+  } else if (tokenToqueArmazenado && status.sessaoValida === false && !permaneceNaCobertura) {
     invalidarSessaoToqueLocal();
   }
 
@@ -8884,7 +9163,9 @@ function atualizarTelaToqueFogo() {
       (periodo.faixa || 'atual') + '.';
   }
 
-  if (status.sessaoValida === true && status.sessaoPeriodoAtual !== true) {
+  if (permaneceNaCobertura && !idContinuaProgramado) {
+    statusEl.innerHTML += '<br><small>Você permanece na Guarda até ser rendido, mesmo após as 8h.</small>';
+  } else if (status.sessaoValida === true && status.sessaoPeriodoAtual !== true) {
     const idLocal = localStorage.getItem('toque_fogo_id_local') || '';
     const itemLocal = obterProgramacaoToqueFogoExibicao().find(item =>
       item && item.toque && String(item.toque.ID_ToqueFogo || '') === idLocal

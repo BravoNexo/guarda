@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Gestão de Serviço - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.1.22">
+  <link rel="stylesheet" href="style.css?v=27.1.23">
   </head>
 
   <body>
@@ -40,6 +40,11 @@
 
           <div id="statusGuarda" class="status-guarda">
             Carregando guarda atual...
+          </div>
+
+          <div id="acessoDiarioGuarda" class="acesso-diario-guarda oculto">
+            <p id="identidadeAcessoDiarioGuarda" role="status" aria-live="polite"></p>
+            <button type="button" id="btnSairAcessoDiarioGuarda" class="botao-secundario oculto" onclick="sairAcessoDiarioGuarda()">Sair deste acesso</button>
           </div>
 
           <button type="button" id="btnRetomarPosto" class="botao-retomar-posto acao-cobertura-operacional oculto" onclick="confirmarRetomadaPosto()">
@@ -1373,7 +1378,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.22"></script>
+  <script src="app.js?v=27.1.23"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&

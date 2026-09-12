@@ -2222,6 +2222,20 @@
 .perfil-servico.perfil-expandido > [id^="areaCodigo"]:not(.oculto) { margin-top: 12px; }
 .perfil-servico .acoes-guarda { margin-left: auto; gap: 4px; }
 .perfil-servico .acoes-guarda button { padding: 6px 8px; font-size: 11px; }
+.acesso-diario-guarda {
+  margin-top: 9px; padding: 9px 11px; border: 1px solid #bfdbfe;
+  border-radius: 9px; background: #eff6ff; color: #1e3a5f;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.acesso-diario-guarda p { flex: 1 1 200px; margin: 0; font-size: 12px; line-height: 1.45; }
+.acesso-diario-guarda button {
+  flex: 0 0 auto; width: auto; min-height: 32px; padding: 2px 0; border: 0;
+  background: transparent; color: #475569; font-size: 11px; font-weight: 500;
+  text-decoration: underline; box-shadow: none;
+}
+.perfil-servico .acoes-guarda .botao-assumir-diario {
+  background: #1d4ed8; color: #fff; min-height: 36px; padding: 8px 12px;
+}
 .perfil-servico.tem-acao-cobertura {
   background: #fffbeb !important;
   box-shadow: inset 3px 0 0 #f59e0b !important;
