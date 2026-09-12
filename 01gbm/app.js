@@ -14,6 +14,14 @@ const DURACAO_SESSAO_LOCAL = {
   consultaEfetivo: 12 * 60 * 60 * 1000
 };
 
+// Transport uses POST for every action. Only these read-only snapshots may be
+// cancelled/replaced; an email, assumption or write must never enter this list.
+const LEITURAS_EQUIPE_CANCELAVEIS = new Set([
+  'getEstadoEquipeServico', 'getGuardaAtivo', 'getComandanteAtivo',
+  'getOficialDiaAtivo', 'getStatusToqueFogo'
+]);
+const PRAZO_LEITURA_EQUIPE_MS = 25000;
+
   const MESTRE_LEITURAS = new Set([
     'getListasFormulario', 'getEstadoEquipeServico', 'getGuardaAtivo',
     'getComandanteAtivo', 'getOficialDiaAtivo', 'getStatusToqueFogo',
@@ -497,7 +505,7 @@ const DURACAO_SESSAO_LOCAL = {
   function LP_no_(id) { return document.getElementById(id); }
   function LP_estado_(perfil) {
     if (!Object.prototype.hasOwnProperty.call(LP_CONFIG,perfil)) throw Error('Perfil de acesso inválido.');
-    return LP_ESTADOS[perfil] || (LP_ESTADOS[perfil] = {aberto:false,pendente:false,validado:false,enviando:false,validando:false,confirmando:false,geracao:0,email:'',periodo:'',solicitadoEm:0,mensagem:''});
+    return LP_ESTADOS[perfil] || (LP_ESTADOS[perfil] = {aberto:false,pendente:false,validado:false,enviando:false,validando:false,confirmando:false,tentouValidar:false,geracao:0,email:'',periodo:'',solicitadoEm:0,mensagem:''});
   }
   function LP_email_(perfil) { return String(LP_no_(LP_CONFIG[perfil].email)?.value || '').trim().toLowerCase(); }
   function LP_periodo_(perfil) { return perfil === 'toque' ? obterPeriodoAlvoToqueFogo() : ''; }
@@ -548,7 +556,7 @@ const DURACAO_SESSAO_LOCAL = {
   }
   function LP_invalidar_(perfil, limparEmail = false) {
     const e=LP_estado_(perfil);
-    e.geracao+=1;e.pendente=false;e.validado=false;e.enviando=false;e.validando=false;e.confirmando=false;e.solicitadoEm=0;
+    e.geracao+=1;e.pendente=false;e.validado=false;e.enviando=false;e.validando=false;e.confirmando=false;e.tentouValidar=false;e.solicitadoEm=0;
     LP_removerArmazenado_(perfil);LP_resetDados_(perfil);LP_limparCampos_(perfil,limparEmail);
   }
   function LP_cancelar_(perfil) {
@@ -596,7 +604,9 @@ const DURACAO_SESSAO_LOCAL = {
     const status=LP_no_('lpStatus_'+perfil);if(status){status.textContent=e.mensagem;status.classList.toggle('oculto',!e.mensagem);}
     const cancelar=LP_no_('lpCancelar_'+perfil);if(cancelar)cancelar.classList.toggle('oculto',!(e.pendente||e.validado||e.enviando||e.validando));
     const b=LP_no_(c.enviar);if(b){b.disabled=e.enviando||e.validando||e.confirmando;b.textContent=e.enviando?'Solicitando...':(e.pendente||e.validado?'Reenviar código':'Enviar código');}
-    const v=LP_no_(c.validar);if(v)v.disabled=e.validando||e.enviando;
+    // The email can arrive before Apps Script finishes replying to its send call.
+    // Validation still goes to the server; only the redundant UI wait is removed.
+    const v=LP_no_(c.validar);if(v)v.disabled=e.validando||e.confirmando;
   }
   function LP_restaurar_(perfil) {
     const e=LP_estado_(perfil),c=LP_CONFIG[perfil];
@@ -645,12 +655,15 @@ const DURACAO_SESSAO_LOCAL = {
     const assinatura=LP_assinatura_(perfil);
     const falha=erro=>{
       if(!LP_mesmaSolicitacao_(perfil,assinatura))return;e.enviando=false;
+      if(e.tentouValidar){LP_renderizar_(perfil);return;}
       e.mensagem='Não foi possível confirmar o envio: '+(erro?.message||erro)+'. Se o código chegou, digite-o aqui; caso contrário, use Reenviar código.';LP_renderizar_(perfil);
     };
     try {
     const executor=google.script.run.withSuccessHandler(resposta=>{
       if(!LP_mesmaSolicitacao_(perfil,assinatura))return;
-      e.enviando=false;e.mensagem='Código solicitado. Consulte seu e-mail, volte aqui e digite o código. Se o e-mail estiver autorizado, ele receberá a mensagem.';
+      e.enviando=false;
+      if(e.tentouValidar){LP_renderizar_(perfil);return;}
+      e.mensagem='Código solicitado. Consulte seu e-mail, volte aqui e digite o código. Se o e-mail estiver autorizado, ele receberá a mensagem.';
       if(perfil==='toque'&&resposta?.periodo&&resposta.periodo!==periodo){LP_invalidar_(perfil);e.mensagem='O período informado pelo servidor mudou. Confira o período e solicite outro código.';}
       LP_renderizar_(perfil);
     }).withFailureHandler(falha);
@@ -658,8 +671,9 @@ const DURACAO_SESSAO_LOCAL = {
     } catch(erro) { falha(erro); }
   }
   function LP_iniciarValidacao_(perfil) {
-    const e=LP_estado_(perfil);if(e.validando||e.enviando)return null;
-    e.validando=true;e.aberto=true;const s=LP_assinatura_(perfil);LP_renderizar_(perfil);return s;
+    const e=LP_estado_(perfil);if(e.validando||e.confirmando)return null;
+    e.validando=true;e.tentouValidar=true;e.aberto=true;e.mensagem='Validando o código recebido…';
+    const s=LP_assinatura_(perfil);LP_renderizar_(perfil);return s;
   }
   function LP_falhouValidacao_(perfil,s) {
     if(!LP_mesmaSolicitacao_(perfil,s))return false;
@@ -711,7 +725,7 @@ function marcarInicioSessaoLocal(chaveInicio) {
   localStorage.setItem(chaveInicio, String(Date.now()));
 }
 
-async function chamarApi(acao, dados = {}) {
+async function chamarApi(acao, dados = {}, opcoes = {}) {
   if (['assumirOficialDiaComEmailValidado', 'enviarCodigoEncerrarOficialDia', 'validarCodigoEEncerrarOficialDia'].includes(acao)) {
     throw new Error('A indicação do Oficial de Dia é alterada exclusivamente pelo Comandante da Guarda no cartão Equipe de Serviço.');
   }
@@ -722,14 +736,22 @@ async function chamarApi(acao, dados = {}) {
   const tokenMestreEnviado = obterSessaoMestreTokenLocal();
   dados = mestrePrepararRequisicao(acao, dados);
   const gravacaoMotoristas = acao === 'registrarEventoMotoristas';
-  const controlador = gravacaoMotoristas ? new AbortController() : null;
+  const leituraEquipe = LEITURAS_EQUIPE_CANCELAVEIS.has(acao);
+  const controlador = gravacaoMotoristas || leituraEquipe ? new AbortController() : null;
+  const sinalExterno = leituraEquipe ? opcoes.signal : null;
   let temporizador;
+  let aoCancelar;
   let prazoEsgotado = false;
   let resultado;
   try {
     const consulta = (async () => {
       let resposta;
       try {
+        if (sinalExterno && sinalExterno.aborted) {
+          const erro = new Error('Consulta substituída por uma atualização mais recente.');
+          erro.code = 'CONSULTA_CANCELADA';
+          throw erro;
+        }
         resposta = await fetch(URL_API, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -737,18 +759,39 @@ async function chamarApi(acao, dados = {}) {
           ...(controlador ? { signal: controlador.signal } : {})
         });
       } catch (erro) {
+        if (leituraEquipe && (controlador.signal.aborted || sinalExterno && sinalExterno.aborted)) {
+          const cancelamento = new Error(prazoEsgotado
+            ? 'A consulta da equipe demorou mais que o esperado. Tente atualizar novamente.'
+            : 'Consulta substituída por uma atualização mais recente.');
+          cancelamento.code = prazoEsgotado ? 'CONSULTA_TIMEOUT' : 'CONSULTA_CANCELADA';
+          throw cancelamento;
+        }
         throw new Error('Não foi possível conectar ao servidor. Verifique a internet e tente novamente.');
       }
       if (!resposta.ok) throw new Error('Falha de comunicação com o servidor.');
       return resposta.json();
     })();
-    resultado = gravacaoMotoristas
+    resultado = gravacaoMotoristas || leituraEquipe
       ? await Promise.race([consulta, new Promise((resolver, rejeitar) => {
+        if (sinalExterno) {
+          aoCancelar = () => {
+            controlador.abort();
+            const erro = new Error('Consulta substituída por uma atualização mais recente.');
+            erro.code = 'CONSULTA_CANCELADA';
+            rejeitar(erro);
+          };
+          sinalExterno.addEventListener('abort', aoCancelar, { once: true });
+          if (sinalExterno.aborted) { aoCancelar(); return; }
+        }
         temporizador = setTimeout(() => {
           prazoEsgotado = true;
           controlador.abort();
-          rejeitar(new Error('Prazo de confirmação esgotado.'));
-        }, 45000);
+          const erro = new Error(leituraEquipe
+            ? 'A consulta da equipe demorou mais que o esperado. Tente atualizar novamente.'
+            : 'Prazo de confirmação esgotado.');
+          if (leituraEquipe) erro.code = 'CONSULTA_TIMEOUT';
+          rejeitar(erro);
+        }, leituraEquipe ? PRAZO_LEITURA_EQUIPE_MS : 45000);
       })])
       : await consulta;
   } catch (erro) {
@@ -759,6 +802,7 @@ async function chamarApi(acao, dados = {}) {
     throw erro;
   } finally {
     if (temporizador) clearTimeout(temporizador);
+    if (sinalExterno && aoCancelar) sinalExterno.removeEventListener('abort', aoCancelar);
   }
   if (!MESTRE_LOGIN.has(acao) && assinaturaMestre !== mestreAssinaturaContexto()) {
     throw new Error("MESTRE_CONTEXTO: O acesso mudou; a resposta anterior foi descartada.");
@@ -1416,6 +1460,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   let geracaoConsultaEstadoEquipe = 0;
   let geracaoSessaoEquipe = 0;
   let estadoEquipeServicoEmCarregamento = false;
+  let consultaEquipeServicoAtiva = null;
   let atualizacaoEstadoEquipeServicoPendente = false;
   let atualizacaoEstadoEquipeServicoPendenteSilenciosa = true;
   let usarFallbackEstadoEquipeServico = false;
@@ -1650,20 +1695,20 @@ let tipoMovimentacaoAtual = 'Entrada';
       assinaturaSessoes === obterAssinaturaSessoesEquipeLocal();
   }
 
-  function executarConsultaEquipeServico(nomeAcao) {
-    return new Promise((resolver, rejeitar) => {
-      google.script.run
-        .withSuccessHandler(resolver)
-        .withFailureHandler(rejeitar)[nomeAcao]();
-    });
+  function executarConsultaEquipeServico(nomeAcao, sinal) {
+    if (!LEITURAS_EQUIPE_CANCELAVEIS.has(nomeAcao)) {
+      return Promise.reject(new Error('A atualização da equipe aceita somente consultas de leitura.'));
+    }
+    return chamarApi(nomeAcao, montarDadosChamadaApi(nomeAcao, []), { signal: sinal })
+      .then(resposta => ajustarRespostaApi(nomeAcao, resposta));
   }
 
-  function carregarEstadoEquipeServicoLegado() {
+  function carregarEstadoEquipeServicoLegado(sinal) {
     return Promise.all([
-      executarConsultaEquipeServico('getGuardaAtivo'),
-      executarConsultaEquipeServico('getComandanteAtivo'),
-      executarConsultaEquipeServico('getOficialDiaAtivo'),
-      executarConsultaEquipeServico('getStatusToqueFogo')
+      executarConsultaEquipeServico('getGuardaAtivo', sinal),
+      executarConsultaEquipeServico('getComandanteAtivo', sinal),
+      executarConsultaEquipeServico('getOficialDiaAtivo', sinal),
+      executarConsultaEquipeServico('getStatusToqueFogo', sinal)
     ]).then(([guarda, comandante, oficial, statusToque]) => ({
       guarda: guarda,
       comandante: comandante,
@@ -1738,36 +1783,65 @@ let tipoMovimentacaoAtual = 'Entrada';
     }
     aplicarVisibilidadePublicaEquipeLocal();
 
-    if (estadoEquipeServicoEmCarregamento) {
-      atualizacaoEstadoEquipeServicoPendente = true;
-      atualizacaoEstadoEquipeServicoPendenteSilenciosa =
-        atualizacaoEstadoEquipeServicoPendenteSilenciosa && silencioso;
-      if (invalidarEmAndamento) invalidarConsultasEquipeServico();
-      return;
+    if (consultaEquipeServicoAtiva) {
+      const anterior = consultaEquipeServicoAtiva;
+      const contextoMudou = !consultaEquipeServicoAindaAtual(anterior.geracoes, anterior.assinatura);
+      if (invalidarEmAndamento && contextoMudou) {
+        // An old anonymous/different-post read must not hold a fresh login hostage.
+        // Abort only its client-side wait; Apps Script may already be completing it.
+        consultaEquipeServicoAtiva = null;
+        anterior.controlador.abort();
+      } else {
+        // Polls coalesce into the in-flight snapshot. Explicit refresh requests
+        // reserve at most one follow-up instead of creating parallel server work.
+        if (invalidarEmAndamento) {
+          atualizacaoEstadoEquipeServicoPendente = true;
+          atualizacaoEstadoEquipeServicoPendenteSilenciosa =
+            atualizacaoEstadoEquipeServicoPendenteSilenciosa && silencioso;
+        }
+        return;
+      }
     }
 
+    atualizacaoEstadoEquipeServicoPendente = false;
+    atualizacaoEstadoEquipeServicoPendenteSilenciosa = true;
     estadoEquipeServicoEmCarregamento = true;
     const geracoes = iniciarConsultaEquipeServico();
     const assinaturaSessoes = obterAssinaturaSessoesEquipeLocal();
+    const atual = {
+      controlador: new AbortController(), geracoes: geracoes, assinatura: assinaturaSessoes
+    };
+    consultaEquipeServicoAtiva = atual;
+    const sinal = atual.controlador.signal;
     const consulta = usarFallbackEstadoEquipeServico
-      ? carregarEstadoEquipeServicoLegado()
-      : executarConsultaEquipeServico('getEstadoEquipeServico').catch((erro) => {
+      ? carregarEstadoEquipeServicoLegado(sinal)
+      : executarConsultaEquipeServico('getEstadoEquipeServico', sinal).catch((erro) => {
+          if (sinal.aborted || consultaEquipeServicoAtiva !== atual) throw erro;
           if (!erroIndicaEstadoEquipeServicoIndisponivel(erro)) throw erro;
           usarFallbackEstadoEquipeServico = true;
-          return carregarEstadoEquipeServicoLegado();
+          return carregarEstadoEquipeServicoLegado(sinal);
         });
 
     consulta
       .then((estado) => {
+        if (consultaEquipeServicoAtiva !== atual || sinal.aborted) return;
         if (!consultaEquipeServicoAindaAtual(geracoes, assinaturaSessoes)) return;
         aplicarEstadoEquipeServico(estado || {});
       })
       .catch((erro) => {
+        if (consultaEquipeServicoAtiva !== atual || sinal.aborted ||
+            !consultaEquipeServicoAindaAtual(geracoes, assinaturaSessoes)) return;
         if (!silencioso) {
           mostrarMensagem('Erro ao carregar equipe de serviço: ' + (erro.message || erro), 'erro');
         }
+        // If one legacy read failed, release its remaining read-only siblings.
+        // No partial team state is ever applied from a failed Promise.all.
+        atual.controlador.abort();
       })
       .finally(() => {
+        // An aborted old request must never clear the new request's busy state.
+        if (consultaEquipeServicoAtiva !== atual) return;
+        consultaEquipeServicoAtiva = null;
         estadoEquipeServicoEmCarregamento = false;
         if (!atualizacaoEstadoEquipeServicoPendente) {
           atualizacaoEstadoEquipeServicoPendenteSilenciosa = true;
@@ -1777,7 +1851,7 @@ let tipoMovimentacaoAtual = 'Entrada';
         const proximaSilenciosa = atualizacaoEstadoEquipeServicoPendenteSilenciosa;
         atualizacaoEstadoEquipeServicoPendente = false;
         atualizacaoEstadoEquipeServicoPendenteSilenciosa = true;
-        setTimeout(() => carregarIdentidadesEquipeServico(proximaSilenciosa, false), 0);
+        setTimeout(() => carregarIdentidadesEquipeServico(proximaSilenciosa, false), 250);
       });
   }
 
