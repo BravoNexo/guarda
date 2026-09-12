@@ -3722,9 +3722,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     if (bloco) bloco.classList.toggle('oculto', !modoLancamentoRetroativoAtivo);
     if (campoForma) campoForma.classList.toggle('oculto', modoLancamentoRetroativoAtivo);
     if (botaoAbrir) botaoAbrir.setAttribute('aria-expanded', String(modoLancamentoRetroativoAtivo));
-    if (titulo) titulo.textContent = modoLancamentoRetroativoAtivo
-      ? 'Lançamento individual em horário anterior'
-      : 'Registrar Movimentação';
+    if (titulo) titulo.textContent = 'Controle de Acesso';
     if (botao && !botao.disabled) botao.textContent = modoLancamentoRetroativoAtivo
       ? 'Registrar horário anterior'
        : (modoRegistroAtual === 'Viatura' ? 'Registrar Auto/VTR' : 'Registrar');

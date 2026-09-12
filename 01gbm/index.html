@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <title>Gestão de Serviço - 1º GBM</title>
-  <link rel="stylesheet" href="style.css?v=27.1.26">
+  <link rel="stylesheet" href="style.css?v=27.1.27">
   </head>
 
   <body>
@@ -164,33 +164,6 @@
             <button type="button" id="btnAssumirToqueFogo" class="botao-secundario oculto" onclick="assumirToqueFogo()">
               Definir Toque de Fogo
             </button>
-          </div>
-        </section>
-
-        <section class="card card-pessoas-dentro-guarda oculto" id="cardPessoasDentroGuarda">
-          <div class="cabecalho-pessoas-dentro-guarda">
-            <button type="button" id="btnAlternarPessoasDentroGuarda" class="botao-alternar-pessoas-dentro"
-              aria-expanded="true" aria-controls="conteudoPessoasDentroGuarda"
-              onclick="alternarPessoasDentroGuarda()">
-              <span>
-                <span class="titulo-pessoas-dentro">Pessoas atualmente dentro</span>
-                <span id="resumoPessoasDentroGuarda" class="resumo-pessoas-dentro">Carregando...</span>
-              </span>
-              <span id="iconeAlternarPessoasDentroGuarda" class="icone-alternar-pessoas-dentro" aria-hidden="true">⌄</span>
-            </button>
-            <button type="button" id="btnAtualizarPessoasDentroGuarda" onclick="carregarPessoasDentroGuarda()">
-              Atualizar
-            </button>
-          </div>
-
-          <div id="conteudoPessoasDentroGuarda" class="conteudo-pessoas-dentro-guarda">
-            <p class="descricao-pessoas-dentro-guarda">Confira quem ainda não possui saída registrada.</p>
-
-            <div id="listaPessoasDentroGuarda" class="lista-painel">
-              <div class="estado-vazio-painel">Carregando...</div>
-            </div>
-
-            <div id="atualizadoEmPessoasDentroGuarda" class="rodape-painel-comandante"></div>
           </div>
         </section>
 
@@ -750,7 +723,7 @@
         </section>
 
         <section class="card oculto" id="cardMovimentacao">
-          <h2 id="tituloCardMovimentacao">Registrar Movimentação</h2>
+          <h2 id="tituloCardMovimentacao">Controle de Acesso</h2>
 
           <div id="blocoLancamentoRetroativo" class="bloco-lancamento-retroativo oculto">
             <div class="cabecalho-lancamento-retroativo">
@@ -995,6 +968,34 @@
 
           <div id="mensagemSistema" class="mensagem-sistema oculto" role="status"
             aria-live="polite" aria-atomic="true"></div>
+
+          <section class="card-pessoas-dentro-guarda oculto" id="cardPessoasDentroGuarda"
+            aria-labelledby="tituloPessoasDentroGuarda">
+            <div class="cabecalho-pessoas-dentro-guarda">
+              <button type="button" id="btnAlternarPessoasDentroGuarda" class="botao-alternar-pessoas-dentro"
+                aria-expanded="true" aria-controls="conteudoPessoasDentroGuarda"
+                onclick="alternarPessoasDentroGuarda()">
+                <span>
+                  <span class="titulo-pessoas-dentro" id="tituloPessoasDentroGuarda">Pessoas atualmente dentro</span>
+                  <span id="resumoPessoasDentroGuarda" class="resumo-pessoas-dentro">Carregando...</span>
+                </span>
+                <span id="iconeAlternarPessoasDentroGuarda" class="icone-alternar-pessoas-dentro" aria-hidden="true">⌄</span>
+              </button>
+              <button type="button" id="btnAtualizarPessoasDentroGuarda" onclick="carregarPessoasDentroGuarda()">
+                Atualizar
+              </button>
+            </div>
+
+            <div id="conteudoPessoasDentroGuarda" class="conteudo-pessoas-dentro-guarda">
+              <p class="descricao-pessoas-dentro-guarda">Confira quem ainda não possui saída registrada.</p>
+
+              <div id="listaPessoasDentroGuarda" class="lista-painel">
+                <div class="estado-vazio-painel">Carregando...</div>
+              </div>
+
+              <div id="atualizadoEmPessoasDentroGuarda" class="rodape-painel-comandante"></div>
+            </div>
+          </section>
         </section>
       </main>
     </div>
@@ -1354,7 +1355,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.26"></script>
+  <script src="app.js?v=27.1.27"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&
