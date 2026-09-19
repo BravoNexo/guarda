@@ -491,6 +491,7 @@ const PRAZO_LEITURA_EQUIPE_MS = 25000;
   }
 
   const LP_TTL = 10 * 60 * 1000;
+  const LP_ESPERA_REENVIO = 60 * 1000;
   const LP_CONFIG = {
     guarda: {email:'emailGuarda',codigo:'codigoGuarda',area:'areaAssumirGuarda',otp:'areaCodigoGuarda',card:'perfilGuarda',enviar:'btnEnviarCodigoGuarda',validar:'btnValidarCodigoGuarda',acao:'enviarCodigoAssumirGuarda',duasEtapas:true,legado:'guarda'},
     comandante: {email:'emailComandante',codigo:'codigoComandante',area:'areaAssumirComandante',otp:'areaCodigoComandante',card:'perfilComandante',enviar:'btnEnviarCodigoComandante',validar:'btnValidarCodigoComandante',acao:'enviarCodigoAssumirComandante',duasEtapas:true,legado:'comandante'},
@@ -504,14 +505,39 @@ const PRAZO_LEITURA_EQUIPE_MS = 25000;
   function LP_no_(id) { return document.getElementById(id); }
   function LP_estado_(perfil) {
     if (!Object.prototype.hasOwnProperty.call(LP_CONFIG,perfil)) throw Error('Perfil de acesso inválido.');
-    return LP_ESTADOS[perfil] || (LP_ESTADOS[perfil] = {aberto:false,pendente:false,validado:false,enviando:false,validando:false,confirmando:false,tentouValidar:false,geracao:0,email:'',periodo:'',solicitadoEm:0,mensagem:''});
+    return LP_ESTADOS[perfil] || (LP_ESTADOS[perfil] = {aberto:false,pendente:false,validado:false,enviando:false,validando:false,confirmando:false,tentouValidar:false,geracao:0,email:'',periodo:'',solicitadoEm:0,reenviarApos:0,expiraEm:0,mensagem:''});
   }
   function LP_email_(perfil) { return String(LP_no_(LP_CONFIG[perfil].email)?.value || '').trim().toLowerCase(); }
   function LP_periodo_(perfil) { return perfil === 'toque' ? obterPeriodoAlvoToqueFogo() : ''; }
   function LP_chave_(perfil) { return 'login_codigo_pendente_v1:' + perfil; }
-  function LP_removerArmazenado_(perfil) {
+  function LP_segundosEspera_(perfil) {
+    return Math.max(0, Math.ceil((LP_estado_(perfil).reenviarApos - Date.now()) / 1000));
+  }
+  function LP_sincronizarEspera_(perfil) {
+    const e = LP_estado_(perfil), agora = Date.now();
     try {
-      localStorage.removeItem(LP_chave_(perfil));
+      const dado = JSON.parse(localStorage.getItem(LP_chave_(perfil)) || 'null');
+      if (dado && dado.perfil === perfil && dado.email === LP_email_(perfil) &&
+          dado.periodo === LP_periodo_(perfil) && Number.isFinite(dado.reenviarApos) &&
+          dado.reenviarApos > agora && dado.reenviarApos <= agora + LP_ESPERA_REENVIO) {
+        e.reenviarApos = Math.max(e.reenviarApos || 0, dado.reenviarApos);
+      }
+    } catch (_) { /* O bloqueio do servidor continua valendo sem armazenamento local. */ }
+  }
+  function LP_removerArmazenado_(perfil, preservarEspera = false) {
+    try {
+      let dado;
+      if (preservarEspera) {
+        try { dado = JSON.parse(localStorage.getItem(LP_chave_(perfil)) || 'null'); } catch (_) { /* Metadado inválido. */ }
+      }
+      if (dado && dado.perfil === perfil && Number.isFinite(dado.reenviarApos) &&
+          dado.reenviarApos > Date.now() && dado.reenviarApos <= Date.now() + LP_ESPERA_REENVIO) {
+        localStorage.setItem(LP_chave_(perfil), JSON.stringify({
+          perfil: perfil, email: dado.email, periodo: dado.periodo,
+          solicitadoEm: dado.solicitadoEm, reenviarApos: dado.reenviarApos,
+          expiraEm: dado.expiraEm, pendente: false
+        }));
+      } else localStorage.removeItem(LP_chave_(perfil));
       const legado = LP_CONFIG[perfil].legado;
       if (legado) { localStorage.removeItem(legado + '_email_pendente'); localStorage.removeItem(legado + '_codigo_pendente_em'); }
     } catch (_) { /* A solicitação continua disponível em memória quando o armazenamento está bloqueado. */ }
@@ -520,8 +546,8 @@ const PRAZO_LEITURA_EQUIPE_MS = 25000;
     const e = LP_estado_(perfil);
     LP_removerArmazenado_(perfil);
     try {
-      // Only UI recovery metadata. Never persist OTP, ticket, identity, session or permission.
-      localStorage.setItem(LP_chave_(perfil), JSON.stringify({perfil:perfil,email:e.email,periodo:e.periodo,solicitadoEm:e.solicitadoEm}));
+      // Somente recuperação da interface/espera. Nunca código OTP, ticket, sessão ou permissão.
+      localStorage.setItem(LP_chave_(perfil), JSON.stringify({perfil:perfil,email:e.email,periodo:e.periodo,solicitadoEm:e.solicitadoEm,reenviarApos:e.reenviarApos,expiraEm:e.expiraEm,pendente:e.pendente}));
     } catch (_) { e.mensagem += ' Este navegador não permite restaurar a solicitação após recarregar a página.'; }
   }
   function LP_resetDados_(perfil) {
@@ -555,8 +581,8 @@ const PRAZO_LEITURA_EQUIPE_MS = 25000;
   }
   function LP_invalidar_(perfil, limparEmail = false) {
     const e=LP_estado_(perfil);
-    e.geracao+=1;e.pendente=false;e.validado=false;e.enviando=false;e.validando=false;e.confirmando=false;e.tentouValidar=false;e.solicitadoEm=0;
-    LP_removerArmazenado_(perfil);LP_resetDados_(perfil);LP_limparCampos_(perfil,limparEmail);
+    e.geracao+=1;e.pendente=false;e.validado=false;e.enviando=false;e.validando=false;e.confirmando=false;e.tentouValidar=false;e.solicitadoEm=0;e.reenviarApos=0;e.expiraEm=0;
+    LP_removerArmazenado_(perfil,true);LP_resetDados_(perfil);LP_limparCampos_(perfil,limparEmail);
   }
   function LP_cancelar_(perfil) {
     LP_invalidar_(perfil,true);const e=LP_estado_(perfil);e.aberto=false;e.email='';e.periodo='';
@@ -568,11 +594,12 @@ const PRAZO_LEITURA_EQUIPE_MS = 25000;
     const e=LP_estado_(perfil),email=LP_email_(perfil),periodo=LP_periodo_(perfil);
     if (email===e.email && periodo===e.periodo) return;
     LP_invalidar_(perfil);e.aberto=true;e.email=email;e.periodo=periodo;
+    LP_sincronizarEspera_(perfil);
     e.mensagem='Solicite um novo código para este e-mail' + (perfil==='toque'?' e período':'') + '.';
     LP_renderizar_(perfil);
   }
   function LP_finalizar_(perfil) {
-    const e=LP_estado_(perfil);e.geracao+=1;e.aberto=false;e.pendente=false;e.validado=false;e.enviando=false;e.validando=false;e.confirmando=false;e.mensagem='';
+    const e=LP_estado_(perfil);e.geracao+=1;e.aberto=false;e.pendente=false;e.validado=false;e.enviando=false;e.validando=false;e.confirmando=false;e.reenviarApos=0;e.expiraEm=0;e.mensagem='';
     LP_removerArmazenado_(perfil);LP_limparCampos_(perfil,false);
     LP_no_(LP_CONFIG[perfil].area)?.classList.add('oculto');LP_renderizar_(perfil);
   }
@@ -590,8 +617,8 @@ const PRAZO_LEITURA_EQUIPE_MS = 25000;
       LP_no_(c.area)?.classList.add('oculto');
       return;
     }
-    if (e.pendente && (!Number.isFinite(e.solicitadoEm)||Date.now()-e.solicitadoEm>=LP_TTL||e.solicitadoEm>Date.now())) {
-      LP_invalidar_(perfil);e.aberto=true;e.mensagem='O prazo desta solicitação terminou. Use Enviar código para solicitar outro.';
+    if (e.pendente && (!Number.isFinite(e.solicitadoEm)||Date.now()>=(e.expiraEm || e.solicitadoEm+LP_TTL)||e.solicitadoEm>Date.now())) {
+      LP_invalidar_(perfil);LP_sincronizarEspera_(perfil);e.aberto=true;e.mensagem='O prazo desta solicitação terminou. Solicite outro código quando o botão estiver disponível.';
     }
     // An unfinished login is UI state, not evidence of permission or ownership.
     if (e.aberto) {
@@ -600,9 +627,11 @@ const PRAZO_LEITURA_EQUIPE_MS = 25000;
       if (perfil==='toque') loginToqueFogoAberto=true;
     }
     const otp=LP_no_(c.otp);if(otp && e.pendente)otp.classList.remove('oculto');
-    const status=LP_no_('lpStatus_'+perfil);if(status){status.textContent=e.mensagem;status.classList.toggle('oculto',!e.mensagem);}
+    const espera = LP_segundosEspera_(perfil);
+    const textoEspera = espera ? ' Aguarde o intervalo indicado no botão para solicitar novamente. Se já recebeu o código, pode validá-lo agora.' : '';
+    const status=LP_no_('lpStatus_'+perfil);if(status){const texto=e.mensagem+textoEspera;if(status.textContent!==texto)status.textContent=texto;status.classList.toggle('oculto',!texto);}
     const cancelar=LP_no_('lpCancelar_'+perfil);if(cancelar)cancelar.classList.toggle('oculto',!(e.pendente||e.validado||e.enviando||e.validando));
-    const b=LP_no_(c.enviar);if(b){b.disabled=e.enviando||e.validando||e.confirmando;b.textContent=e.enviando?'Solicitando...':(e.pendente||e.validado?'Reenviar código':'Enviar código');}
+    const b=LP_no_(c.enviar);if(b){b.disabled=e.enviando||e.validando||e.confirmando||espera>0;b.textContent=e.enviando?'Solicitando...':(espera?'Reenviar em '+espera+'s':(e.pendente||e.validado?'Reenviar código':'Enviar código'));}
     // The email can arrive before Apps Script finishes replying to its send call.
     // Validation still goes to the server; only the redundant UI wait is removed.
     const v=LP_no_(c.validar);if(v)v.disabled=e.validando||e.confirmando;
@@ -618,16 +647,25 @@ const PRAZO_LEITURA_EQUIPE_MS = 25000;
     } catch (_) { LP_removerArmazenado_(perfil);return false; }
     if(!dado)return false;
     const now=Date.now();
+    if (dado.pendente === false) {
+      // Cancelar fecha a etapa, mas não cria uma forma de contornar a espera.
+      if (!Number.isFinite(dado.reenviarApos) || dado.reenviarApos <= now || dado.reenviarApos > now+LP_ESPERA_REENVIO) LP_removerArmazenado_(perfil);
+      return false;
+    }
     if(dado.perfil!==perfil||typeof dado.email!=='string'||!dado.email.includes('@')||dado.email.length>254||typeof dado.solicitadoEm!=='number'||!Number.isFinite(dado.solicitadoEm)||dado.solicitadoEm>now||now-dado.solicitadoEm>=LP_TTL||
       (perfil==='toque'?!['Diurno','Noturno'].includes(dado.periodo):dado.periodo!=='')) {LP_removerArmazenado_(perfil);return false;}
-    e.email=dado.email.trim().toLowerCase();e.periodo=dado.periodo;e.solicitadoEm=dado.solicitadoEm;e.pendente=true;e.aberto=true;
+    const expiraEm = Number.isFinite(dado.expiraEm) && dado.expiraEm <= now+LP_TTL
+      ? dado.expiraEm : dado.solicitadoEm+LP_TTL;
+    if (expiraEm <= now) { LP_removerArmazenado_(perfil,true); return false; }
+    e.email=dado.email.trim().toLowerCase();e.periodo=dado.periodo;e.solicitadoEm=dado.solicitadoEm;e.expiraEm=expiraEm;e.pendente=true;e.aberto=true;
     if(LP_no_(c.email))LP_no_(c.email).value=e.email;
     if(perfil==='toque'&&LP_no_('periodoAlvoToqueFogo'))LP_no_('periodoAlvoToqueFogo').value=e.periodo;
-    e.mensagem='Código solicitado. Consulte seu e-mail, volte aqui e digite o código. Esta etapa ficará aberta por até 10 minutos.';
+    LP_sincronizarEspera_(perfil);
+    e.mensagem='Solicitação recuperada. Confira seu e-mail, inclusive o spam, e digite o código recebido. Recarregar esta página não envia outro e-mail.';
     LP_dadosPendentes_(perfil);LP_gravar_(perfil);LP_renderizar_(perfil);return true;
   }
   function LP_guardarPendente_(perfil,email) {
-    const e=LP_estado_(perfil);e.email=String(email).trim().toLowerCase();e.periodo=LP_periodo_(perfil);e.solicitadoEm=Date.now();e.pendente=true;e.aberto=true;LP_gravar_(perfil);
+    const e=LP_estado_(perfil);e.email=String(email).trim().toLowerCase();e.periodo=LP_periodo_(perfil);e.solicitadoEm=Date.now();e.expiraEm=e.solicitadoEm+LP_TTL;e.pendente=true;e.aberto=true;LP_gravar_(perfil);
   }
   function LP_assinatura_(perfil) {
     const e=LP_estado_(perfil);return {geracao:e.geracao,email:LP_email_(perfil),periodo:LP_periodo_(perfil)};
@@ -640,29 +678,40 @@ const PRAZO_LEITURA_EQUIPE_MS = 25000;
     if(e.enviando||e.validando||e.confirmando)return;
     if(!email||!email.includes('@')||email.length>254) {mostrarMensagem('Informe um e-mail válido.','erro');return;}
     if(perfil==='toque'&&!['Diurno','Noturno'].includes(periodo)){mostrarMensagem('Selecione o período do Toque de Fogo.','erro');return;}
+    LP_sincronizarEspera_(perfil);
+    if (LP_segundosEspera_(perfil)) { LP_renderizar_(perfil); return; }
     if((e.pendente||e.validado)&&!confirmado) {
       const assinatura=LP_assinatura_(perfil);e.confirmando=true;LP_renderizar_(perfil);
-      abrirModalConfirmacao('Reenviar código','Solicitar outro código pode invalidar o anterior. Deseja continuar?',()=>{
+      abrirModalConfirmacao('Solicitar código novamente','Confira primeiro seu e-mail e a pasta de spam. O sistema poderá reutilizar um código que ainda esteja válido. Deseja solicitar novamente?',()=>{
         if(!LP_mesmaSolicitacao_(perfil,assinatura))return;e.confirmando=false;LP_enviar_(perfil,true);
       },true);
       // The modal close hook also releases this flag without issuing a request.
       return;
     }
-    LP_invalidar_(perfil);e.aberto=true;e.email=email;e.periodo=periodo;e.solicitadoEm=Date.now();e.pendente=true;e.enviando=true;
+    const codigoDigitado = e.pendente ? String(LP_no_(c.codigo)?.value || '') : '';
+    const validadeAnterior = e.pendente ? e.expiraEm || e.solicitadoEm+LP_TTL : 0;
+    LP_invalidar_(perfil);e.aberto=true;e.email=email;e.periodo=periodo;e.solicitadoEm=Date.now();e.expiraEm=validadeAnterior>e.solicitadoEm?validadeAnterior:e.solicitadoEm+LP_TTL;e.reenviarApos=e.solicitadoEm+LP_ESPERA_REENVIO;e.pendente=true;e.enviando=true;
+    if (codigoDigitado && validadeAnterior > Date.now() && LP_no_(c.codigo)) LP_no_(c.codigo).value=codigoDigitado;
     e.mensagem='Solicitando código. Consulte seu e-mail e volte aqui para digitá-lo; a confirmação do envio ainda está em andamento.';
     LP_dadosPendentes_(perfil);LP_gravar_(perfil);LP_renderizar_(perfil);
     const assinatura=LP_assinatura_(perfil);
     const falha=erro=>{
       if(!LP_mesmaSolicitacao_(perfil,assinatura))return;e.enviando=false;
       if(e.tentouValidar){LP_renderizar_(perfil);return;}
-      e.mensagem='Não foi possível confirmar o envio: '+(erro?.message||erro)+'. Se o código chegou, digite-o aqui; caso contrário, use Reenviar código.';LP_renderizar_(perfil);
+      if (validadeAnterior > Date.now()) e.expiraEm=validadeAnterior;
+      const detalhe=String(erro?.message||erro||'Falha de comunicação.').replace(/[.\s]+$/,'');
+      e.mensagem='Não foi possível confirmar o envio: '+detalhe+'. Se já recebeu um código ainda válido, pode digitá-lo aqui. Confira também a pasta de spam; não é necessário atualizar a página.';
+      LP_gravar_(perfil);LP_renderizar_(perfil);
     };
     try {
     const executor=google.script.run.withSuccessHandler(resposta=>{
       if(!LP_mesmaSolicitacao_(perfil,assinatura))return;
       e.enviando=false;
+      const esperaServidor=resposta?.reenviarEmSegundos;
+      if (Number.isFinite(esperaServidor) && esperaServidor>=0 && esperaServidor<=60) e.reenviarApos=Date.now()+esperaServidor*1000;
+      LP_gravar_(perfil);
       if(e.tentouValidar){LP_renderizar_(perfil);return;}
-      e.mensagem='Código solicitado. Consulte seu e-mail, volte aqui e digite o código. Se o e-mail estiver autorizado, ele receberá a mensagem.';
+      e.mensagem='Solicitação recebida. Se o e-mail estiver autorizado, confira a mensagem e a pasta de spam. Um código ainda válido poderá ser reutilizado; siga a validade informada no e-mail.';
       if(perfil==='toque'&&resposta?.periodo&&resposta.periodo!==periodo){LP_invalidar_(perfil);e.mensagem='O período informado pelo servidor mudou. Confira o período e solicite outro código.';}
       LP_renderizar_(perfil);
     }).withFailureHandler(falha);
@@ -679,7 +728,7 @@ const PRAZO_LEITURA_EQUIPE_MS = 25000;
     const e=LP_estado_(perfil);e.validando=false;e.mensagem='Não foi possível validar. Confira o código recebido ou use Reenviar código.';LP_renderizar_(perfil);return true;
   }
   function LP_validado_(perfil) {
-    const e=LP_estado_(perfil);e.geracao+=1;e.validando=false;e.enviando=false;e.confirmando=false;e.pendente=false;LP_removerArmazenado_(perfil);
+    const e=LP_estado_(perfil);e.geracao+=1;e.validando=false;e.enviando=false;e.confirmando=false;e.pendente=false;e.reenviarApos=0;e.expiraEm=0;LP_removerArmazenado_(perfil);
     e.validado=!!LP_CONFIG[perfil].duasEtapas;e.aberto=e.validado;
     e.mensagem=e.validado?'Código validado. Confira a identificação e confirme a função abaixo.':'';
     if(!e.validado)LP_limparCampos_(perfil,false);LP_renderizar_(perfil);
@@ -687,7 +736,7 @@ const PRAZO_LEITURA_EQUIPE_MS = 25000;
   function LP_receberLink_(perfil,email) {
     // Match exactly the pre-existing deep-link routes in aplicarCodigoDoLink.
     perfil=perfil==='encarregado-motoristas'?'encarregado':(['consulta','encarregado','oficial','comandante'].includes(perfil)?perfil:'guarda');
-    LP_invalidar_(perfil);const e=LP_estado_(perfil);e.email=email.trim().toLowerCase();e.periodo=LP_periodo_(perfil);e.solicitadoEm=Date.now();e.aberto=true;e.pendente=true;
+    LP_invalidar_(perfil);const e=LP_estado_(perfil);e.email=email.trim().toLowerCase();e.periodo=LP_periodo_(perfil);e.solicitadoEm=Date.now();e.expiraEm=e.solicitadoEm+LP_TTL;e.aberto=true;e.pendente=true;
     e.mensagem='Código recebido pelo link. Continue a confirmação neste formulário.';LP_gravar_(perfil);
     // Existing explicit email deep-link behavior remains responsible for filling/validating the OTP.
     return perfil;
@@ -704,6 +753,18 @@ const PRAZO_LEITURA_EQUIPE_MS = 25000;
     const recente=Object.keys(LP_CONFIG).filter(p=>LP_estado_(p).pendente).sort((a,b)=>LP_estado_(b).solicitadoEm-LP_estado_(a).solicitadoEm)[0];
     if(recente&&LP_CONFIG[recente].card)expandirPerfilServico(LP_CONFIG[recente].card,true);
     window.addEventListener('pageshow',()=>Object.keys(LP_CONFIG).forEach(LP_renderizar_));
+    window.addEventListener('storage',evento=>{
+      Object.keys(LP_CONFIG).forEach(perfil=>{
+        if(evento.key===LP_chave_(perfil)){LP_sincronizarEspera_(perfil);LP_renderizar_(perfil);}
+      });
+    });
+    setInterval(()=>{
+      Object.keys(LP_CONFIG).forEach(perfil=>{
+        const e=LP_estado_(perfil);
+        if(e.reenviarApos>0){LP_renderizar_(perfil);if(!LP_segundosEspera_(perfil))e.reenviarApos=0;}
+        else if(e.pendente && Date.now()>=(e.expiraEm||e.solicitadoEm+LP_TTL))LP_renderizar_(perfil);
+      });
+    },1000);
   }
 
 function obterTokenSessaoLocal(chaveToken, chaveInicio, duracao) {
