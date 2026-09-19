@@ -2179,11 +2179,6 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function selecionarModoRegistro(modo) {
-    if (modoLancamentoRetroativoAtivo && modo !== 'Individual') {
-      mostrarMensagem('O lançamento retroativo está disponível inicialmente apenas no modo Individual.', 'erro');
-      return;
-    }
-
     modoRegistroAtual = ['Viatura', 'SOS'].includes(modo) ? modo : 'Individual';
     revisaoFormularioMovimentacao += 1;
     numeroBuscaPessoa += 1;
@@ -2247,10 +2242,11 @@ let tipoMovimentacaoAtual = 'Entrada';
     } else {
       renderizarSelecaoViaturasSOS();
     }
+    atualizarInterfaceLancamentoRetroativo();
   }
 
   function abrirVeiculoExterno() {
-    if (!garantirPermissaoOperacionalAtual()) return;
+    if (!garantirPermissaoRegistroMovimentacao()) return;
     const modal = document.getElementById('modalVeiculoExterno');
     if (modal.open) return;
     tipoMovimentacaoAntesVeiculoExterno = tipoMovimentacaoAtual;
@@ -2266,6 +2262,9 @@ let tipoMovimentacaoAtual = 'Entrada';
     document.getElementById('mensagemVeiculoExterno').classList.add('oculto');
     renderizarOcupantesViatura();
     document.getElementById('conteudoVeiculoExterno').appendChild(document.getElementById('areaRegistroPadrao'));
+    if (modoLancamentoRetroativoAtivo) {
+      document.getElementById('contextoRetroativoVeiculoExterno').appendChild(document.getElementById('blocoLancamentoRetroativo'));
+    }
     selecionarMovimentacao(tipoMovimentacaoAtual);
     modal.showModal();
     document.getElementById('prefixoPlaca').focus();
@@ -2277,6 +2276,9 @@ let tipoMovimentacaoAtual = 'Entrada';
     numeroBuscaPessoa += 1;
     clearTimeout(temporizadorSugestaoPessoa);
     document.getElementById('origemFormularioPadrao').appendChild(document.getElementById('areaRegistroPadrao'));
+    document.getElementById('cardMovimentacao').insertBefore(
+      document.getElementById('blocoLancamentoRetroativo'), document.getElementById('campoFormaRegistro')
+    );
     if (modal.open) modal.close();
     condutorExternoAtivo = false;
     ocupantesViatura = [];
@@ -2356,7 +2358,9 @@ let tipoMovimentacaoAtual = 'Entrada';
     } else if (!bloquearPorListas && botaoRegistroBloqueadoPorListas) {
       liberarBloqueioRegistroPorListas();
     }
-    if (!botao.disabled) botao.textContent = retorno ? 'Registrar entrada' : (sos ? 'Registrar saída SOS' : 'Registrar saída');
+    if (!botao.disabled) botao.textContent = modoLancamentoRetroativoAtivo
+      ? 'Registrar horário anterior'
+      : retorno ? 'Registrar entrada' : (sos ? 'Registrar saída SOS' : 'Registrar saída');
   }
 
   function contextoViaturasAindaValido(geracao, assinatura) {
@@ -2445,13 +2449,17 @@ let tipoMovimentacaoAtual = 'Entrada';
     if (!lista || !configuracoes) return;
 
     const retorno = tipoMovimentacaoAtual === 'Entrada';
-    const disponiveis = viaturasSOS.filter(item => retorno
+    const disponiveis = viaturasSOS.filter(item => modoLancamentoRetroativoAtivo
+      ? !['nao', 'não', 'false', 'inativo', 'inativa'].includes(String(item.Ativo ?? 'Sim').trim().toLowerCase())
+      : retorno
       ? ['Em ocorrência', 'Fora da unidade'].includes(item.Situacao_Atual)
       : item.Situacao_Atual === 'No quartel');
     document.getElementById('tituloSelecaoSOS').textContent = retorno
       ? 'Selecionar viaturas que entraram'
       : 'Selecionar viaturas para saída';
-    document.getElementById('descricaoSelecaoViaturas').textContent = retorno
+    document.getElementById('descricaoSelecaoViaturas').textContent = modoLancamentoRetroativoAtivo
+      ? 'São exibidas todas as viaturas ativas. Confira o condutor e a guarnição que estavam no veículo no horário informado; a sugestão é a composição do serviço atual.'
+      : retorno
       ? 'A entrada mantém a composição registrada na saída. Para outros veículos, use Veículo externo.'
       : 'Selecione uma ou mais viaturas. Confira a composição sugerida e toque para editar.';
     atualizarRotuloRegistroViaturas();
@@ -2501,17 +2509,18 @@ let tipoMovimentacaoAtual = 'Entrada';
 
   function alternarViaturaSOS(viatura, selecionada) {
     const chaveEdicao = String(viatura.ID_Viatura || '');
+    const retornoVinculado = tipoMovimentacaoAtual === 'Entrada' && !modoLancamentoRetroativoAtivo;
     if (selecionada) {
       const padrao = guarnicoesServico.find(item => item.ID_Viatura === viatura.ID_Viatura);
       selecoesViaturasSOS[viatura.ID_Viatura] = {
         ID_Viatura: viatura.ID_Viatura,
-        ID_Condutor: tipoMovimentacaoAtual === 'Entrada'
+        ID_Condutor: retornoVinculado
           ? viatura.ID_Condutor_Atual
           : (padrao ? padrao.ID_Condutor : ''),
-        IDs_Guarnicao: tipoMovimentacaoAtual === 'Entrada'
+        IDs_Guarnicao: retornoVinculado
           ? (viatura.IDs_Guarnicao_Atual || []).slice()
           : (padrao ? (padrao.IDs_Guarnicao || []).slice() : []),
-        ...(tipoMovimentacaoAtual === 'Entrada' ? {
+        ...(retornoVinculado ? {
           ID_Movimentacao_Aberta: viatura.ID_Movimentacao_Aberta || viatura.ID_Ultimo_SOS || ''
         } : {}),
         AtualizarGuarnicaoServico: false
@@ -2571,6 +2580,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   function renderizarConfiguracoesSOS() {
     const area = document.getElementById('configuracoesViaturasSOS');
     area.innerHTML = '';
+    const retornoVinculado = tipoMovimentacaoAtual === 'Entrada' && !modoLancamentoRetroativoAtivo;
 
     Object.values(selecoesViaturasSOS).forEach((selecao, indice) => {
       const viatura = viaturasSOS.find(item => item.ID_Viatura === selecao.ID_Viatura);
@@ -2583,7 +2593,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       const editorAberto = edicoesViaturasSOSAbertas.has(chaveEdicao);
       const idEditor = `editorConfiguracaoSOS${indice}`;
       const condutor = obterMilitarSOSPorId(selecao.ID_Condutor);
-      const nomeCondutorFallback = tipoMovimentacaoAtual === 'Entrada'
+      const nomeCondutorFallback = retornoVinculado
         ? String(viatura.Nome_Condutor_Atual || '').trim()
         : '';
       const nomeCondutor = condutor ? condutor.Nome : nomeCondutorFallback;
@@ -2593,7 +2603,7 @@ let tipoMovimentacaoAtual = 'Entrada';
         if (militar) return militar.Nome;
         const indiceSaida = (viatura.IDs_Guarnicao_Atual || []).indexOf(id);
         const nomesSaida = Array.isArray(viatura.Nomes_Guarnicao_Atual) ? viatura.Nomes_Guarnicao_Atual : [];
-        return (tipoMovimentacaoAtual === 'Entrada' && nomesSaida[indiceSaida]) || ('Integrante da composição (' + id + ')');
+        return (retornoVinculado && nomesSaida[indiceSaida]) || ('Integrante da composição (' + id + ')');
       };
       const nomesGuarnicao = selecao.IDs_Guarnicao.map(nomeIntegrante);
 
@@ -2611,7 +2621,7 @@ let tipoMovimentacaoAtual = 'Entrada';
           edicoesViaturasSOSAbertas.delete(chaveEdicao);
         }
         resumo.setAttribute('aria-expanded', String(abrirEditor));
-        textoAcao.textContent = abrirEditor ? 'Fechar' : (tipoMovimentacaoAtual === 'Entrada' ? 'Ver composição da saída' : 'Toque para editar');
+        textoAcao.textContent = abrirEditor ? 'Fechar' : (retornoVinculado ? 'Ver composição da saída' : 'Toque para editar');
         editor.hidden = !abrirEditor;
       };
 
@@ -2631,7 +2641,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       const acaoResumo = document.createElement('span');
       acaoResumo.className = 'acao-resumo-guarnicao-sos';
       const textoAcao = document.createElement('small');
-      textoAcao.textContent = editorAberto ? 'Fechar' : (tipoMovimentacaoAtual === 'Entrada' ? 'Ver composição da saída' : 'Toque para editar');
+      textoAcao.textContent = editorAberto ? 'Fechar' : (retornoVinculado ? 'Ver composição da saída' : 'Toque para editar');
       const iconeAcao = document.createElement('span');
       iconeAcao.className = 'icone-resumo-guarnicao-sos';
       iconeAcao.setAttribute('aria-hidden', 'true');
@@ -2656,7 +2666,7 @@ let tipoMovimentacaoAtual = 'Entrada';
         condutorSaida.selected = true;
         selectCondutor.appendChild(condutorSaida);
       }
-      selectCondutor.disabled = tipoMovimentacaoAtual === 'Entrada';
+      selectCondutor.disabled = retornoVinculado;
       selectCondutor.onchange = () => {
         selecao.ID_Condutor = selectCondutor.value;
         selecao.IDs_Guarnicao = selecao.IDs_Guarnicao.filter(id => id !== selectCondutor.value);
@@ -2664,7 +2674,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       };
       editor.appendChild(labelCondutor);
       editor.appendChild(selectCondutor);
-      if (tipoMovimentacaoAtual === 'Entrada') {
+      if (retornoVinculado) {
         const avisoCondutorRetorno = document.createElement('small');
         avisoCondutorRetorno.className = 'aviso-condutor-retorno-sos';
         avisoCondutorRetorno.textContent = 'Na entrada, permanece a composição registrada na saída.';
@@ -2677,7 +2687,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       const linhaAdicionar = document.createElement('div');
       linhaAdicionar.className = 'linha-adicionar-guarnicao';
       const selectGuarnicao = criarSelectMilitaresSOS('', 'Selecione um integrante');
-      selectGuarnicao.disabled = tipoMovimentacaoAtual === 'Entrada';
+      selectGuarnicao.disabled = retornoVinculado;
       Array.from(selectGuarnicao.options).forEach(option => {
         if (option.value && (
           option.value === selecao.ID_Condutor ||
@@ -2689,7 +2699,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       const adicionar = document.createElement('button');
       adicionar.type = 'button';
       adicionar.textContent = 'Adicionar';
-      adicionar.disabled = tipoMovimentacaoAtual === 'Entrada';
+      adicionar.disabled = retornoVinculado;
       adicionar.onclick = () => {
         if (selectGuarnicao.value) {
           selecao.IDs_Guarnicao.push(selectGuarnicao.value);
@@ -2705,8 +2715,8 @@ let tipoMovimentacaoAtual = 'Entrada';
       selecao.IDs_Guarnicao.forEach(id => {
         const chip = document.createElement('button');
         chip.type = 'button';
-        chip.textContent = nomeIntegrante(id) + (tipoMovimentacaoAtual === 'Entrada' ? '' : ' ×');
-        chip.disabled = tipoMovimentacaoAtual === 'Entrada';
+        chip.textContent = nomeIntegrante(id) + (retornoVinculado ? '' : ' ×');
+        chip.disabled = retornoVinculado;
         chip.onclick = () => {
           selecao.IDs_Guarnicao = selecao.IDs_Guarnicao.filter(item => item !== id);
           renderizarConfiguracoesSOS();
@@ -2715,7 +2725,7 @@ let tipoMovimentacaoAtual = 'Entrada';
       });
       editor.appendChild(chips);
 
-      if (tipoMovimentacaoAtual !== 'Entrada') {
+      if (tipoMovimentacaoAtual !== 'Entrada' && !modoLancamentoRetroativoAtivo) {
         const opcaoAtualizar = document.createElement('label');
         opcaoAtualizar.className = 'opcao-atualizar-guarnicao';
         const checkboxAtualizar = document.createElement('input');
@@ -2736,7 +2746,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function registrarSOS() {
-    if (!garantirPermissaoOperacionalAtual()) return;
+    if (!garantirPermissaoRegistroMovimentacao()) return;
     if (tipoMovimentacaoAtual === 'Saída' && estadoListasFormulario !== 'pronto') {
       mostrarMensagem('Aguarde o carregamento dos destinos ou recarregue as opções antes de registrar a saída.', 'erro');
       return;
@@ -2772,6 +2782,28 @@ let tipoMovimentacaoAtual = 'Entrada';
         primeiroCartaoPendente.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
       mostrarMensagem('Selecione o condutor de cada viatura.', 'erro');
+      return;
+    }
+
+    if (modoLancamentoRetroativoAtivo) {
+      const dados = {
+        modoRegistro: 'Frota',
+        tipoMovimentacao: tipoMovimentacaoAtual,
+        tipoSOS: tipoMovimentacaoAtual === 'Entrada' ? 'Retorno' : 'Saída',
+        destino: destino,
+        viaturas: viaturas.map(item => ({
+          ID_Viatura: item.ID_Viatura,
+          ID_Condutor: item.ID_Condutor,
+          IDs_Guarnicao: (item.IDs_Guarnicao || []).slice(),
+          AtualizarGuarnicaoServico: false
+        })),
+        observacoes: document.getElementById('observacoesSOS').value.trim()
+      };
+      const nomes = viaturas.map(item => {
+        const viatura = viaturasSOS.find(candidata => candidata.ID_Viatura === item.ID_Viatura);
+        return viatura ? viatura.Prefixo : item.ID_Viatura;
+      }).join(', ');
+      confirmarLancamentoRetroativo(dados, nomes);
       return;
     }
 
@@ -3784,7 +3816,7 @@ let tipoMovimentacaoAtual = 'Entrada';
 
     if (card) card.classList.toggle('modo-retroativo', modoLancamentoRetroativoAtivo);
     if (bloco) bloco.classList.toggle('oculto', !modoLancamentoRetroativoAtivo);
-    if (campoForma) campoForma.classList.toggle('oculto', modoLancamentoRetroativoAtivo);
+    if (campoForma) campoForma.classList.remove('oculto');
     if (botaoAbrir) botaoAbrir.setAttribute('aria-expanded', String(modoLancamentoRetroativoAtivo));
     if (titulo) titulo.textContent = 'Controle de Acesso';
     if (botao && !botao.disabled) botao.textContent = modoLancamentoRetroativoAtivo
@@ -3891,8 +3923,8 @@ let tipoMovimentacaoAtual = 'Entrada';
       return null;
     }
 
-    if (modoRegistroAtual !== 'Individual') {
-      mostrarMensagem('O lançamento retroativo está disponível inicialmente apenas no modo Individual.', 'erro');
+    if (!['Individual', 'Viatura', 'Frota'].includes(dados.modoRegistro)) {
+      mostrarMensagem('Selecione uma forma de registro válida.', 'erro');
       return null;
     }
 
@@ -3942,7 +3974,6 @@ let tipoMovimentacaoAtual = 'Entrada';
       ? 'Outro — ' + detalhe
       : motivoSelecionado;
     const dadosRetroativos = Object.assign({}, dados, {
-      modoRegistro: 'Individual',
       dataHoraEventoIso: dataHora.toISOString(),
       motivoRetroativo: motivoRetroativo
     });
@@ -3967,7 +3998,45 @@ let tipoMovimentacaoAtual = 'Entrada';
     campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
+  function garantirPermissaoRegistroMovimentacao() {
+    if (!modoLancamentoRetroativoAtivo) return garantirPermissaoOperacionalAtual();
+    if (podeExecutarCompetenciaComandante()) return true;
+    atualizarPermissaoLancamento();
+    mostrarMensagem('A sessão do Comandante expirou. Entre novamente antes de lançar.', 'erro');
+    return false;
+  }
+
+  let veiculoExternoSuspensoParaConfirmacao = false;
+
+  function confirmarLancamentoRetroativo(dados, identificacao) {
+    const retroativo = prepararDadosLancamentoRetroativo(dados);
+    if (!retroativo) return;
+    const quando = retroativo.dataHora.toLocaleString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+    const externo = document.getElementById('modalVeiculoExterno');
+    if (dados.modoRegistro === 'Viatura' && externo.open) {
+      // A confirmação fica fora da camada superior do diálogo nativo. Suspendemos
+      // somente sua exibição; fechar o formulário apagaria o rascunho do condutor.
+      veiculoExternoSuspensoParaConfirmacao = true;
+      externo.close();
+    }
+    abrirModalConfirmacao(
+      'Confirmar lançamento retroativo',
+      'Você está registrando a <strong>' + escaparHtml(dados.tipoMovimentacao) +
+        '</strong> de <strong>' + escaparHtml(identificacao || 'pessoa não identificada') +
+        '</strong> como ocorrida em <strong>' + escaparHtml(quando) +
+        '</strong>.<br><br>Motivo: <strong>' + escaparHtml(retroativo.motivo) +
+        '</strong>.<br><br>' + (dados.modoRegistro === 'Frota'
+          ? 'Confirme que o condutor e a guarnição correspondem ao horário informado. A composição padrão do serviço não será alterada.<br><br>' : '') +
+        'O lançamento ficará identificado como retroativo no histórico e na auditoria.',
+      () => enviarMovimentacao(retroativo.dados, true),
+      'retroativo'
+    );
+  }
+
   function enviarMovimentacao(dados, retroativa) {
+    if (retroativa && !garantirPermissaoRegistroMovimentacao()) return;
     const externo = modoRegistroAtual === 'Viatura';
     const geracao = geracaoSessaoEquipe;
     const assinatura = obterAssinaturaSessoesEquipeLocal();
@@ -3988,7 +4057,13 @@ let tipoMovimentacaoAtual = 'Entrada';
           carregarIdentidadesEquipeServico(true);
           return;
         }
+        if (retroativa && (!resposta || resposta.sucesso !== true)) {
+          mostrarMensagem(resposta && resposta.mensagem || 'Não foi possível confirmar o lançamento. Confira os dados e tente novamente.', 'erro');
+          atualizarInterfaceLancamentoRetroativo();
+          return;
+        }
         if (revisaoFormulario !== revisaoFormularioMovimentacao) {
+          if (retroativa && dados.modoRegistro !== 'Individual') carregarDadosSOS();
           mostrarMensagem('Movimentação anterior registrada. O preenchimento atual foi mantido.', 'sucesso');
           carregarPessoasDentroGuarda(true);
           if (aparelhoTemAcessoPainelGestao()) carregarPainelComandante(true);
@@ -3996,7 +4071,13 @@ let tipoMovimentacaoAtual = 'Entrada';
           return;
         }
         mostrarMensagem(resposta.mensagem || 'Movimentação registrada com sucesso.', 'sucesso');
+        if (dados.modoRegistro === 'Frota') {
+          selecoesViaturasSOS = {};
+          edicoesViaturasSOSAbertas.clear();
+          document.getElementById('observacoesSOS').value = '';
+        }
         limparFormulario();
+        if (dados.modoRegistro === 'Frota') selecionarModoRegistro('SOS');
         carregarPessoasDentroGuarda(true);
 
         if (aparelhoTemAcessoPainelGestao()) {
@@ -4036,15 +4117,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   }
 
   function registrarMovimentacao() {
-    if (modoLancamentoRetroativoAtivo) {
-      if (!podeExecutarCompetenciaComandante()) {
-        atualizarPermissaoLancamento();
-        mostrarMensagem('A sessão do Comandante expirou. Entre novamente antes de lançar.', 'erro');
-        return;
-      }
-    } else if (!garantirPermissaoOperacionalAtual()) {
-      return;
-    }
+    if (!garantirPermissaoRegistroMovimentacao()) return;
 
     if (modoRegistroAtual === 'SOS') {
       registrarSOS();
@@ -4126,26 +4199,11 @@ let tipoMovimentacaoAtual = 'Entrada';
     }
 
     if (modoLancamentoRetroativoAtivo) {
-      const retroativo = prepararDadosLancamentoRetroativo(dados);
-      if (!retroativo) return;
-
       const nomePessoa = pessoaSelecionada && pessoaSelecionada.Nome
         ? pessoaSelecionada.Nome
-        : dados.nomePessoaNaoEncontrada;
-      const quando = retroativo.dataHora.toLocaleString('pt-BR', {
-        day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-      });
-      abrirModalConfirmacao(
-        'Confirmar lançamento retroativo',
-        'Você está registrando a <strong>' + escaparHtml(dados.tipoMovimentacao) +
-          '</strong> de <strong>' + escaparHtml(nomePessoa || 'pessoa não identificada') +
-          '</strong> como ocorrida em <strong>' + escaparHtml(quando) +
-          '</strong>.<br><br>Motivo: <strong>' + escaparHtml(retroativo.motivo) +
-          '</strong>.<br><br>O lançamento ficará identificado como retroativo no histórico e na auditoria.',
-        () => enviarMovimentacao(retroativo.dados, true),
-        'retroativo'
-      );
+        : dados.condutorExterno ? dados.condutorExterno.Nome : dados.nomePessoaNaoEncontrada;
+      confirmarLancamentoRetroativo(dados, dados.modoRegistro === 'Viatura'
+        ? dados.prefixoPlaca + ' — condutor: ' + nomePessoa : nomePessoa);
       return;
     }
 
@@ -8801,6 +8859,12 @@ function fecharModalConfirmacao() {
   if (modal) modal.classList.add('oculto');
   configurarDestinoModalConfirmacao_({});
   if (app) app.removeAttribute('inert');
+  if (veiculoExternoSuspensoParaConfirmacao) {
+    veiculoExternoSuspensoParaConfirmacao = false;
+    const externo = document.getElementById('modalVeiculoExterno');
+    if (modoLancamentoRetroativoAtivo && modoRegistroAtual === 'Viatura' &&
+        podeExecutarCompetenciaComandante() && !externo.open) externo.showModal();
+  }
   if (focoAntesModalConfirmacao && typeof focoAntesModalConfirmacao.focus === 'function') {
     focoAntesModalConfirmacao.focus();
   }
