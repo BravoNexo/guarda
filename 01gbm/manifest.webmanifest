@@ -6,7 +6,7 @@
   "lang": "pt-BR",
   "start_url": "/guarda/01gbm/",
   "scope": "/guarda/01gbm/",
-  "display": "browser",
+  "display": "standalone",
   "theme_color": "#111827",
   "background_color": "#ffffff",
   "icons": [
