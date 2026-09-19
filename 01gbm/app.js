@@ -7203,6 +7203,7 @@ function registrarSaidaRapidaPessoaGuarda(idMovimentacaoEntrada, destino, botao)
 }
 
 function inicializarPainelMotoristas() {
+  inicializarCampoValorMotoristas();
   const abaSalva = localStorage.getItem('painel_motoristas_aba');
   if (abaSalva && ABAS_PAINEL_MOTORISTAS[abaSalva]) abaPainelMotoristasAtual = abaSalva;
   selecionarAbaPainelMotoristas(abaPainelMotoristasAtual, false);
@@ -7616,6 +7617,58 @@ function rotuloTipoRegistroMotoristas(tipo) {
 function formatarValorMonetarioMotoristas(valor) {
   const numero = Number(String(valor === undefined || valor === null ? '' : valor).replace(',', '.'));
   return Number.isFinite(numero) ? numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+}
+
+function formatarEntradaValorMotoristas(valor) {
+  const digitos = String(valor || '').replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+  if (!digitos) return '';
+  const centavos = digitos.padStart(3, '0');
+  return centavos.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + centavos.slice(-2);
+}
+
+function interpretarValorMotoristas(valor) {
+  const texto = String(valor || '').trim();
+  if (!/^(?:\d+|\d{1,3}(?:\.\d{3})+),\d{2}$/.test(texto)) return NaN;
+  const centavos = Number(texto.replace(/[.,]/g, ''));
+  return Number.isSafeInteger(centavos) && centavos > 0 ? centavos / 100 : NaN;
+}
+
+function atualizarMascaraValorMotoristas(campo) {
+  const direita = campo.value.slice(campo.selectionStart ?? campo.value.length).replace(/\D/g, '').length;
+  campo.value = formatarEntradaValorMotoristas(campo.value);
+  let cursor = campo.value.length;
+  let restantes = direita;
+  while (cursor > 0 && restantes > 0) {
+    cursor -= 1;
+    if (/\d/.test(campo.value[cursor])) restantes -= 1;
+  }
+  campo.setSelectionRange(cursor, cursor);
+}
+
+function inicializarCampoValorMotoristas() {
+  const campo = document.getElementById('valorEventoMotoristas');
+  if (!campo || campo.dataset.mascaraMoeda === 'ativa') return;
+  campo.dataset.mascaraMoeda = 'ativa';
+  campo.addEventListener('input', () => atualizarMascaraValorMotoristas(campo));
+  campo.addEventListener('beforeinput', evento => {
+    if (!evento.cancelable || campo.selectionStart !== campo.selectionEnd ||
+        !['deleteContentBackward', 'deleteContentForward'].includes(evento.inputType)) return;
+    if (campo.value === '0,00') {
+      evento.preventDefault();
+      campo.value = '';
+      return;
+    }
+    const anterior = evento.inputType === 'deleteContentBackward';
+    let indice = campo.selectionStart + (anterior ? -1 : 0);
+    if (indice < 0 || indice >= campo.value.length || /\d/.test(campo.value[indice])) return;
+    // Apagar sobre vírgula/ponto remove o algarismo vizinho, sem prender o cursor.
+    while (indice >= 0 && indice < campo.value.length && !/\d/.test(campo.value[indice])) indice += anterior ? -1 : 1;
+    if (indice < 0 || indice >= campo.value.length) return;
+    evento.preventDefault();
+    campo.value = campo.value.slice(0, indice) + campo.value.slice(indice + 1);
+    campo.setSelectionRange(indice, indice);
+    atualizarMascaraValorMotoristas(campo);
+  });
 }
 
 function interpretarLitrosMotoristas(valor) {
@@ -8165,7 +8218,7 @@ function validarEventoMotoristas() {
   if (requerCondutor && !condutor) {
     return { erro: 'O condutor selecionado não está mais disponível no efetivo. Escolha outro militar.' };
   }
-  const valor = valorTexto === '' ? '' : Number(valorTexto);
+  const valor = tipo === 'ABASTECIMENTO' ? interpretarValorMotoristas(valorTexto) : '';
   if (tipo === 'ABASTECIMENTO' && (!Number.isFinite(valor) || valor <= 0)) return { erro: 'Informe um valor de abastecimento maior que zero.' };
   const litros = tipo === 'ABASTECIMENTO' ? interpretarLitrosMotoristas(litrosTexto) : '';
   if (tipo === 'ABASTECIMENTO' && !Number.isFinite(litros)) {

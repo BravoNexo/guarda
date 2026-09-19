@@ -1297,7 +1297,9 @@
           <div class="grade-campos-motoristas">
             <div class="campo campo-modal-motoristas oculto" id="campoValorEventoMotoristas">
               <label for="valorEventoMotoristas">Valor abastecido (R$) *</label>
-              <input type="number" id="valorEventoMotoristas" min="0" step="0.01" inputmode="decimal" placeholder="0,00">
+              <input type="text" id="valorEventoMotoristas" inputmode="numeric" autocomplete="off"
+                aria-describedby="ajudaValorEventoMotoristas" placeholder="0,00">
+              <small id="ajudaValorEventoMotoristas">Digite só números: 12345 vira 123,45.</small>
             </div>
             <div class="campo campo-modal-motoristas oculto" id="campoKmEventoMotoristas">
               <label for="kmEventoMotoristas" id="labelKmEventoMotoristas">Quilometragem *</label>
@@ -1368,7 +1370,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.32"></script>
+  <script src="app.js?v=27.1.33"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&
