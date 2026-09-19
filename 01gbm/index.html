@@ -1287,6 +1287,13 @@
             <small id="origemCondutorEventoMotoristas">Toque para pesquisar o efetivo por nome ou RG.</small>
           </div>
 
+          <div class="campo campo-modal-motoristas oculto" id="campoLitrosEventoMotoristas">
+            <label for="litrosEventoMotoristas">Quantidade abastecida (L) *</label>
+            <input type="text" id="litrosEventoMotoristas" inputmode="decimal" maxlength="20" required
+              autocomplete="off" aria-describedby="ajudaLitrosEventoMotoristas" placeholder="Ex.: 35,750">
+            <small id="ajudaLitrosEventoMotoristas">Em litros, com até 3 casas decimais. Não use separador de milhar.</small>
+          </div>
+
           <div class="grade-campos-motoristas">
             <div class="campo campo-modal-motoristas oculto" id="campoValorEventoMotoristas">
               <label for="valorEventoMotoristas">Valor abastecido (R$) *</label>
@@ -1361,7 +1368,7 @@
       </div>
     </div>
 
-  <script src="app.js?v=27.1.31"></script>
+  <script src="app.js?v=27.1.32"></script>
   <script>
     (function () {
       if (typeof window.abrirModalConfirmacao === 'function' &&

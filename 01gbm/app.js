@@ -1548,7 +1548,7 @@ let tipoMovimentacaoAtual = 'Entrada';
     },
     abastecimento: {
       titulo: 'Abastecimentos',
-      descricao: 'Condutor, horário, valor e quilometragem de cada abastecimento.',
+      descricao: 'Condutor, horário, litros, valor e quilometragem de cada abastecimento.',
       tipo: 'ABASTECIMENTO',
       acao: 'Lançar abastecimento'
     },
@@ -7618,6 +7618,20 @@ function formatarValorMonetarioMotoristas(valor) {
   return Number.isFinite(numero) ? numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
 }
 
+function interpretarLitrosMotoristas(valor) {
+  const texto = String(valor === undefined || valor === null ? '' : valor).trim();
+  if (!/^\d+(?:[.,]\d{1,3})?$/.test(texto)) return NaN;
+  const numero = Number(texto.replace(',', '.'));
+  return Number.isFinite(numero) && numero > 0 && numero <= Number.MAX_SAFE_INTEGER / 1000 ? numero : NaN;
+}
+
+function formatarLitrosMotoristas(valor) {
+  const numero = interpretarLitrosMotoristas(valor);
+  return Number.isFinite(numero)
+    ? numero.toLocaleString('pt-BR', { maximumFractionDigits: 3 }) + ' L'
+    : 'Não informado';
+}
+
 function registroAdministrativoVeioDaGuardaMotoristas(registro) {
   const origem = normalizarTextoMotoristas(valorCampoMotoristas(
     registro, 'origemRegistro', 'Origem_Registro', 'origem', 'Origem'
@@ -7792,11 +7806,13 @@ function renderizarRegistrosPainelMotoristas(lista, aba) {
     linha.appendChild(selo);
     item.appendChild(linha);
     const valor = valorCampoMotoristas(registro, 'valor', 'Valor');
+    const litros = valorCampoMotoristas(registro, 'litros', 'Litros');
     const km = valorCampoMotoristas(registro, 'km', 'KM');
     const condutor = valorCampoMotoristas(registro, 'nomeCondutor', 'Nome_Condutor');
     const rg = valorCampoMotoristas(registro, 'rgCondutor', 'RG_Condutor');
     const destino = valorCampoMotoristas(registro, 'destinoFornecedor', 'Destino_Fornecedor');
     const detalhes = [condutor ? 'Condutor: ' + condutor + (rg ? ' — RG ' + rg : '') : '',
+      tipo === 'ABASTECIMENTO' ? 'Quantidade: ' + formatarLitrosMotoristas(litros) : '',
       valor !== '' ? 'Valor: ' + formatarValorMonetarioMotoristas(valor) : '', km !== '' ? 'KM: ' + km : '',
       destino ? 'Local: ' + destino : ''].filter(Boolean);
     if (detalhes.length) {
@@ -7964,7 +7980,7 @@ function opcoesResultadoEventoMotoristas(tipo) {
 function configurarModalEventoMotoristas(tipo, idViatura) {
   const configuracoes = {
     CONDICAO: { titulo: 'Condição operacional', descricao: 'Informe se a viatura está operante ou inoperante.', resultado: true, labelResultado: 'Condição operacional *' },
-    ABASTECIMENTO: { titulo: 'Registrar abastecimento', descricao: 'Registre quem conduziu, quando, o valor e a quilometragem.', dataHora: true, condutor: true, valor: true, km: true, destino: true, labelDestino: 'Posto / estabelecimento' },
+    ABASTECIMENTO: { titulo: 'Registrar abastecimento', descricao: 'Registre quem conduziu, quando, a quantidade em litros, o valor e a quilometragem.', dataHora: true, condutor: true, litros: true, valor: true, km: true, destino: true, labelDestino: 'Posto / estabelecimento' },
     ALTERACAO: { titulo: 'Registrar alteração', descricao: 'Descreva a alteração, avaria, conferência ou fato relacionado à viatura.', dataHora: true, observacaoObrigatoria: true },
     MOV_ADMINISTRATIVA: { titulo: 'Movimento administrativo', descricao: 'Registre a entrada ou saída de uma viatura administrativa.', resultado: true, dataHora: true, condutor: true, km: true, destino: true, labelResultado: 'Movimentação *', labelDestino: 'Destino / procedência (obrigatório na saída)' },
     MANUTENCAO: { titulo: 'Movimento de manutenção', descricao: 'Registre a saída para oficina ou o retorno à unidade.', resultado: true, dataHora: true, condutor: true, km: true, destino: true, labelResultado: 'Movimentação *', labelDestino: 'Oficina / destino (obrigatório na saída)' },
@@ -7988,6 +8004,7 @@ function configurarModalEventoMotoristas(tipo, idViatura) {
   alternarCampoEventoMotoristas('campoDataHoraEventoMotoristas', !!configuracao.dataHora);
   alternarCampoEventoMotoristas('campoCondutorEventoMotoristas', !!configuracao.condutor);
   alternarCampoEventoMotoristas('campoValorEventoMotoristas', !!configuracao.valor);
+  alternarCampoEventoMotoristas('campoLitrosEventoMotoristas', !!configuracao.litros);
   alternarCampoEventoMotoristas('campoKmEventoMotoristas', !!configuracao.km);
   alternarCampoEventoMotoristas('campoJustificativaKmEventoMotoristas', !!configuracao.km);
   alternarCampoEventoMotoristas('campoDestinoEventoMotoristas', !!configuracao.destino);
@@ -8021,6 +8038,7 @@ function configurarModalEventoMotoristas(tipo, idViatura) {
   document.getElementById('dataHoraEventoMotoristas').value = obterDataHoraLocalAtualMotoristas();
   definirCondutorEventoMotoristas('', '');
   document.getElementById('valorEventoMotoristas').value = '';
+  document.getElementById('litrosEventoMotoristas').value = '';
   document.getElementById('kmEventoMotoristas').value = '';
   document.getElementById('justificativaKmEventoMotoristas').value = '';
   document.getElementById('destinoEventoMotoristas').value = '';
@@ -8120,6 +8138,7 @@ function validarEventoMotoristas() {
   const dataHoraLocal = document.getElementById('dataHoraEventoMotoristas').value;
   const idCondutor = document.getElementById('condutorEventoMotoristas').value.trim();
   const valorTexto = document.getElementById('valorEventoMotoristas').value;
+  const litrosTexto = document.getElementById('litrosEventoMotoristas').value;
   const kmTexto = document.getElementById('kmEventoMotoristas').value;
   const justificativaKm = document.getElementById('justificativaKmEventoMotoristas').value.trim();
   const destino = document.getElementById('destinoEventoMotoristas').value.trim();
@@ -8148,6 +8167,10 @@ function validarEventoMotoristas() {
   }
   const valor = valorTexto === '' ? '' : Number(valorTexto);
   if (tipo === 'ABASTECIMENTO' && (!Number.isFinite(valor) || valor <= 0)) return { erro: 'Informe um valor de abastecimento maior que zero.' };
+  const litros = tipo === 'ABASTECIMENTO' ? interpretarLitrosMotoristas(litrosTexto) : '';
+  if (tipo === 'ABASTECIMENTO' && !Number.isFinite(litros)) {
+    return { erro: 'Informe a quantidade abastecida em litros, maior que zero, com até 3 casas decimais (ex.: 35,750). Não use separador de milhar.' };
+  }
   const km = kmTexto === '' ? '' : Number(kmTexto);
   if (requerKm && (!Number.isFinite(km) || km < 0)) return { erro: 'Informe uma quilometragem válida.' };
   if (km !== '' && (!Number.isFinite(km) || km < 0)) return { erro: 'A quilometragem informada não é válida.' };
@@ -8173,6 +8196,7 @@ function validarEventoMotoristas() {
     rgCondutor: condutor ? condutor.rg : '',
     nomeCondutor: condutor ? condutor.nome : '',
     valor: valor,
+    litros: litros,
     km: km,
     justificativaKm: justificativaKm,
     destinoFornecedor: destino,
