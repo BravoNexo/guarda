@@ -1428,6 +1428,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   let painelMotoristasEmCarregamento = false;
   let painelMotoristasAutorizado = false;
   let assinaturaPainelMotoristasCarregado = '';
+  let revisaoConteudoPainelMotoristas = 0;
   let dadosCodigoEncarregadoMotoristas = null;
   let encarregadoMotoristasEquipeAtual = null;
   let sessaoEncarregadoMotoristasIdentificada = false;
@@ -1439,6 +1440,8 @@ let tipoMovimentacaoAtual = 'Entrada';
   let tipoEventoMotoristasAtual = '';
   let viaturaPreselecionadaMotoristas = '';
   let idSolicitacaoEventoMotoristasAtual = '';
+  let assinaturaEventoMotoristasAtual = '';
+  let envioEventoMotoristasAtual = null;
   let focoAntesDoModalMotoristas = null;
   let focoAntesDoModalEncerramentoMotoristas = null;
   let historicoInicializado = false;
@@ -5133,10 +5136,12 @@ function atualizarAcaoEncerramentoPendenteMotoristas() {
 }
 
 function invalidarPainelMotoristasLocal() {
+  revisaoConteudoPainelMotoristas += 1;
   painelMotoristasAtual = null;
   painelMotoristasCarregado = false;
   painelMotoristasAutorizado = false;
   assinaturaPainelMotoristasCarregado = '';
+  document.getElementById('cardPainelMotoristas')?.classList.add('oculto');
   limparConteudoPainelMotoristas();
   fecharModalEventoMotoristas(false);
 }
@@ -7148,6 +7153,7 @@ function obterAssinaturaSessaoPessoalMotoristas() {
 }
 
 function limparConteudoPainelMotoristas() {
+  document.getElementById('avisoAtualizacaoPainelMotoristas')?.remove();
   const textos = {
     totalMotoristasOperantes: '0',
     totalMotoristasInoperantes: '0',
@@ -7174,25 +7180,64 @@ function atualizarVisibilidadePainelMotoristas() {
   const possuiSessaoPessoal = !!assinaturaAtual;
 
   if (!possuiSessaoPessoal) {
-    card.classList.add('oculto');
-    painelMotoristasAtual = null;
-    painelMotoristasCarregado = false;
-    painelMotoristasAutorizado = false;
-    assinaturaPainelMotoristasCarregado = '';
-    limparConteudoPainelMotoristas();
-    fecharModalEventoMotoristas(false);
+    invalidarPainelMotoristasLocal();
     fecharModalEncerrarServicoMotoristas(false, true);
     return;
   }
 
-  if (assinaturaPainelMotoristasCarregado !== assinaturaAtual) {
-    painelMotoristasAtual = null;
-    painelMotoristasCarregado = false;
-    painelMotoristasAutorizado = false;
+  if ((assinaturaPainelMotoristasCarregado && assinaturaPainelMotoristasCarregado !== assinaturaAtual) ||
+      (assinaturaEventoMotoristasAtual && assinaturaEventoMotoristasAtual !== assinaturaAtual)) {
+    invalidarPainelMotoristasLocal();
   }
 
   card.classList.toggle('oculto', !painelMotoristasAutorizado);
   if (!painelMotoristasCarregado) carregarPainelMotoristas(true);
+}
+
+function erroConfirmaPerdaAcessoMotoristas(erro) {
+  const mensagem = String(erro && erro.message || erro || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return /^mestre_(sessao|leitura|acao):/.test(mensagem) ||
+    /sessao[^.]* (expirada|invalida|revogada|encerrada)|valide (novamente )?(seu|o) e-mail|encarregado de motoristas deste ciclo|acesso (negado|nao autorizado)|servico vinculado a esta sessao nao foi localizado|sessao nao corresponde mais ao servico|servico do encarregado de motoristas ja foi encerrado ou substituido/.test(mensagem);
+}
+
+function avisarFalhaAtualizacaoMotoristas() {
+  const mensagem = 'Não foi possível atualizar o livro agora. Os dados exibidos podem estar desatualizados. Seu preenchimento foi mantido; use Atualizar para tentar novamente.';
+  let aviso = document.getElementById('avisoAtualizacaoPainelMotoristas');
+  if (!aviso) {
+    aviso = document.createElement('p');
+    aviso.id = 'avisoAtualizacaoPainelMotoristas';
+    aviso.className = 'mensagem-sistema erro';
+    aviso.setAttribute('role', 'status');
+    aviso.setAttribute('aria-live', 'polite');
+    document.getElementById('cardPainelMotoristas')?.prepend(aviso);
+  }
+  aviso.textContent = mensagem;
+  const modal = document.getElementById('modalEventoMotoristas');
+  if (modal && !modal.classList.contains('oculto') && !envioEventoMotoristasAtual) {
+    const atual = document.getElementById('mensagemEventoMotoristas');
+    // Do not replace the warning about an unconfirmed write with a read error.
+    if (!atual || !/confirmar o salvamento|confirmacao|confirmação|lista de lançamentos/.test(atual.textContent)) {
+      definirMensagemModalMotoristas('mensagemEventoMotoristas', mensagem, 'erro');
+      if (atual) {
+        atual.dataset.origem = 'atualizacao-painel';
+        const atualizar = document.createElement('button');
+        atualizar.type = 'button';
+        atualizar.className = 'botao-secundario';
+        atualizar.textContent = 'Tentar atualizar o livro';
+        atualizar.onclick = () => carregarPainelMotoristas();
+        atual.appendChild(document.createElement('br'));
+        atual.appendChild(atualizar);
+      }
+    }
+  }
+}
+
+function limparAvisoAtualizacaoMotoristas() {
+  document.getElementById('avisoAtualizacaoPainelMotoristas')?.remove();
+  const mensagem = document.getElementById('mensagemEventoMotoristas');
+  if (mensagem?.dataset.origem === 'atualizacao-painel') {
+    definirMensagemModalMotoristas('mensagemEventoMotoristas', '', '');
+  }
 }
 
 function carregarPainelMotoristas(silencioso = false) {
@@ -7201,7 +7246,12 @@ function carregarPainelMotoristas(silencioso = false) {
     atualizarVisibilidadePainelMotoristas();
     return;
   }
+  if ((assinaturaPainelMotoristasCarregado && assinaturaPainelMotoristasCarregado !== assinaturaRequisicao) ||
+      (assinaturaEventoMotoristasAtual && assinaturaEventoMotoristasAtual !== assinaturaRequisicao)) {
+    invalidarPainelMotoristasLocal();
+  }
   if (painelMotoristasEmCarregamento) return;
+  const revisaoRequisicao = revisaoConteudoPainelMotoristas;
   const botao = document.getElementById('btnAtualizarPainelMotoristas');
   painelMotoristasEmCarregamento = true;
   if (botao) {
@@ -7211,20 +7261,25 @@ function carregarPainelMotoristas(silencioso = false) {
   google.script.run
     .withSuccessHandler(resposta => {
       painelMotoristasEmCarregamento = false;
-      const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaSessaoPessoalMotoristas();
+      const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaSessaoPessoalMotoristas() ||
+        revisaoRequisicao !== revisaoConteudoPainelMotoristas;
       if (!respostaObsoleta) {
         const painel = extrairPainelMotoristasResposta(resposta);
         const autorizado = painel && painel.autorizado === true &&
           painel.permissoes && painel.permissoes.podeAcessar === true;
+        const negado = painel && (painel.autorizado === false || painel.permissoes?.podeAcessar === false);
         if (autorizado) {
+          limparAvisoAtualizacaoMotoristas();
           renderizarPainelMotoristas(painel);
+        } else if (negado) {
+          invalidarPainelMotoristasLocal();
         } else {
-          painelMotoristasAtual = null;
-          painelMotoristasAutorizado = false;
-          const card = document.getElementById('cardPainelMotoristas');
-          if (card) card.classList.add('oculto');
-          limparConteudoPainelMotoristas();
-          fecharModalEventoMotoristas(false);
+          // A missing/malformed snapshot is not evidence that access was revoked.
+          if (painelMotoristasAutorizado && assinaturaPainelMotoristasCarregado === assinaturaRequisicao) {
+            avisarFalhaAtualizacaoMotoristas();
+          }
+          if (botao) { botao.disabled = false; botao.textContent = 'Atualizar'; }
+          return;
         }
         painelMotoristasCarregado = true;
         assinaturaPainelMotoristasCarregado = assinaturaRequisicao;
@@ -7240,31 +7295,31 @@ function carregarPainelMotoristas(silencioso = false) {
     })
     .withFailureHandler(erro => {
       painelMotoristasEmCarregamento = false;
-      const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaSessaoPessoalMotoristas();
+      const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaSessaoPessoalMotoristas() ||
+        revisaoRequisicao !== revisaoConteudoPainelMotoristas;
       if (botao) {
         botao.disabled = false;
         botao.textContent = 'Atualizar';
       }
-      if (respostaObsoleta && obterAssinaturaSessaoPessoalMotoristas()) {
-        painelMotoristasCarregado = false;
-        assinaturaPainelMotoristasCarregado = '';
-        carregarPainelMotoristas(true);
+      if (respostaObsoleta) {
+        if (obterAssinaturaSessaoPessoalMotoristas()) carregarPainelMotoristas(true);
+        else atualizarVisibilidadePainelMotoristas();
+        return;
+      }
+      if (erroConfirmaPerdaAcessoMotoristas(erro)) {
+        invalidarPainelMotoristasLocal();
+        carregarIdentidadesEquipeServico(true);
+        mostrarMensagem('O acesso ao livro de motoristas não está mais autorizado. Valide novamente seu acesso.', 'erro');
+        return;
+      }
+      if (painelMotoristasAutorizado && assinaturaPainelMotoristasCarregado === assinaturaRequisicao) {
+        // A failed read is not revocation. Keep the current form, its request key
+        // and last authorized snapshot; only an explicit denial may clear them.
+        painelMotoristasCarregado = true;
+        avisarFalhaAtualizacaoMotoristas();
       } else {
-        painelMotoristasAtual = null;
         painelMotoristasCarregado = false;
-        painelMotoristasAutorizado = false;
-        assinaturaPainelMotoristasCarregado = '';
-        const card = document.getElementById('cardPainelMotoristas');
-        if (card) card.classList.add('oculto');
-        limparConteudoPainelMotoristas();
-        fecharModalEventoMotoristas(false);
-        const mensagemErro = String(erro && erro.message || erro || '').toLowerCase();
-        if (/sess[aã]o|valide seu e-mail|encarregado de motoristas deste ciclo/.test(mensagemErro)) {
-          carregarIdentidadesEquipeServico(true);
-        }
-        if (!silencioso) {
-          mostrarMensagem('Erro ao atualizar o livro do Encarregado de Motoristas: ' + erro.message, 'erro');
-        }
+        if (!silencioso) mostrarMensagem('Erro ao atualizar o livro do Encarregado de Motoristas: ' + erro.message, 'erro');
       }
     })
     .getPainelMotoristas();
@@ -7361,7 +7416,8 @@ function renderizarPainelMotoristas(painel) {
   document.getElementById('atualizadoEmPainelMotoristas').textContent = painelMotoristasAtual.atualizadoEm
     ? 'Atualizado em ' + painelMotoristasAtual.atualizadoEm : '';
   atualizarAcaoEncerramentoPendenteMotoristas();
-  preencherListasMilitaresMotoristas();
+  // A background refresh must not replace the driver selected for an open draft.
+  if (!assinaturaEventoMotoristasAtual) preencherListasMilitaresMotoristas();
   selecionarAbaPainelMotoristas(abaPainelMotoristasAtual, false);
 }
 
@@ -7928,6 +7984,12 @@ function gerarIdSolicitacaoMotoristas(prefixo) {
 }
 
 function abrirModalEventoMotoristas(tipoForcado = '', idViatura = '') {
+  const assinaturaAtual = obterAssinaturaSessaoPessoalMotoristas();
+  if (!assinaturaAtual || assinaturaAtual !== assinaturaPainelMotoristasCarregado) {
+    atualizarVisibilidadePainelMotoristas();
+    mostrarMensagem('Atualize o livro antes de abrir um lançamento nesta sessão.', 'erro');
+    return;
+  }
   const podeEditar = painelMotoristasAtual && painelMotoristasAtual.permissoes && painelMotoristasAtual.permissoes.podeEditar === true;
   if (!podeEditar) {
     mostrarMensagem('Somente o Encarregado de Motoristas deste ciclo pode lançar.', 'erro');
@@ -7943,6 +8005,8 @@ function abrirModalEventoMotoristas(tipoForcado = '', idViatura = '') {
   }
   focoAntesDoModalMotoristas = document.activeElement;
   idSolicitacaoEventoMotoristasAtual = gerarIdSolicitacaoMotoristas('MOT');
+  assinaturaEventoMotoristasAtual = assinaturaAtual;
+  envioEventoMotoristasAtual = null;
   configurarModalEventoMotoristas(tipo, idViatura);
   const modal = document.getElementById('modalEventoMotoristas');
   const botaoSalvar = document.getElementById('btnSalvarEventoMotoristas');
@@ -7966,6 +8030,8 @@ function fecharModalEventoMotoristas(devolverFoco = true) {
   tipoEventoMotoristasAtual = '';
   viaturaPreselecionadaMotoristas = '';
   idSolicitacaoEventoMotoristasAtual = '';
+  assinaturaEventoMotoristasAtual = '';
+  envioEventoMotoristasAtual = null;
   restaurarRolagemAposModalMotoristas();
   if (devolverFoco && focoAntesDoModalMotoristas && typeof focoAntesDoModalMotoristas.focus === 'function') focoAntesDoModalMotoristas.focus({ preventScroll: true });
   focoAntesDoModalMotoristas = null;
@@ -7974,6 +8040,7 @@ function fecharModalEventoMotoristas(devolverFoco = true) {
 function definirMensagemModalMotoristas(id, texto, tipo) {
   const elemento = document.getElementById(id);
   if (!elemento) return;
+  delete elemento.dataset.origem;
   elemento.textContent = texto || '';
   elemento.classList.remove('erro', 'sucesso');
   if (tipo) elemento.classList.add(tipo);
@@ -8057,6 +8124,15 @@ function validarEventoMotoristas() {
 
 function salvarEventoMotoristas(eventoSubmit) {
   if (eventoSubmit) eventoSubmit.preventDefault();
+  if (envioEventoMotoristasAtual) return;
+  const assinaturaSessaoEnviada = obterAssinaturaSessaoPessoalMotoristas();
+  if (!assinaturaSessaoEnviada || assinaturaEventoMotoristasAtual !== assinaturaSessaoEnviada ||
+      !painelMotoristasAutorizado || painelMotoristasAtual?.permissoes?.podeEditar !== true ||
+      !idSolicitacaoEventoMotoristasAtual) {
+    fecharModalEventoMotoristas(false);
+    atualizarVisibilidadePainelMotoristas();
+    return;
+  }
   const validacao = validarEventoMotoristas();
   if (validacao.erro) {
     definirMensagemModalMotoristas('mensagemEventoMotoristas', validacao.erro, 'erro');
@@ -8064,7 +8140,8 @@ function salvarEventoMotoristas(eventoSubmit) {
   }
   const botao = document.getElementById('btnSalvarEventoMotoristas');
   const idSolicitacaoEnviada = idSolicitacaoEventoMotoristasAtual;
-  const assinaturaSessaoEnviada = obterAssinaturaSessaoPessoalMotoristas();
+  const envio = { id: idSolicitacaoEnviada, assinatura: assinaturaSessaoEnviada };
+  envioEventoMotoristasAtual = envio;
   botao.disabled = true;
   botao.textContent = 'Salvando...';
   definirMensagemModalMotoristas('mensagemEventoMotoristas', '', '');
@@ -8073,26 +8150,24 @@ function salvarEventoMotoristas(eventoSubmit) {
       const modalAindaCorresponde = idSolicitacaoEventoMotoristasAtual === idSolicitacaoEnviada;
       const sessaoAindaCorresponde = assinaturaSessaoEnviada &&
         assinaturaSessaoEnviada === obterAssinaturaSessaoPessoalMotoristas();
-      if (modalAindaCorresponde) {
-        botao.disabled = false;
-        botao.textContent = 'Salvar lançamento';
-      }
       if (!sessaoAindaCorresponde) {
         if (modalAindaCorresponde) fecharModalEventoMotoristas(false);
-        painelMotoristasAtual = null;
-        painelMotoristasCarregado = false;
-        painelMotoristasAutorizado = false;
-        assinaturaPainelMotoristasCarregado = '';
-        limparConteudoPainelMotoristas();
         atualizarVisibilidadePainelMotoristas();
-        mostrarMensagem((resposta && resposta.mensagem) || 'Lançamento registrado. O livro foi fechado porque o acesso mudou.', 'sucesso');
         return;
       }
+      // Closing the old form or losing authorization invalidates its callback.
+      // It must not close or populate a subsequent draft, even in the same login.
+      if (!modalAindaCorresponde || envioEventoMotoristasAtual !== envio) return;
+      envioEventoMotoristasAtual = null;
+      botao.disabled = false;
+      botao.textContent = 'Salvar lançamento';
+      revisaoConteudoPainelMotoristas += 1;
       const painel = resposta && resposta.painelMotoristas;
       if (modalAindaCorresponde) fecharModalEventoMotoristas();
       if (painel) {
         renderizarPainelMotoristas(painel);
         painelMotoristasCarregado = true;
+        assinaturaPainelMotoristasCarregado = assinaturaSessaoEnviada;
       } else {
         painelMotoristasCarregado = false;
         carregarPainelMotoristas(true);
@@ -8100,10 +8175,17 @@ function salvarEventoMotoristas(eventoSubmit) {
       mostrarMensagem((resposta && resposta.mensagem) || 'Lançamento registrado no livro de motoristas.', 'sucesso');
     })
     .withFailureHandler(erro => {
-      if (idSolicitacaoEventoMotoristasAtual !== idSolicitacaoEnviada) return;
+      if (idSolicitacaoEventoMotoristasAtual !== idSolicitacaoEnviada || envioEventoMotoristasAtual !== envio) return;
       if (assinaturaSessaoEnviada !== obterAssinaturaSessaoPessoalMotoristas()) {
         fecharModalEventoMotoristas(false);
         atualizarVisibilidadePainelMotoristas();
+        return;
+      }
+      envioEventoMotoristasAtual = null;
+      if (erroConfirmaPerdaAcessoMotoristas(erro)) {
+        invalidarPainelMotoristasLocal();
+        carregarIdentidadesEquipeServico(true);
+        mostrarMensagem('O acesso ao livro de motoristas não está mais autorizado. Valide novamente seu acesso.', 'erro');
         return;
       }
       botao.disabled = false;
