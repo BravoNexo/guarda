@@ -3329,13 +3329,18 @@ let tipoMovimentacaoAtual = 'Entrada';
   function preencherDestinos() {
     const select = document.getElementById('destino');
     const pessoaExterna = pessoaPrincipalEhExterna();
+    const saidaColaborador = modoRegistroAtual === 'Individual' &&
+      tipoMovimentacaoAtual === 'Saída' && categoriaPessoaIndividualAtual === 'Colaborador';
 
     select.innerHTML = '';
 
     const lista = destinos.filter(item => {
       const ativo = String(item.Ativo).toLowerCase() === 'sim';
       const mesmoTipo = item.Tipo_Movimentacao === tipoMovimentacaoAtual;
-      const permitido = !pessoaExterna || String(item.Permitido_Para_Visitante).toLowerCase() === 'sim';
+      // Folga também se aplica ao colaborador, sem ampliar os destinos de visitantes.
+      const folgaColaborador = saidaColaborador && normalizarTextoSeletorGuarnicao(item.Destino) === 'FOLGA';
+      const permitido = !pessoaExterna || folgaColaborador ||
+        String(item.Permitido_Para_Visitante).toLowerCase() === 'sim';
       return ativo && mesmoTipo && permitido;
     });
 
