@@ -7201,6 +7201,7 @@ function confirmarSaidaRapidaPessoa(pessoa, botao) {
 
 function obterDestinosSaidaRapida_(pessoa) {
   const tipoPessoa = normalizarTextoSeletorGuarnicao(pessoa && pessoa.tipoPessoa);
+  const colaborador = tipoPessoa === 'COLABORADOR';
   const pessoaExterna = tipoPessoa.indexOf('VISITANTE') >= 0 ||
     tipoPessoa.indexOf('COLABORADOR') >= 0 ||
     tipoPessoa === 'PESSOA EXTERNA';
@@ -7210,7 +7211,8 @@ function obterDestinosSaidaRapida_(pessoa) {
     .filter(item => {
       const ativo = normalizarTextoSeletorGuarnicao(item.Ativo) === 'SIM';
       const saida = normalizarTextoSeletorGuarnicao(item.Tipo_Movimentacao) === 'SAIDA';
-      const permitido = !pessoaExterna ||
+      const folgaColaborador = colaborador && normalizarTextoSeletorGuarnicao(item.Destino) === 'FOLGA';
+      const permitido = !pessoaExterna || folgaColaborador ||
         normalizarTextoSeletorGuarnicao(item.Permitido_Para_Visitante) === 'SIM';
       return ativo && saida && permitido && String(item.Destino || '').trim();
     })
