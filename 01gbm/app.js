@@ -21,6 +21,16 @@ const LEITURAS_EQUIPE_CANCELAVEIS = new Set([
   'getOficialDiaAtivo', 'getStatusToqueFogo'
 ]);
 const PRAZO_LEITURA_EQUIPE_MS = 25000;
+// Explicit read-only allowlist. Never infer safety from an action's prefix:
+// writes, OTP emails and changes of duty must not be aborted/retried here.
+const LEITURAS_COM_PRAZO = new Set([
+  ...LEITURAS_EQUIPE_CANCELAVEIS,
+  'getListasFormulario', 'getObservacoesServicoComandante',
+  'getPainelComandante', 'getPainelMotoristas', 'getPessoasDentroGuarda',
+  'consultarHistoricoMovimentacoes', 'getDadosSOS', 'buscarPessoasPorRgCpf',
+  'getDadosOficialDiaParaComandante', 'getSessaoMestre'
+]);
+const PRAZO_LEITURA_PAINEL_MS = 45000;
 
   const MESTRE_LEITURAS = new Set([
     'getListasFormulario', 'getEstadoEquipeServico', 'getGuardaAtivo',
@@ -797,8 +807,12 @@ async function chamarApi(acao, dados = {}, opcoes = {}) {
   dados = mestrePrepararRequisicao(acao, dados);
   const gravacaoMotoristas = acao === 'registrarEventoMotoristas';
   const leituraEquipe = LEITURAS_EQUIPE_CANCELAVEIS.has(acao);
-  const controlador = gravacaoMotoristas || leituraEquipe ? new AbortController() : null;
-  const sinalExterno = leituraEquipe ? opcoes.signal : null;
+  const leituraComPrazo = LEITURAS_COM_PRAZO.has(acao);
+  const controlador = gravacaoMotoristas || leituraComPrazo ? new AbortController() : null;
+  const sinalExterno = leituraComPrazo ? opcoes.signal : null;
+  const mensagemPrazoLeitura = leituraEquipe
+    ? 'A consulta da equipe demorou mais que o esperado. Tente atualizar novamente.'
+    : 'A consulta demorou mais que o esperado. As informações anteriores foram mantidas. Tente atualizar novamente.';
   let temporizador;
   let aoCancelar;
   let prazoEsgotado = false;
@@ -819,19 +833,34 @@ async function chamarApi(acao, dados = {}, opcoes = {}) {
           ...(controlador ? { signal: controlador.signal } : {})
         });
       } catch (erro) {
-        if (leituraEquipe && (controlador.signal.aborted || sinalExterno && sinalExterno.aborted)) {
+        if (leituraComPrazo && (controlador.signal.aborted || sinalExterno && sinalExterno.aborted)) {
           const cancelamento = new Error(prazoEsgotado
-            ? 'A consulta da equipe demorou mais que o esperado. Tente atualizar novamente.'
+            ? mensagemPrazoLeitura
             : 'Consulta substituída por uma atualização mais recente.');
           cancelamento.code = prazoEsgotado ? 'CONSULTA_TIMEOUT' : 'CONSULTA_CANCELADA';
           throw cancelamento;
         }
-        throw new Error('Não foi possível conectar ao servidor. Verifique a internet e tente novamente.');
+        const falhaRede = new Error('Não foi possível conectar ao servidor. Verifique a internet e tente novamente.');
+        if (leituraComPrazo) falhaRede.code = 'CONSULTA_REDE';
+        throw falhaRede;
       }
-      if (!resposta.ok) throw new Error('Falha de comunicação com o servidor.');
-      return resposta.json();
+      if (!resposta.ok) {
+        const falhaHttp = new Error('Falha de comunicação com o servidor.');
+        if (leituraComPrazo) falhaHttp.code = 'CONSULTA_HTTP';
+        throw falhaHttp;
+      }
+      try {
+        const dadosResposta = await resposta.json();
+        if (!dadosResposta || typeof dadosResposta.sucesso !== 'boolean') throw new Error('Resposta inválida.');
+        return dadosResposta;
+      } catch (erro) {
+        if (!leituraComPrazo) throw erro;
+        const falhaResposta = new Error('Não foi possível ler a resposta do servidor. Tente atualizar novamente.');
+        falhaResposta.code = 'CONSULTA_RESPOSTA';
+        throw falhaResposta;
+      }
     })();
-    resultado = gravacaoMotoristas || leituraEquipe
+    resultado = gravacaoMotoristas || leituraComPrazo
       ? await Promise.race([consulta, new Promise((resolver, rejeitar) => {
         if (sinalExterno) {
           aoCancelar = () => {
@@ -846,12 +875,12 @@ async function chamarApi(acao, dados = {}, opcoes = {}) {
         temporizador = setTimeout(() => {
           prazoEsgotado = true;
           controlador.abort();
-          const erro = new Error(leituraEquipe
-            ? 'A consulta da equipe demorou mais que o esperado. Tente atualizar novamente.'
+          const erro = new Error(leituraComPrazo
+            ? mensagemPrazoLeitura
             : 'Prazo de confirmação esgotado.');
-          if (leituraEquipe) erro.code = 'CONSULTA_TIMEOUT';
+          if (leituraComPrazo) erro.code = 'CONSULTA_TIMEOUT';
           rejeitar(erro);
-        }, leituraEquipe ? PRAZO_LEITURA_EQUIPE_MS : 45000);
+        }, leituraEquipe ? PRAZO_LEITURA_EQUIPE_MS : PRAZO_LEITURA_PAINEL_MS);
       })])
       : await consulta;
   } catch (erro) {
@@ -1416,7 +1445,7 @@ function criarExecutorAppsScript() {
       Promise.resolve()
         .then(() => chamarApi(nome, montarDadosChamadaApi(nome, argumentos)))
         .then(resposta => sucesso(ajustarRespostaApi(nome, resposta)))
-        .catch(erro => falha({ message: erro.message }));
+        .catch(erro => falha({ message: erro.message, code: erro.code }));
     };
   });
 
@@ -1479,6 +1508,8 @@ let tipoMovimentacaoAtual = 'Entrada';
   let assinaturaOperacionalLista48h = '';
   let painelComandanteEmCarregamento = false;
   let atualizacaoPainelComandantePendente = false;
+  let atualizacaoPainelComandantePendenteSilenciosa = true;
+  let revisaoConteudoPainelComandante = 0;
   let permissoesPainelGestaoAtual = { podeLancarHorarioAnterior: false };
   let edicaoComandanteAtual = null;
   let assinaturaEdicaoComandante = '';
@@ -1487,6 +1518,7 @@ let tipoMovimentacaoAtual = 'Entrada';
   let painelMotoristasAtual = null;
   let painelMotoristasCarregado = false;
   let painelMotoristasEmCarregamento = false;
+  let atualizacaoPainelMotoristasPendente = false;
   let painelMotoristasAutorizado = false;
   let assinaturaPainelMotoristasCarregado = '';
   let revisaoConteudoPainelMotoristas = 0;
@@ -1511,6 +1543,11 @@ let tipoMovimentacaoAtual = 'Entrada';
   let oficialAcessoAtual = null;
   let emailEncerramentoOficial = null;
   let pessoasDentroGuardaCarregadas = false;
+  let pessoasDentroGuardaEmCarregamento = false;
+  let atualizacaoPessoasDentroGuardaPendente = false;
+  let atualizacaoPessoasDentroGuardaPendenteSilenciosa = true;
+  let assinaturaContextoPessoasDentroGuarda = '';
+  let revisaoConteudoPessoasDentroGuarda = 0;
   let statusToqueFogoAtual = null;
   let estadoToqueFogoCarregado = false;
   let geracaoConsultaGuarda = 0;
@@ -2839,8 +2876,8 @@ let tipoMovimentacaoAtual = 'Entrada';
         }
         renderizarSelecaoViaturasSOS();
         renderizarEditorGuarnicoesServico();
-        carregarPessoasDentroGuarda(true);
-        carregarPainelComandante(true);
+        carregarPessoasDentroGuarda(true, true);
+        carregarPainelComandante(true, true);
         carregarIdentidadesEquipeServico(true);
         botao.disabled = false;
         atualizarRotuloRegistroViaturas();
@@ -4070,8 +4107,8 @@ let tipoMovimentacaoAtual = 'Entrada';
         if (revisaoFormulario !== revisaoFormularioMovimentacao) {
           if (retroativa && dados.modoRegistro !== 'Individual') carregarDadosSOS();
           mostrarMensagem('Movimentação anterior registrada. O preenchimento atual foi mantido.', 'sucesso');
-          carregarPessoasDentroGuarda(true);
-          if (aparelhoTemAcessoPainelGestao()) carregarPainelComandante(true);
+          carregarPessoasDentroGuarda(true, true);
+          if (aparelhoTemAcessoPainelGestao()) carregarPainelComandante(true, true);
           atualizarInterfaceLancamentoRetroativo();
           return;
         }
@@ -4083,10 +4120,10 @@ let tipoMovimentacaoAtual = 'Entrada';
         }
         limparFormulario();
         if (dados.modoRegistro === 'Frota') selecionarModoRegistro('SOS');
-        carregarPessoasDentroGuarda(true);
+        carregarPessoasDentroGuarda(true, true);
 
         if (aparelhoTemAcessoPainelGestao()) {
-          carregarPainelComandante(true);
+          carregarPainelComandante(true, true);
         }
 
         if (retroativa) {
@@ -5261,6 +5298,7 @@ function atualizarAcaoEncerramentoPendenteMotoristas() {
 
 function invalidarPainelMotoristasLocal() {
   revisaoConteudoPainelMotoristas += 1;
+  atualizacaoPainelMotoristasPendente = false;
   painelMotoristasAtual = null;
   painelMotoristasCarregado = false;
   painelMotoristasAutorizado = false;
@@ -5558,6 +5596,7 @@ function encerrarServicoEncarregadoMotoristas(eventoSubmit) {
             };
           atualizarTelaEncarregadoMotoristas();
           carregarIdentidadesEquipeServico(true);
+          revisaoConteudoPainelMotoristas += 1;
           carregarPainelMotoristas(true);
         } else {
           limparAcessoEncarregadoMotoristasLocal();
@@ -5860,15 +5899,10 @@ function atualizarVisibilidadePainelComandante() {
 }
 
 function atualizarContextoListaMovimentacoes48h_() {
-  const cobertura = obterCoberturaOperacionalAtual();
-  const assinatura = [
-    obterAssinaturaCredenciaisPainelGestao(),
-    String(guardaAtual && guardaAtual.ID_GuardaServico || ''),
-    String(cobertura && cobertura.ID_Cobertura || ''),
-    aparelhoPodeOperarGuardaAtual() ? 'operador' : 'consulta'
-  ].join('|');
+  const assinatura = obterAssinaturaContextoLeituraPaineis_();
   if (assinatura === assinaturaOperacionalLista48h) return false;
   assinaturaOperacionalLista48h = assinatura;
+  revisaoConteudoPainelComandante += 1;
   // This is now the guard's single list too. Old-post editing buttons cannot
   // remain on screen while the new context's permissions are being refreshed.
   painelComandanteCarregado = false;
@@ -6029,103 +6063,125 @@ function renderizarHistorico(resultado) {
   });
 }
 
-function carregarPainelComandante(silencioso = false) {
+function obterAssinaturaContextoLeituraPaineis_() {
+  const cobertura = obterCoberturaOperacionalAtual();
+  return JSON.stringify([
+    obterAssinaturaCredenciaisPainelGestao(), geracaoSessaoEquipe,
+    String(guardaAtual && guardaAtual.ID_GuardaServico || ''),
+    String(cobertura && cobertura.ID_Cobertura || ''),
+    String(comandanteAtual && comandanteAtual.ID_ComandanteGuarda || ''),
+    String(oficialAtual && oficialAtual.ID_OficialDia || ''),
+    aparelhoPodeOperarGuardaAtual(), aparelhoTemAcessoPainelGestao(),
+    podeConsultarCompetenciasComandante(), podeExecutarCompetenciaComandante()
+  ]);
+}
+
+function erroConfirmaSessaoOficialInvalida_(erro) {
+  if (/^CONSULTA_/.test(String(erro && erro.code || ''))) return false;
+  const mensagem = String(erro && erro.message || erro || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return /sessao[^.]*oficial[^.]*(invalida|expirada|revogada|encerrada)|(?:valide|valide novamente)[^.]*e-mail[^.]*oficial|oficial[^.]*sessao[^.]*(invalida|expirada|revogada|encerrada)|este aparelho nao possui uma sessao ativa de oficial|este e-mail nao corresponde mais a um oficial do 1º gbm/.test(mensagem);
+}
+
+function avisarFalhaLeituraPainel_(id, carregado) {
+  const elemento = document.getElementById(id);
+  if (!elemento) return;
+  const texto = String(elemento.textContent || '').replace(/ • Não foi possível atualizar\. Toque em Atualizar\.$/, '');
+  const ultimoHorario = carregado && texto.startsWith('Atualizado em ') ? texto + ' • ' : '';
+  elemento.textContent = ultimoHorario + (carregado
+    ? 'Não foi possível atualizar. Toque em Atualizar.'
+    : 'Não foi possível carregar. Toque em Atualizar.');
+}
+
+function carregarPainelComandante(silencioso = false, invalidar = false) {
+  if (invalidar) revisaoConteudoPainelComandante += 1;
   if (!aparelhoTemAcessoPainelGestao()) {
     atualizacaoPainelComandantePendente = false;
+    revisaoConteudoPainelComandante += 1;
     atualizarVisibilidadePainelComandante();
     return;
   }
   if (painelComandanteEmCarregamento) {
-    atualizacaoPainelComandantePendente = true;
-    painelComandanteCarregado = false;
+    // A poll shares the active read. A user refresh or completed write needs one
+    // fresh read after it, without throwing away an otherwise current snapshot.
+    if (!silencioso || invalidar) {
+      atualizacaoPainelComandantePendente = true;
+      atualizacaoPainelComandantePendenteSilenciosa =
+        atualizacaoPainelComandantePendenteSilenciosa && silencioso;
+    }
     return;
   }
 
   const botao = document.getElementById('btnAtualizarPainelComandante');
-  const assinaturaRequisicao = obterAssinaturaCredenciaisPainelGestao();
+  const assinaturaRequisicao = obterAssinaturaContextoLeituraPaineis_();
+  const revisaoRequisicao = revisaoConteudoPainelComandante;
+  let finalizada = false;
   const consultaEfetivoEraUnicoAcesso = !!(
-    obterSessaoConsultaEfetivo() &&
-    consultaEfetivoAtual &&
-    !aparelhoTemOutroAcessoPainelGestao()
+    obterSessaoConsultaEfetivo() && consultaEfetivoAtual && !aparelhoTemOutroAcessoPainelGestao()
   );
   atualizacaoPainelComandantePendente = false;
+  atualizacaoPainelComandantePendenteSilenciosa = true;
   painelComandanteEmCarregamento = true;
   if (edicaoComandanteAberta) {
     mensagemEdicaoComandante = 'Atualizando lançamentos...';
     renderizarEdicaoComandante();
   }
+  if (botao) { botao.disabled = true; botao.textContent = 'Atualizando...'; }
 
-  if (botao) {
-    botao.disabled = true;
-    botao.textContent = 'Atualizando...';
-  }
-
+  const respostaAindaVigente = () => aparelhoTemAcessoPainelGestao() &&
+    assinaturaRequisicao === obterAssinaturaContextoLeituraPaineis_() &&
+    revisaoRequisicao === revisaoConteudoPainelComandante;
+  const finalizar = (obsoleta) => {
+    if (finalizada) return;
+    finalizada = true;
+    const pendente = atualizacaoPainelComandantePendente;
+    const silenciosa = atualizacaoPainelComandantePendenteSilenciosa;
+    atualizacaoPainelComandantePendente = false;
+    atualizacaoPainelComandantePendenteSilenciosa = true;
+    painelComandanteEmCarregamento = false;
+    if (botao) { botao.disabled = false; botao.textContent = 'Atualizar'; }
+    if ((obsoleta || pendente) && aparelhoTemAcessoPainelGestao()) {
+      carregarPainelComandante(pendente ? silenciosa : true);
+    }
+  };
   google.script.run
-    .withSuccessHandler((painel) => {
-      painelComandanteEmCarregamento = false;
-      const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaCredenciaisPainelGestao();
-      const atualizacaoPendente = atualizacaoPainelComandantePendente;
-      atualizacaoPainelComandantePendente = false;
-
-      if (!respostaObsoleta && !atualizacaoPendente) {
-        renderizarPainelComandante(painel || {});
-        painelComandanteCarregado = true;
-      }
-
-      if (botao) {
-        botao.disabled = false;
-        botao.textContent = 'Atualizar';
-      }
-
-      if ((respostaObsoleta || atualizacaoPendente) && aparelhoTemAcessoPainelGestao()) {
-        painelComandanteCarregado = false;
-        carregarPainelComandante(true);
-      }
+    .withSuccessHandler(painel => {
+      if (finalizada) return;
+      const obsoleta = !respostaAindaVigente();
+      try {
+        if (!obsoleta) {
+          renderizarPainelComandante(painel || {});
+          painelComandanteCarregado = true;
+        }
+      } finally { finalizar(obsoleta); }
     })
-    .withFailureHandler((erro) => {
-      painelComandanteEmCarregamento = false;
-      const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaCredenciaisPainelGestao();
-      const atualizacaoPendente = atualizacaoPainelComandantePendente;
-      atualizacaoPainelComandantePendente = false;
-      const mensagemErro = String(erro && erro.message || erro || '');
-      const sessaoConsultaInvalida = !respostaObsoleta &&
-        consultaEfetivoEraUnicoAcesso &&
-        /valide o e-mail de um militar do 1º gbm para acessar o painel de gestão/i.test(mensagemErro);
-
-      if (!respostaObsoleta && !atualizacaoPendente && edicaoComandanteAberta) {
-        mensagemEdicaoComandante = 'Não foi possível atualizar os lançamentos. Feche e abra esta área para tentar novamente.';
-        renderizarEdicaoComandante();
-      }
-
-      if (!silencioso && !respostaObsoleta && !atualizacaoPendente) {
-        mostrarMensagem(
-          sessaoConsultaInvalida
+    .withFailureHandler(erro => {
+      if (finalizada) return;
+      const obsoleta = !respostaAindaVigente();
+      try {
+        if (obsoleta) return;
+        avisarFalhaLeituraPainel_('atualizadoEmPainelComandante', painelComandanteCarregado);
+        const mensagemErro = String(erro && erro.message || erro || '');
+        const sessaoConsultaInvalida = consultaEfetivoEraUnicoAcesso &&
+          /valide o e-mail de um militar do 1º gbm para acessar o painel de gestão/i.test(mensagemErro);
+        if (edicaoComandanteAberta) {
+          mensagemEdicaoComandante = 'Não foi possível atualizar os lançamentos. Feche e abra esta área para tentar novamente.';
+          renderizarEdicaoComandante();
+        }
+        if (!silencioso) {
+          mostrarMensagem(sessaoConsultaInvalida
             ? 'Sua sessão de consulta expirou. Entre novamente com seu e-mail.'
-            : 'Erro ao atualizar painel: ' + mensagemErro,
-          'erro'
-        );
-      }
-
-      if (!modoMestreAtivo() && !/^MESTRE_/.test(mensagemErro) && !respostaObsoleta && !aparelhoAssumiuComandanteAtual() && aparelhoAssumiuOficialAtual()) {
-        limparOficialLocal();
-        atualizarTelaAcessoOficial();
-        atualizarVisibilidadePainelComandante();
-      }
-
-      if (botao) {
-        botao.disabled = false;
-        botao.textContent = 'Atualizar';
-      }
-
-      if (sessaoConsultaInvalida) {
-        sairConsultaEfetivo(false);
-        return;
-      }
-
-      if ((respostaObsoleta || atualizacaoPendente) && aparelhoTemAcessoPainelGestao()) {
-        painelComandanteCarregado = false;
-        carregarPainelComandante(true);
-      }
+            : 'Erro ao atualizar painel: ' + mensagemErro, 'erro');
+        }
+        if (!modoMestreAtivo() && !/^MESTRE_/.test(mensagemErro) &&
+            !aparelhoAssumiuComandanteAtual() && aparelhoAssumiuOficialAtual() &&
+            erroConfirmaSessaoOficialInvalida_(erro)) {
+          limparOficialLocal();
+          atualizarTelaAcessoOficial();
+          atualizarVisibilidadePainelComandante();
+        }
+        if (sessaoConsultaInvalida) sairConsultaEfetivo(false);
+      } finally { finalizar(obsoleta); }
     })
     .getPainelComandante();
 }
@@ -6643,7 +6699,7 @@ function salvarEdicaoMovimentacao(evento) {
   const versaoEsperada = movimentacaoEmEdicao.versao;
   if (versaoEsperada === undefined || versaoEsperada === null || versaoEsperada === '') {
     fecharModalEdicaoMovimentacao(false);
-    if (aparelhoTemAcessoPainelGestao()) carregarPainelComandante(true);
+    if (aparelhoTemAcessoPainelGestao()) carregarPainelComandante(true, true);
     mostrarMensagem('O registro foi atualizado. Abra-o novamente para editar.', 'erro');
     return;
   }
@@ -6712,10 +6768,10 @@ function salvarEdicaoMovimentacao(evento) {
         'sucesso'
       );
 
-      carregarPessoasDentroGuarda(true);
+      carregarPessoasDentroGuarda(true, true);
       if (aparelhoTemAcessoPainelGestao()) {
         painelComandanteCarregado = false;
-        carregarPainelComandante(true);
+        carregarPainelComandante(true, true);
       }
       carregarIdentidadesEquipeServico(true);
     })
@@ -6889,7 +6945,7 @@ function salvarCorrecaoIdentificacaoPessoa(evento) {
   if (versaoEsperada === undefined || versaoEsperada === null || versaoEsperada === '') {
     fecharModalCorrecaoIdentificacaoPessoa(false);
     painelComandanteCarregado = false;
-    carregarPainelComandante(true);
+    carregarPainelComandante(true, true);
     mostrarMensagem('O registro foi atualizado. Abra-o novamente para corrigir.', 'erro');
     return;
   }
@@ -6964,9 +7020,9 @@ function salvarCorrecaoIdentificacaoPessoa(evento) {
         'sucesso'
       );
 
-      carregarPessoasDentroGuarda(true);
+      carregarPessoasDentroGuarda(true, true);
       painelComandanteCarregado = false;
-      carregarPainelComandante(true);
+      carregarPainelComandante(true, true);
       carregarIdentidadesEquipeServico(true);
     })
     .withFailureHandler(erro => {
@@ -7046,45 +7102,81 @@ function criarEstadoVazioPainel(texto) {
   return vazio;
 }
 
-function carregarPessoasDentroGuarda(silencioso = false) {
+function atualizarContextoPessoasDentroGuarda_() {
+  const assinatura = obterAssinaturaContextoLeituraPaineis_();
+  if (assinatura === assinaturaContextoPessoasDentroGuarda) return;
+  assinaturaContextoPessoasDentroGuarda = assinatura;
+  revisaoConteudoPessoasDentroGuarda += 1;
+  pessoasDentroGuardaCarregadas = false;
+  const lista = document.getElementById('listaPessoasDentroGuarda');
+  const atualizadoEm = document.getElementById('atualizadoEmPessoasDentroGuarda');
+  if (lista) lista.textContent = '';
+  if (atualizadoEm) atualizadoEm.textContent = '';
+  atualizarResumoPessoasDentroGuarda([]);
+}
+
+function carregarPessoasDentroGuarda(silencioso = false, invalidar = false) {
+  atualizarContextoPessoasDentroGuarda_();
+  if (invalidar) revisaoConteudoPessoasDentroGuarda += 1;
   if (!aparelhoPodeConsultarGuarda()) {
+    atualizacaoPessoasDentroGuardaPendente = false;
     atualizarVisibilidadePessoasDentroGuarda();
     return;
   }
-
-  const botao = document.getElementById('btnAtualizarPessoasDentroGuarda');
-
-  if (botao) {
-    botao.disabled = true;
-    botao.textContent = 'Atualizando...';
+  if (pessoasDentroGuardaEmCarregamento) {
+    if (!silencioso || invalidar) {
+      atualizacaoPessoasDentroGuardaPendente = true;
+      atualizacaoPessoasDentroGuardaPendenteSilenciosa =
+        atualizacaoPessoasDentroGuardaPendenteSilenciosa && silencioso;
+    }
+    return;
   }
-
+  const botao = document.getElementById('btnAtualizarPessoasDentroGuarda');
+  const assinaturaRequisicao = obterAssinaturaContextoLeituraPaineis_();
+  const revisaoRequisicao = revisaoConteudoPessoasDentroGuarda;
+  let finalizada = false;
+  atualizacaoPessoasDentroGuardaPendente = false;
+  atualizacaoPessoasDentroGuardaPendenteSilenciosa = true;
+  pessoasDentroGuardaEmCarregamento = true;
+  if (botao) { botao.disabled = true; botao.textContent = 'Atualizando...'; }
+  const respostaAindaVigente = () => aparelhoPodeConsultarGuarda() &&
+    assinaturaRequisicao === obterAssinaturaContextoLeituraPaineis_() &&
+    revisaoRequisicao === revisaoConteudoPessoasDentroGuarda;
+  const finalizar = (obsoleta) => {
+    if (finalizada) return;
+    finalizada = true;
+    const pendente = atualizacaoPessoasDentroGuardaPendente;
+    const silenciosa = atualizacaoPessoasDentroGuardaPendenteSilenciosa;
+    atualizacaoPessoasDentroGuardaPendente = false;
+    atualizacaoPessoasDentroGuardaPendenteSilenciosa = true;
+    pessoasDentroGuardaEmCarregamento = false;
+    if (botao) { botao.disabled = false; botao.textContent = 'Atualizar'; }
+    if ((obsoleta || pendente) && aparelhoPodeConsultarGuarda()) {
+      carregarPessoasDentroGuarda(pendente ? silenciosa : true);
+    }
+  };
   google.script.run
-    .withSuccessHandler((resposta) => {
-      renderizarPessoasDentroGuarda(resposta && resposta.pessoas ? resposta.pessoas : []);
-      pessoasDentroGuardaCarregadas = true;
-
-      const atualizadoEm = document.getElementById('atualizadoEmPessoasDentroGuarda');
-      if (atualizadoEm) {
-        atualizadoEm.textContent = resposta && resposta.atualizadoEm
-          ? 'Atualizado em ' + resposta.atualizadoEm
-          : '';
-      }
-
-      if (botao) {
-        botao.disabled = false;
-        botao.textContent = 'Atualizar';
-      }
+    .withSuccessHandler(resposta => {
+      if (finalizada) return;
+      const obsoleta = !respostaAindaVigente();
+      try {
+        if (obsoleta) return;
+        renderizarPessoasDentroGuarda(resposta && resposta.pessoas ? resposta.pessoas : []);
+        pessoasDentroGuardaCarregadas = true;
+        const atualizadoEm = document.getElementById('atualizadoEmPessoasDentroGuarda');
+        if (atualizadoEm) atualizadoEm.textContent = resposta && resposta.atualizadoEm
+          ? 'Atualizado em ' + resposta.atualizadoEm : '';
+      } finally { finalizar(obsoleta); }
     })
-    .withFailureHandler((erro) => {
-      if (!silencioso) {
-        mostrarMensagem('Erro ao carregar pessoas dentro: ' + erro.message, 'erro');
-      }
-
-      if (botao) {
-        botao.disabled = false;
-        botao.textContent = 'Atualizar';
-      }
+    .withFailureHandler(erro => {
+      if (finalizada) return;
+      const obsoleta = !respostaAindaVigente();
+      try {
+        if (!obsoleta) avisarFalhaLeituraPainel_('atualizadoEmPessoasDentroGuarda', pessoasDentroGuardaCarregadas);
+        if (!obsoleta && !silencioso) {
+          mostrarMensagem('Erro ao carregar pessoas dentro: ' + String(erro && erro.message || erro || ''), 'erro');
+        }
+      } finally { finalizar(obsoleta); }
     })
     .getPessoasDentroGuarda();
 }
@@ -7233,6 +7325,7 @@ function obterDestinosSaidaRapida_(pessoa) {
 
 function registrarSaidaRapidaPessoaGuarda(idMovimentacaoEntrada, destino, botao) {
   if (!garantirPermissaoOperacionalAtual()) return;
+  const contextoRequisicao = obterAssinaturaContextoLeituraPaineis_();
 
   if (botao) {
     botao.disabled = true;
@@ -7241,6 +7334,10 @@ function registrarSaidaRapidaPessoaGuarda(idMovimentacaoEntrada, destino, botao)
 
   google.script.run
     .withSuccessHandler((resposta) => {
+      if (!aparelhoPodeConsultarGuarda() || contextoRequisicao !== obterAssinaturaContextoLeituraPaineis_()) return;
+      atualizarContextoPessoasDentroGuarda_();
+      revisaoConteudoPessoasDentroGuarda += 1;
+      pessoasDentroGuardaCarregadas = true;
       mostrarMensagem(resposta.mensagem || 'Saída registrada com sucesso.', 'sucesso');
       renderizarPessoasDentroGuarda(resposta.pessoasDentro || []);
 
@@ -7250,10 +7347,11 @@ function registrarSaidaRapidaPessoaGuarda(idMovimentacaoEntrada, destino, botao)
       }
 
       if (aparelhoTemAcessoPainelGestao()) {
-        carregarPainelComandante(true);
+        carregarPainelComandante(true, true);
       }
     })
     .withFailureHandler((erro) => {
+      if (!aparelhoPodeConsultarGuarda() || contextoRequisicao !== obterAssinaturaContextoLeituraPaineis_()) return;
       mostrarMensagem('Erro ao registrar saída: ' + erro.message, 'erro');
 
       if (botao) {
@@ -7261,8 +7359,8 @@ function registrarSaidaRapidaPessoaGuarda(idMovimentacaoEntrada, destino, botao)
         botao.textContent = 'Registrar saída';
       }
 
-      carregarPessoasDentroGuarda(true);
-      if (aparelhoTemAcessoPainelGestao()) carregarPainelComandante(true);
+      carregarPessoasDentroGuarda(true, true);
+      if (aparelhoTemAcessoPainelGestao()) carregarPainelComandante(true, true);
     })
     .registrarSaidaRapidaPessoa(idMovimentacaoEntrada, destino);
 }
@@ -7377,8 +7475,13 @@ function carregarPainelMotoristas(silencioso = false) {
       (assinaturaEventoMotoristasAtual && assinaturaEventoMotoristasAtual !== assinaturaRequisicao)) {
     invalidarPainelMotoristasLocal();
   }
-  if (painelMotoristasEmCarregamento) return;
+  if (painelMotoristasEmCarregamento) {
+    if (!silencioso) atualizacaoPainelMotoristasPendente = true;
+    return;
+  }
+  atualizacaoPainelMotoristasPendente = false;
   const revisaoRequisicao = revisaoConteudoPainelMotoristas;
+  let respostaTratada = false;
   const botao = document.getElementById('btnAtualizarPainelMotoristas');
   painelMotoristasEmCarregamento = true;
   if (botao) {
@@ -7387,6 +7490,9 @@ function carregarPainelMotoristas(silencioso = false) {
   }
   google.script.run
     .withSuccessHandler(resposta => {
+      if (respostaTratada) return;
+      respostaTratada = true;
+      try {
       painelMotoristasEmCarregamento = false;
       const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaSessaoPessoalMotoristas() ||
         revisaoRequisicao !== revisaoConteudoPainelMotoristas;
@@ -7419,8 +7525,17 @@ function carregarPainelMotoristas(silencioso = false) {
         painelMotoristasCarregado = false;
         carregarPainelMotoristas(true);
       }
+      } finally {
+        if (atualizacaoPainelMotoristasPendente && !painelMotoristasEmCarregamento) {
+          atualizacaoPainelMotoristasPendente = false;
+          if (obterAssinaturaSessaoPessoalMotoristas()) carregarPainelMotoristas();
+        }
+      }
     })
     .withFailureHandler(erro => {
+      if (respostaTratada) return;
+      respostaTratada = true;
+      try {
       painelMotoristasEmCarregamento = false;
       const respostaObsoleta = assinaturaRequisicao !== obterAssinaturaSessaoPessoalMotoristas() ||
         revisaoRequisicao !== revisaoConteudoPainelMotoristas;
@@ -7447,6 +7562,12 @@ function carregarPainelMotoristas(silencioso = false) {
       } else {
         painelMotoristasCarregado = false;
         if (!silencioso) mostrarMensagem('Erro ao atualizar o livro do Encarregado de Motoristas: ' + erro.message, 'erro');
+      }
+      } finally {
+        if (atualizacaoPainelMotoristasPendente && !painelMotoristasEmCarregamento) {
+          atualizacaoPainelMotoristasPendente = false;
+          if (obterAssinaturaSessaoPessoalMotoristas()) carregarPainelMotoristas();
+        }
       }
     })
     .getPainelMotoristas();
@@ -9131,6 +9252,7 @@ function atualizarVisibilidadePessoasDentroGuarda() {
   const card = document.getElementById('cardPessoasDentroGuarda');
 
   if (!card) return;
+  atualizarContextoPessoasDentroGuarda_();
 
   if (aparelhoPodeConsultarGuarda()) {
     card.classList.remove('oculto');
