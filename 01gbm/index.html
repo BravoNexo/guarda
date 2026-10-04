@@ -9,24 +9,20 @@
     <meta name="apple-mobile-web-app-title" content="Gestão de Serviço">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="manifest" href="manifest.webmanifest?v=27.1.35">
-    <link rel="icon" type="image/png" sizes="48x48" href="icons/gestao-servico-48-v3.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/gestao-servico-192-v3.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="icons/gestao-servico-180-v3.png">
-  <link rel="stylesheet" href="style.css?v=27.1.29">
-  <style>
-    @media (max-width: 480px) {
-      #contextoRetroativoVeiculoExterno .grade-data-hora-retroativa { grid-template-columns: 1fr; }
-    }
-  </style>
-  </head>
+    
+    
+    
+    
+  <link rel="stylesheet" href="./gestao-operational.css">
+  
+  <meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" sizes="192x192" href="./icons/gestao-servico-192-v3.png"><script src="./gestao-operational.js" defer></script><link rel="manifest" href="./manifest.webmanifest"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https://ciqctdckqmopdeoigzfz.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'"></head>
 
-  <body>
-    <div class="app">
+  <body data-operational-team-enabled="true" data-operational-ui="true" class="candidate-shell" >
+    <div class="app"><p id="candidate-banner" class="candidate-banner">GESTÃO DE SERVIÇO · 1º GBM · SISTEMA OFICIAL</p>
       <header class="topo">
         <div class="topo-identidade">
           <div class="topo-brasao">
-            <img src="icons/gestao-servico-192-v3.png" alt="Gestão de Serviço — 1º GBM" width="192" height="192">
+            <img src="./icons/gestao-servico-192-v3.png" alt="Gestão de Serviço — 1º GBM" width="192" height="192">
           </div>
           <div class="topo-textos">
             <h1>Gestão de Serviço - 1º GBM</h1>
@@ -36,31 +32,48 @@
       </header>
 
       <main class="conteudo">
-        <section class="card card-guarda perfil-servico" id="perfilGuarda">
+<section class="card card-equipe-servico" id="cardEquipeServico"><div class="cabecalho-equipe-servico"><span><strong>Equipe de Serviço</strong><small>Identificação pessoal separada de assumir função</small></span></div><div class="conteudo-equipe-servico" id="conteudoEquipeServico">
+<section class="candidate-access" id="candidate-personal-access" aria-labelledby="candidate-title">
+  <h3 id="candidate-title">Acesso pessoal · RG e senha</h3>
+  <p>Entre com seu RG e senha. Para o primeiro acesso, confirme o e-mail do cadastro e crie sua senha.</p>
+  <p id="candidate-status" class="candidate-status" role="status" aria-live="polite">Conferindo a configuração de acesso…</p>
+  <form id="candidate-login-form"><fieldset id="candidate-login-fields" disabled data-candidate-personal="true">
+    <label for="candidate-rg">RG ou e-mail</label><input id="candidate-rg" name="rg" type="text" autocomplete="username" maxlength="254" autocapitalize="none" spellcheck="false" placeholder="RG ou e-mail cadastrado" required data-candidate-personal="true">
+    <label for="candidate-password">Senha</label><div class="candidate-password-row"><input id="candidate-password" name="password" type="password" autocomplete="current-password" maxlength="1024" required data-candidate-personal="true"><button id="candidate-toggle-password" type="button" disabled aria-controls="candidate-password" aria-pressed="false" data-candidate-personal="true">Mostrar</button></div>
+    <button id="candidate-login-submit" class="candidate-primary" type="submit" disabled data-candidate-personal="true">Entrar</button>
+  </fieldset></form>
+  <nav id="candidate-account-actions" class="candidate-account-actions" aria-label="Ajuda para o acesso pessoal"><button id="candidate-first-access" type="button" disabled data-candidate-personal="true">Primeiro acesso</button><button id="candidate-recovery" type="button" disabled data-candidate-personal="true">Esqueci minha senha</button></nav>
+  <form id="candidate-request-form" hidden><fieldset id="candidate-request-fields" disabled data-candidate-personal="true"><label for="candidate-request-rg">RG</label><input id="candidate-request-rg" type="text" autocomplete="username" maxlength="40" required data-candidate-personal="true"><div id="candidate-email-field"><label for="candidate-registered-email">E-mail do cadastro</label><input id="candidate-registered-email" type="email" autocomplete="email" maxlength="254" data-candidate-personal="true"></div><p id="candidate-recovery-note" hidden>A recuperação será enviada somente ao e-mail do cadastro.</p><button id="candidate-request-submit" type="submit" disabled data-candidate-personal="true">Enviar código</button></fieldset></form>
+  <form id="candidate-code-form" hidden><fieldset id="candidate-code-fields" disabled data-candidate-personal="true"><label for="candidate-code">Código recebido no e-mail</label><input id="candidate-code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,8}" minlength="6" maxlength="8" required data-candidate-personal="true"><button id="candidate-code-submit" type="submit" disabled data-candidate-personal="true">Confirmar e-mail</button></fieldset></form>
+  <form id="candidate-new-password-form" hidden><fieldset id="candidate-new-password-fields" disabled data-candidate-personal="true"><label for="candidate-new-password">Nova senha</label><div class="candidate-password-row"><input id="candidate-new-password" type="password" autocomplete="new-password" minlength="8" maxlength="1024" required data-candidate-personal="true"><button id="candidate-toggle-new-password" type="button" disabled aria-controls="candidate-new-password candidate-confirm-password" aria-pressed="false" data-candidate-personal="true">Mostrar</button></div><label for="candidate-confirm-password">Repetir nova senha</label><input id="candidate-confirm-password" type="password" autocomplete="new-password" minlength="8" maxlength="1024" required data-candidate-personal="true"><p>Pelo menos 8 caracteres. Use uma senha exclusiva.</p><button id="candidate-complete-submit" type="submit" disabled data-candidate-personal="true">Salvar senha e entrar</button></fieldset></form>
+  <button id="candidate-cancel-flow" type="button" disabled hidden data-candidate-personal="true">Voltar</button>
+  <div id="candidate-identity" hidden><p>Identidade pessoal confirmada não libera funções de serviço.</p><div class="candidate-account-actions"><button id="candidate-recheck" type="button" disabled data-candidate-personal="true">Reconsultar meu acesso</button><button id="candidate-sign-out" type="button" disabled data-candidate-personal="true">Sair desta aba</button></div></div>
+  <section id="candidate-own-context" class="candidate-own-context" aria-label="Situação do próprio acesso" hidden><h4>Meu acesso</h4><p id="candidate-own-status" role="status" aria-live="polite"></p><p id="candidate-own-binding"></p><p id="candidate-own-capabilities"></p><p id="candidate-own-cycle"></p><div class="candidate-duty-actions"><button id="operational-reload" type="button" disabled>Atualizar informações</button><button id="operational-reconcile" type="button" disabled hidden>Conferir registro pendente</button></div><p id="operational-status" role="status" aria-live="polite"></p><p id="candidate-own-scope">Entrar não assume uma função. Sair da conta não encerra o serviço.</p></section>
+</section><p class="candidate-role-note">O login identifica você. A função de serviço deve ser assumida explicitamente nos cartões abaixo.</p><section class="card card-guarda perfil-servico" id="perfilGuarda">
           <div class="cabecalho-card-guarda">
             <h2>Guarda de Serviço</h2>
 
             <div class="acoes-guarda">
-              <button type="button" id="btnTrocarGuarda" class="botao-trocar oculto" onclick="mostrarAreaTrocaGuarda()">
+              <button type="button" id="btnTrocarGuarda" class="botao-trocar oculto" disabled data-candidate-operation="true" aria-disabled="true">
                 Assumir / Trocar
               </button>
 
-              <button type="button" id="btnEncerrarGuarda" class="botao-sair oculto" onclick="encerrarGuarda()">
+              <button type="button" id="btnEncerrarGuarda" class="botao-sair oculto" disabled data-candidate-operation="true" aria-disabled="true">
                 Sair
               </button>
             </div>
           </div>
 
           <div id="statusGuarda" class="status-guarda">
-            Carregando guarda atual...
+            Sem consulta operacional neste candidato.
           </div>
 
           <div id="acessoDiarioGuarda" class="acesso-diario-guarda oculto">
             <p id="identidadeAcessoDiarioGuarda" role="status" aria-live="polite"></p>
-            <button type="button" id="btnSairAcessoDiarioGuarda" class="botao-secundario oculto" onclick="sairAcessoDiarioGuarda()">Sair deste acesso</button>
+            <button type="button" id="btnSairAcessoDiarioGuarda" class="botao-secundario oculto" disabled data-candidate-operation="true" aria-disabled="true">Sair deste acesso</button>
           </div>
 
-          <button type="button" id="btnRetomarPosto" class="botao-retomar-posto acao-cobertura-operacional oculto" onclick="confirmarRetomadaPosto()">
+          <button type="button" id="btnRetomarPosto" class="botao-retomar-posto acao-cobertura-operacional oculto" disabled data-candidate-operation="true" aria-disabled="true">
             Retomar Posto
           </button>
 
@@ -68,8 +81,8 @@
             <div class="campo">
               <label>Código enviado ao guarda atual</label>
               <div class="linha-busca">
-                <input type="text" id="codigoEncerrarGuarda" placeholder="Digite o código">
-                <button type="button" onclick="validarCodigoEEncerrarGuarda()">Validar</button>
+                <input type="text" id="codigoEncerrarGuarda" placeholder="Digite o código" disabled data-candidate-operation="true" aria-disabled="true">
+                <button type="button" disabled data-candidate-operation="true" aria-disabled="true">Validar</button>
               </div>
             </div>
           </div>
@@ -78,19 +91,19 @@
             <div class="campo">
               <label>E-mail do militar</label>
               <div class="linha-busca">
-                <input type="email" id="emailGuarda" placeholder="Digite o e-mail">
-                <button type="button" id="btnEnviarCodigoGuarda" onclick="enviarCodigoGuarda()">Enviar código</button>
+                <input type="email" id="emailGuarda" placeholder="Digite o e-mail" disabled data-candidate-operation="true" aria-disabled="true">
+                <button type="button" id="btnEnviarCodigoGuarda" disabled data-candidate-operation="true" aria-disabled="true">Enviar código</button>
               </div>
             </div>
 
             <p id="lpStatus_guarda" role="status" aria-live="polite" class="oculto"></p>
-            <button type="button" id="lpCancelar_guarda" class="botao-secundario oculto" onclick="LP_cancelar_('guarda')">Cancelar solicitação / trocar e-mail</button>
+            <button type="button" id="lpCancelar_guarda" class="botao-secundario oculto" disabled data-candidate-operation="true" aria-disabled="true">Cancelar solicitação / trocar e-mail</button>
             <div id="areaCodigoGuarda" class="oculto">
               <div class="campo">
                 <label>Código recebido por e-mail</label>
                 <div class="linha-busca">
-                  <input type="text" id="codigoGuarda" placeholder="Digite o código" autocomplete="one-time-code" inputmode="numeric">
-                  <button type="button" id="btnValidarCodigoGuarda" onclick="validarCodigoGuarda()">Validar</button>
+                  <input type="text" id="codigoGuarda" placeholder="Digite o código" autocomplete="one-time-code" inputmode="numeric" disabled data-candidate-operation="true" aria-disabled="true">
+                  <button type="button" id="btnValidarCodigoGuarda" disabled data-candidate-operation="true" aria-disabled="true">Validar</button>
                 </div>
               </div>
             </div>
@@ -100,40 +113,39 @@
             <div id="areaIdentificacaoManual" class="oculto">
               <div class="campo">
                 <label>RG do militar</label>
-                <input type="text" id="rgGuardaManual" placeholder="RG do militar">
+                <input type="text" id="rgGuardaManual" placeholder="RG do militar" disabled data-candidate-operation="true" aria-disabled="true">
               </div>
 
               <div class="campo">
                 <label>Nome do militar</label>
-                <input type="text" id="nomeGuardaManual" placeholder="Ex.: CB COSTA">
+                <input type="text" id="nomeGuardaManual" placeholder="Ex.: CB COSTA" disabled data-candidate-operation="true" aria-disabled="true">
               </div>
             </div>
 
-            <button type="button" id="btnAssumirGuarda" class="botao-secundario oculto" onclick="assumirGuarda()">
+            <button type="button" id="btnAssumirGuarda" class="botao-secundario oculto" disabled data-candidate-operation="true" aria-disabled="true">
               Assumir neste celular
             </button>
           </div>
           
-        </section>
-
-        <section class="card card-toque-fogo perfil-servico" id="cardToqueFogo">
+        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-guarda-assumir" type="button" disabled>Assumir / Trocar</button><button id="operational-role-guarda-encerrar" type="button" disabled>Encerrar guarda</button></div></section>
+<section class="card card-toque-fogo perfil-servico" id="cardToqueFogo">
           <div class="cabecalho-card-guarda">
             <div>
               <h2>Toque de Fogo</h2>
-              <span id="periodoToqueFogo" class="periodo-toque-fogo">Carregando período...</span>
+              <span id="periodoToqueFogo" class="periodo-toque-fogo">Sem consulta operacional neste candidato.</span>
             </div>
             <div class="acoes-guarda">
-              <button type="button" id="btnTrocarToqueFogo" class="botao-trocar oculto" onclick="mostrarAreaTrocaToqueFogo()">
+              <button type="button" id="btnTrocarToqueFogo" class="botao-trocar oculto" disabled data-candidate-operation="true" aria-disabled="true">
                 Entrar / Trocar
               </button>
             </div>
           </div>
 
-          <div id="statusToqueFogo" class="status-guarda">Carregando Toque de Fogo atual...</div>
+          <div id="statusToqueFogo" class="status-guarda">Sem consulta operacional neste candidato.</div>
           <div id="programacaoToqueFogo" class="programacao-toque-fogo" aria-live="polite"></div>
 
           <div id="statusCoberturaToque" class="status-cobertura-toque oculto"></div>
-          <button type="button" id="btnAssumirHoraToque" class="botao-assumir-hora acao-cobertura-operacional oculto" onclick="confirmarAssuncaoHoraToque()">
+          <button type="button" id="btnAssumirHoraToque" class="botao-assumir-hora acao-cobertura-operacional oculto" disabled data-candidate-operation="true" aria-disabled="true">
             Assumir Hora
           </button>
 
@@ -144,7 +156,7 @@
             </div>
             <div class="campo">
               <label for="periodoAlvoToqueFogo">Período</label>
-              <select id="periodoAlvoToqueFogo" onchange="alterarPeriodoAlvoToqueFogo()">
+              <select id="periodoAlvoToqueFogo" disabled data-candidate-operation="true" aria-disabled="true">
                 <option value="Diurno">Diurno • 08h às 22h</option>
                 <option value="Noturno">Noturno • 22h às 08h</option>
               </select>
@@ -152,33 +164,194 @@
             <div class="campo">
               <label>E-mail do militar</label>
               <div class="linha-busca">
-                <input type="email" id="emailToqueFogo" placeholder="Digite o e-mail">
-                <button type="button" id="btnEnviarCodigoToqueFogo" onclick="enviarCodigoToqueFogo()">Enviar código</button>
+                <input type="email" id="emailToqueFogo" placeholder="Digite o e-mail" disabled data-candidate-operation="true" aria-disabled="true">
+                <button type="button" id="btnEnviarCodigoToqueFogo" disabled data-candidate-operation="true" aria-disabled="true">Enviar código</button>
               </div>
             </div>
 
             <p id="lpStatus_toque" role="status" aria-live="polite" class="oculto"></p>
-            <button type="button" id="lpCancelar_toque" class="botao-secundario oculto" onclick="LP_cancelar_('toque')">Cancelar solicitação / trocar e-mail</button>
+            <button type="button" id="lpCancelar_toque" class="botao-secundario oculto" disabled data-candidate-operation="true" aria-disabled="true">Cancelar solicitação / trocar e-mail</button>
             <div id="areaCodigoToqueFogo" class="oculto">
               <div class="campo">
                 <label>Código recebido por e-mail</label>
                 <div class="linha-busca">
-                  <input type="text" id="codigoToqueFogo" inputmode="numeric" placeholder="Digite o código" autocomplete="one-time-code">
-                  <button type="button" id="btnValidarCodigoToqueFogo" onclick="validarCodigoToqueFogo()">Validar</button>
+                  <input type="text" id="codigoToqueFogo" inputmode="numeric" placeholder="Digite o código" autocomplete="one-time-code" disabled data-candidate-operation="true" aria-disabled="true">
+                  <button type="button" id="btnValidarCodigoToqueFogo" disabled data-candidate-operation="true" aria-disabled="true">Validar</button>
                 </div>
               </div>
             </div>
 
             <div id="areaToqueFogoIdentificado" class="resultado oculto"></div>
             <div id="areaToqueFogoManual" class="oculto">
-              <div class="campo"><label>RG do militar</label><input type="text" id="rgToqueFogoManual" placeholder="RG do militar"></div>
-              <div class="campo"><label>Nome do militar</label><input type="text" id="nomeToqueFogoManual" placeholder="Ex.: SD COSTA"></div>
+              <div class="campo"><label>RG do militar</label><input type="text" id="rgToqueFogoManual" placeholder="RG do militar" disabled data-candidate-operation="true" aria-disabled="true"></div>
+              <div class="campo"><label>Nome do militar</label><input type="text" id="nomeToqueFogoManual" placeholder="Ex.: SD COSTA" disabled data-candidate-operation="true" aria-disabled="true"></div>
             </div>
-            <button type="button" id="btnAssumirToqueFogo" class="botao-secundario oculto" onclick="assumirToqueFogo()">
+            <button type="button" id="btnAssumirToqueFogo" class="botao-secundario oculto" disabled data-candidate-operation="true" aria-disabled="true">
               Definir Toque de Fogo
             </button>
           </div>
+        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-toque_diurno-assumir" type="button" disabled>Assumir / Trocar Toque Diurno</button><button id="operational-role-toque_diurno-encerrar" type="button" disabled>Encerrar Toque Diurno</button></div><div class="candidate-duty-actions operational-role-actions"><button id="operational-role-toque_noturno-assumir" type="button" disabled>Assumir / Trocar Toque Noturno</button><button id="operational-role-toque_noturno-encerrar" type="button" disabled>Encerrar Toque Noturno</button></div></section>
+<section class="card card-guarda card-comandante perfil-servico" id="perfilComandante">
+          <div class="cabecalho-card-guarda">
+            <h2>Comandante da Guarda</h2>
+
+            <div class="acoes-guarda">
+              <button type="button" id="btnTrocarComandante" class="botao-trocar oculto" disabled data-candidate-operation="true" aria-disabled="true">
+                Assumir / Trocar
+              </button>
+
+              <button type="button" id="btnEncerrarComandante" class="botao-sair oculto" disabled data-candidate-operation="true" aria-disabled="true">
+                Encerrar serviço
+              </button>
+            </div>
+          </div>
+
+          <div id="statusComandante" class="status-guarda">
+            Sem consulta operacional neste candidato.
+          </div>
+
+          <div id="statusAcaoComandante" class="resultado oculto" role="status" aria-live="polite"></div>
+
+          <div id="areaCodigoEncerrarComandante" class="oculto">
+            <div id="observacoesEncerramentoHost"></div>
+            <div class="campo">
+              <label>Código enviado ao comandante atual</label>
+              <input type="text" id="codigoEncerrarComandante" inputmode="numeric" placeholder="Digite o código" disabled data-candidate-operation="true" aria-disabled="true">
+              <button type="button" disabled data-candidate-operation="true" aria-disabled="true">Cancelar encerramento</button>
+              <button type="button" id="btnConfirmarEncerramentoComandante" class="botao-finalizar-relatorio" disabled data-candidate-operation="true" aria-disabled="true">Encerrar serviço</button>
+            </div>
+          </div>
+
+          <div id="areaAssumirComandante">
+            <div class="campo">
+              <label>E-mail do militar</label>
+              <div class="linha-busca">
+                <input type="email" id="emailComandante" placeholder="Digite o e-mail cadastrado" disabled data-candidate-operation="true" aria-disabled="true">
+                <button type="button" id="btnEnviarCodigoComandante" disabled data-candidate-operation="true" aria-disabled="true">Enviar código</button>
+              </div>
+            </div>
+
+            <p id="lpStatus_comandante" role="status" aria-live="polite" class="oculto"></p>
+            <button type="button" id="lpCancelar_comandante" class="botao-secundario oculto" disabled data-candidate-operation="true" aria-disabled="true">Cancelar solicitação / trocar e-mail</button>
+            <div id="areaCodigoComandante" class="oculto">
+              <div class="campo">
+                <label>Código recebido por e-mail</label>
+                <div class="linha-busca">
+                  <input type="text" id="codigoComandante" inputmode="numeric" placeholder="Digite o código" autocomplete="one-time-code" disabled data-candidate-operation="true" aria-disabled="true">
+                  <button type="button" id="btnValidarCodigoComandante" disabled data-candidate-operation="true" aria-disabled="true">Validar</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="areaComandanteIdentificado" class="resultado oculto"></div>
+
+            <button type="button" id="btnAssumirComandante" class="botao-secundario oculto" disabled data-candidate-operation="true" aria-disabled="true">
+              Assumir como comandante
+            </button>
+          </div>
+        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-comandante_guarda-assumir" type="button" disabled>Assumir / Trocar</button><button id="operational-role-comandante_guarda-encerrar" type="button" disabled>Encerrar serviço</button></div></section>
+<section class="card card-guarda card-comandante perfil-servico" id="perfilOficial">
+          <div class="cabecalho-card-guarda">
+            <h2>Oficial de Dia</h2>
+            <div class="acoes-guarda">
+              <button type="button" id="btnEditarOficialDia" class="botao-trocar oculto" aria-expanded="false" aria-controls="areaDesignarOficial" disabled data-candidate-operation="true" aria-disabled="true">Alterar</button>
+              <button type="button" id="btnAbrirAcessoOficial" class="botao-trocar oculto" aria-expanded="false" aria-controls="areaAcessoPainelOficial" disabled data-candidate-operation="true" aria-disabled="true">Acessar painel</button>
+            </div>
+          </div>
+
+          <div id="statusOficial" class="status-guarda">Sem consulta operacional neste candidato.</div>
+
+          <div id="areaDesignarOficial" class="area-designar-oficial oculto">
+            <div class="campo campo-sem-margem">
+              <label>Oficial de Dia deste serviço</label>
+              <select id="selectOficialDia" disabled data-candidate-operation="true" aria-disabled="true"><option value="">Selecione o oficial</option></select>
+            </div>
+            <div class="acoes-designacao-oficial">
+              <button type="button" class="botao-cancelar-designacao" disabled data-candidate-operation="true" aria-disabled="true">Cancelar</button>
+              <button type="button" id="btnSalvarOficialDia" class="botao-secundario" disabled data-candidate-operation="true" aria-disabled="true">Salvar Oficial de Dia</button>
+            </div>
+            <small>Informação válida para o ciclo atual, das 08h às 08h. O oficial indicado não precisa entrar no aplicativo.</small>
+          </div>
+
+          <div id="areaAcessoPainelOficial" class="acesso-oficial-painel oculto">
+            <div class="cabecalho-acesso-oficial">
+              <div>
+                <strong>Acesso de oficiais ao painel</strong>
+                <span>Qualquer oficial lotado no 1º GBM pode validar o próprio e-mail e consultar as informações do serviço.</span>
+              </div>
+              <button type="button" id="btnSairAcessoOficial" class="botao-sair oculto" disabled data-candidate-operation="true" aria-disabled="true">Sair</button>
+            </div>
+            <div id="statusAcessoOficial" class="resultado oculto"></div>
+            <div id="areaLoginOficial">
+              <div class="campo campo-sem-margem">
+                <label>E-mail institucional/cadastrado</label>
+                <div class="linha-busca">
+                  <input type="email" id="emailOficial" placeholder="Digite seu e-mail cadastrado" disabled data-candidate-operation="true" aria-disabled="true">
+                  <button type="button" id="btnEnviarCodigoOficial" disabled data-candidate-operation="true" aria-disabled="true">Enviar código</button>
+                </div>
+              </div>
+              <p id="lpStatus_oficial" role="status" aria-live="polite" class="oculto"></p>
+            <button type="button" id="lpCancelar_oficial" class="botao-secundario oculto" disabled data-candidate-operation="true" aria-disabled="true">Cancelar solicitação / trocar e-mail</button>
+            <div id="areaCodigoOficial" class="area-codigo-consulta oculto">
+                <div class="campo campo-sem-margem">
+                  <label>Código recebido por e-mail</label>
+                  <div class="linha-busca">
+                    <input type="text" id="codigoOficial" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code" disabled data-candidate-operation="true" aria-disabled="true">
+                    <button type="button" id="btnValidarCodigoOficial" disabled data-candidate-operation="true" aria-disabled="true">Entrar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
+<section class="card card-guarda card-comandante perfil-servico" id="perfilEncarregadoMotoristas">
+          <div class="cabecalho-card-guarda">
+            <h2>Encarregado de Motoristas</h2>
+            <div class="acoes-guarda">
+              <button type="button" id="btnAbrirAcessoEncarregadoMotoristas" class="botao-trocar" disabled data-candidate-operation="true" aria-disabled="true">Assumir função</button>
+              <button type="button" id="btnSairAcessoEncarregadoMotoristas" class="botao-sair oculto" disabled data-candidate-operation="true" aria-disabled="true">Encerrar Serviço</button>
+            </div>
+          </div>
+
+          <div id="statusEncarregadoMotoristas" class="status-guarda">
+            Sem consulta operacional neste candidato.
+          </div>
+
+          <div id="areaEncerramentoPendenteMotoristas" class="area-encerramento-pendente-motoristas oculto">
+            <div>
+              <strong id="tituloEncerramentoPendenteMotoristas">Serviço anterior pendente</strong>
+              <span id="resumoEncerramentoPendenteMotoristas"></span>
+            </div>
+            <button type="button" disabled data-candidate-operation="true" aria-disabled="true">Encerrar serviço</button>
+          </div>
+
+          <div id="areaAssumirEncarregadoMotoristas">
+            <div class="campo">
+              <label>Seu e-mail institucional/cadastrado</label>
+              <div class="linha-busca">
+                <input type="email" id="emailEncarregadoMotoristas" placeholder="Digite o e-mail cadastrado"
+                  autocomplete="email" disabled data-candidate-operation="true" aria-disabled="true">
+                <button type="button" id="btnEnviarCodigoEncarregadoMotoristas" disabled data-candidate-operation="true" aria-disabled="true">Enviar código</button>
+              </div>
+            </div>
+
+            <p id="lpStatus_encarregado" role="status" aria-live="polite" class="oculto"></p>
+            <button type="button" id="lpCancelar_encarregado" class="botao-secundario oculto" disabled data-candidate-operation="true" aria-disabled="true">Cancelar solicitação / trocar e-mail</button>
+            <div id="areaCodigoEncarregadoMotoristas" class="oculto">
+              <div class="campo campo-sem-margem">
+                <label>Código recebido por e-mail</label>
+                <div class="linha-busca">
+                  <input type="text" id="codigoEncarregadoMotoristas" inputmode="numeric" maxlength="6"
+                    placeholder="000000" autocomplete="one-time-code" disabled data-candidate-operation="true" aria-disabled="true">
+                  <button type="button" id="btnValidarCodigoEncarregadoMotoristas" disabled data-candidate-operation="true" aria-disabled="true">Confirmar e assumir</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-encarregado_motoristas-assumir" type="button" disabled>Assumir / Trocar</button><button id="operational-role-encarregado_motoristas-encerrar" type="button" disabled>Encerrar serviço</button></div></section></div></section>
+        
+
+        
 
         <section class="card painel-comandante painel-consulta-servico" id="cardPainelComandante">
           <div class="cabecalho-painel-comandante">
@@ -187,11 +360,9 @@
               <span id="cicloPainelComandante">Ciclo das 08h às 08h</span>
             </div>
             <div class="acoes-cabecalho-painel-gestao">
-              <button type="button" id="btnSairAcessoMestre" class="botao-sair-painel oculto" onclick="sairAcessoMestre()">Sair deste acesso</button>
-              <button type="button" id="btnSairConsultaEfetivo" class="botao-sair-painel oculto"
-                onclick="sairConsultaEfetivo()">Sair do painel</button>
-              <button type="button" id="btnAtualizarPainelComandante" class="oculto"
-                onclick="carregarPainelComandante()">Atualizar</button>
+              <button type="button" id="btnSairAcessoMestre" class="botao-sair-painel oculto" disabled data-candidate-operation="true" aria-disabled="true">Sair deste acesso</button>
+              <button type="button" id="btnSairConsultaEfetivo" class="botao-sair-painel oculto" disabled data-candidate-operation="true" aria-disabled="true">Sair do painel</button>
+              <button type="button" id="btnAtualizarPainelComandante" class="oculto" disabled data-candidate-operation="true" aria-disabled="true">Atualizar</button>
             </div>
           </div>
 
@@ -201,21 +372,19 @@
             <div class="campo campo-sem-margem">
               <label for="emailConsultaEfetivo">E-mail</label>
               <div class="linha-busca">
-                <input type="email" id="emailConsultaEfetivo" placeholder="seu.email@..." autocomplete="email">
-                <button type="button" id="btnEnviarCodigoConsultaEfetivo"
-                  onclick="enviarCodigoConsultaEfetivo()">Enviar código</button>
+                <input type="email" id="emailConsultaEfetivo" placeholder="seu.email@..." autocomplete="email" disabled data-candidate-operation="true" aria-disabled="true">
+                <button type="button" id="btnEnviarCodigoConsultaEfetivo" disabled data-candidate-operation="true" aria-disabled="true">Enviar código</button>
               </div>
             </div>
             <p id="lpStatus_consulta" role="status" aria-live="polite" class="oculto"></p>
-            <button type="button" id="lpCancelar_consulta" class="botao-secundario oculto" onclick="LP_cancelar_('consulta')">Cancelar solicitação / trocar e-mail</button>
+            <button type="button" id="lpCancelar_consulta" class="botao-secundario oculto" disabled data-candidate-operation="true" aria-disabled="true">Cancelar solicitação / trocar e-mail</button>
             <div id="areaCodigoConsultaEfetivo" class="area-codigo-consulta oculto">
               <div class="campo campo-sem-margem">
                 <label for="codigoConsultaEfetivo">Código recebido por e-mail</label>
                 <div class="linha-busca">
                   <input type="text" id="codigoConsultaEfetivo" inputmode="numeric" maxlength="6"
-                    autocomplete="one-time-code" placeholder="000000">
-                  <button type="button" id="btnValidarConsultaEfetivo"
-                    onclick="validarCodigoConsultaEfetivo()">Entrar</button>
+                    autocomplete="one-time-code" placeholder="000000" disabled data-candidate-operation="true" aria-disabled="true">
+                  <button type="button" id="btnValidarConsultaEfetivo" disabled data-candidate-operation="true" aria-disabled="true">Entrar</button>
                 </div>
               </div>
             </div>
@@ -228,30 +397,30 @@
 
             <div class="resumo-painel-comandante">
               <div class="indicador-painel">
-                <strong id="totalPessoasDentro">0</strong>
+                <strong id="totalPessoasDentro">—</strong>
                 <span>Pessoas dentro</span>
               </div>
               <div class="indicador-painel">
-                <strong id="totalViaturasDisponiveis">0</strong>
+                <strong id="totalViaturasDisponiveis">—</strong>
                 <span>Viaturas disponíveis</span>
               </div>
               <div class="indicador-painel indicador-alerta">
-                <strong id="totalViaturasEmOcorrencia">0</strong>
+                <strong id="totalViaturasEmOcorrencia">—</strong>
                 <span>Viaturas em SOS</span>
               </div>
               <div class="indicador-painel">
-                <strong id="totalViaturasDentro">0</strong>
+                <strong id="totalViaturasDentro">—</strong>
                 <span>Viaturas externas</span>
               </div>
               <div class="indicador-painel">
-                <strong id="totalMovimentacoesCiclo">0</strong>
+                <strong id="totalMovimentacoesCiclo">—</strong>
                 <span>Movimentações</span>
               </div>
             </div>
 
             <div class="secao-painel-comandante" id="secaoPainelViaturas">
               <button type="button" class="botao-alternar-secao-painel" aria-expanded="true"
-                aria-controls="conteudoPainelViaturas" onclick="alternarSecaoPainel('viaturas')">
+                aria-controls="conteudoPainelViaturas" disabled data-candidate-operation="true" aria-disabled="true">
                 <span>Viaturas do quartel</span>
                 <span class="icone-alternar-secao-painel" aria-hidden="true">⌄</span>
               </button>
@@ -262,26 +431,26 @@
 
             <div class="secao-painel-comandante" id="secaoPainelDentro">
               <button type="button" class="botao-alternar-secao-painel" aria-expanded="true"
-                aria-controls="conteudoPainelDentro" onclick="alternarSecaoPainel('dentro')">
+                aria-controls="conteudoPainelDentro" disabled data-candidate-operation="true" aria-disabled="true">
                 <span>Dentro do quartel</span>
                 <span class="icone-alternar-secao-painel" aria-hidden="true">⌄</span>
               </button>
               <div id="conteudoPainelDentro" class="conteudo-secao-painel">
                 <div id="listaPessoasDentro" class="lista-painel">
-                  <div class="estado-vazio-painel">Carregando...</div>
+                  <div class="estado-vazio-painel">Sem consulta operacional neste candidato.</div>
                 </div>
               </div>
             </div>
 
             <div class="secao-painel-comandante" id="secaoPainelMovimentacoes">
               <button type="button" class="botao-alternar-secao-painel" aria-expanded="false"
-                aria-controls="conteudoPainelMovimentacoes" onclick="alternarSecaoPainel('movimentacoes')">
+                aria-controls="conteudoPainelMovimentacoes" disabled data-candidate-operation="true" aria-disabled="true">
                 <span>Movimentações das últimas 48h</span>
                 <span class="icone-alternar-secao-painel" aria-hidden="true">⌄</span>
               </button>
               <div id="conteudoPainelMovimentacoes" class="conteudo-secao-painel" hidden>
                 <div id="listaMovimentacoesRecentes" class="lista-painel">
-                  <div class="estado-vazio-painel">Carregando...</div>
+                  <div class="estado-vazio-painel">Sem consulta operacional neste candidato.</div>
                 </div>
               </div>
             </div>
@@ -297,33 +466,32 @@
               <span>Pesquise movimentações antigas sem depender dos PDFs.</span>
             </div>
             <button type="button" id="btnAlternarConsultaHistorico" class="botao-alternar-historico"
-              aria-label="Expandir Consultar histórico" aria-expanded="false" aria-controls="conteudoConsultaHistorico"
-              onclick="alternarConsultaHistorico()">
+              aria-label="Expandir Consultar histórico" aria-expanded="false" aria-controls="conteudoConsultaHistorico" disabled data-candidate-operation="true" aria-disabled="true">
               <span class="icone-alternar-secao-painel" aria-hidden="true"></span>
             </button>
           </div>
 
           <div id="conteudoConsultaHistorico" class="conteudo-consulta-historico oculto">
-            <a id="linkArquivoHistorico" class="link-arquivo-historico oculto" href="#" target="_blank" rel="noopener">
+            <a aria-disabled="true" tabindex="-1">
               Abrir arquivo anual
             </a>
 
             <div class="filtros-historico">
               <div class="campo">
                 <label for="historicoDataInicio">De</label>
-                <input type="date" id="historicoDataInicio">
+                <input type="date" id="historicoDataInicio" disabled data-candidate-operation="true" aria-disabled="true">
               </div>
               <div class="campo">
                 <label for="historicoDataFim">Até</label>
-                <input type="date" id="historicoDataFim">
+                <input type="date" id="historicoDataFim" disabled data-candidate-operation="true" aria-disabled="true">
               </div>
               <div class="campo campo-busca-historico">
                 <label for="historicoTermo">Pessoa, RG/CPF, Auto/VTR ou local</label>
-                <input type="search" id="historicoTermo" placeholder="Digite para filtrar">
+                <input type="search" id="historicoTermo" placeholder="Digite para filtrar" disabled data-candidate-operation="true" aria-disabled="true">
               </div>
               <div class="campo">
                 <label for="historicoTipo">Movimentação</label>
-                <select id="historicoTipo">
+                <select id="historicoTipo" disabled data-candidate-operation="true" aria-disabled="true">
                   <option value="">Todas</option>
                   <option value="Entrada">Entrada</option>
                   <option value="Saída">Saída</option>
@@ -331,14 +499,14 @@
               </div>
               <div class="campo">
                 <label for="historicoCategoria">Categoria</label>
-                <select id="historicoCategoria">
+                <select id="historicoCategoria" disabled data-candidate-operation="true" aria-disabled="true">
                   <option value="">Todas</option>
                   <option value="Militar">Militar</option>
                   <option value="Colaborador">Colaborador</option>
                   <option value="Visitante">Visitante</option>
                 </select>
               </div>
-              <button type="button" id="btnConsultarHistorico" class="botao-pesquisar-historico" onclick="consultarHistorico()">Pesquisar</button>
+              <button type="button" id="btnConsultarHistorico" class="botao-pesquisar-historico" disabled data-candidate-operation="true" aria-disabled="true">Pesquisar</button>
             </div>
 
             <div id="resumoHistorico" class="resumo-historico">Informe o período e toque em Pesquisar.</div>
@@ -346,65 +514,7 @@
           </div>
         </section>
 
-        <section class="card card-guarda card-comandante perfil-servico" id="perfilComandante">
-          <div class="cabecalho-card-guarda">
-            <h2>Comandante da Guarda</h2>
-
-            <div class="acoes-guarda">
-              <button type="button" id="btnTrocarComandante" class="botao-trocar oculto" onclick="mostrarAreaTrocaComandante()">
-                Assumir / Trocar
-              </button>
-
-              <button type="button" id="btnEncerrarComandante" class="botao-sair oculto" onclick="encerrarComandante()">
-                Encerrar serviço
-              </button>
-            </div>
-          </div>
-
-          <div id="statusComandante" class="status-guarda">
-            Carregando comandante atual...
-          </div>
-
-          <div id="statusAcaoComandante" class="resultado oculto" role="status" aria-live="polite"></div>
-
-          <div id="areaCodigoEncerrarComandante" class="oculto">
-            <div id="observacoesEncerramentoHost"></div>
-            <div class="campo">
-              <label>Código enviado ao comandante atual</label>
-              <input type="text" id="codigoEncerrarComandante" inputmode="numeric" placeholder="Digite o código">
-              <button type="button" onclick="cancelarEncerramentoComandante()">Cancelar encerramento</button>
-              <button type="button" id="btnConfirmarEncerramentoComandante" class="botao-finalizar-relatorio" onclick="validarCodigoEEncerrarComandante()">Encerrar serviço</button>
-            </div>
-          </div>
-
-          <div id="areaAssumirComandante">
-            <div class="campo">
-              <label>E-mail do militar</label>
-              <div class="linha-busca">
-                <input type="email" id="emailComandante" placeholder="Digite o e-mail cadastrado">
-                <button type="button" id="btnEnviarCodigoComandante" onclick="enviarCodigoComandante()">Enviar código</button>
-              </div>
-            </div>
-
-            <p id="lpStatus_comandante" role="status" aria-live="polite" class="oculto"></p>
-            <button type="button" id="lpCancelar_comandante" class="botao-secundario oculto" onclick="LP_cancelar_('comandante')">Cancelar solicitação / trocar e-mail</button>
-            <div id="areaCodigoComandante" class="oculto">
-              <div class="campo">
-                <label>Código recebido por e-mail</label>
-                <div class="linha-busca">
-                  <input type="text" id="codigoComandante" inputmode="numeric" placeholder="Digite o código" autocomplete="one-time-code">
-                  <button type="button" id="btnValidarCodigoComandante" onclick="validarCodigoComandante()">Validar</button>
-                </div>
-              </div>
-            </div>
-
-            <div id="areaComandanteIdentificado" class="resultado oculto"></div>
-
-            <button type="button" id="btnAssumirComandante" class="botao-secundario oculto" onclick="assumirComandante()">
-              Assumir como comandante
-            </button>
-          </div>
-        </section>
+        
 
         <section class="card bloco-competencia bloco-competencia-comandante oculto" id="blocoComandanteGuarda"
           aria-labelledby="tituloCompetenciaComandante">
@@ -428,16 +538,16 @@
               <div id="editorObservacoesServico" class="campo">
                 <label for="observacoesEncerramentoComandante"><strong>Alterações e observações do serviço</strong></label>
                 <p>Registre durante o serviço e salve quando desejar. No encerramento, este mesmo texto estará disponível para revisão.</p>
-                <textarea id="observacoesEncerramentoComandante" rows="6" maxlength="20000" oninput="alterarObservacoesServico()" placeholder="Ex.: alterações na guarnição, ocorrências relevantes, pendências ou sem alterações." readonly></textarea>
+                <textarea id="observacoesEncerramentoComandante" rows="6" maxlength="20000" placeholder="Ex.: alterações na guarnição, ocorrências relevantes, pendências ou sem alterações." readonly disabled data-candidate-operation="true" aria-disabled="true"></textarea>
                 <div class="acoes-designacao-oficial">
-                  <button type="button" id="btnRecarregarObservacoesServico" onclick="recarregarObservacoesServico()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 4v6h-6M19.2 15a8 8 0 1 1-1.9-8.3L21 10"/></svg><span>Recarregar texto salvo</span></button>
-                  <button type="button" id="btnSalvarObservacoesServico" class="botao-secundario" onclick="salvarObservacoesServico()" disabled>Salvar observações</button>
+                  <button type="button" id="btnRecarregarObservacoesServico" disabled data-candidate-operation="true" aria-disabled="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 4v6h-6M19.2 15a8 8 0 1 1-1.9-8.3L21 10"/></svg><span>Recarregar texto salvo</span></button>
+                  <button type="button" id="btnSalvarObservacoesServico" class="botao-secundario" disabled data-candidate-operation="true" aria-disabled="true">Salvar observações</button>
                 </div>
-                <div id="statusObservacoesServico" role="status" aria-live="polite">Carregando observações...</div>
+                <div id="statusObservacoesServico" role="status" aria-live="polite">Sem consulta operacional neste candidato.</div>
                 <details id="conflitoObservacoesServico" class="oculto">
                   <summary>Conferir texto salvo no servidor</summary>
-                  <pre id="textoConflitoObservacoesServico" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
-                  <button type="button" id="btnRevisarConflitoObservacoes" onclick="revisarConflitoObservacoesServico()">Concluí a revisão do meu texto</button>
+                  <pre id="textoConflitoObservacoesServico"></pre>
+                  <button type="button" id="btnRevisarConflitoObservacoes" disabled data-candidate-operation="true" aria-disabled="true">Concluí a revisão do meu texto</button>
                 </details>
               </div>
             </div>
@@ -447,8 +557,8 @@
                 <strong>Lançamento em horário anterior</strong>
                 <span>Registrar pessoas ou viaturas em um horário anterior do seu ciclo.</span>
               </div>
-              <button type="button" id="btnAbrirLancamentoRetroativo" onclick="abrirLancamentoRetroativo()"
-                aria-controls="blocoLancamentoRetroativo" aria-expanded="false">
+              <button type="button" id="btnAbrirLancamentoRetroativo"
+                aria-controls="blocoLancamentoRetroativo" aria-expanded="false" disabled data-candidate-operation="true" aria-disabled="true">
                 Lançar horário anterior
               </button>
             </div>
@@ -458,20 +568,20 @@
                   <strong>Correção de lançamento</strong>
                   <span>Edite entradas individuais do seu ciclo, mesmo após a troca do guarda.</span>
                 </div>
-                <button type="button" id="btnAbrirEdicaoComandante" onclick="alternarEdicaoComandante()"
-                  aria-controls="areaEdicaoComandante" aria-expanded="false">Editar lançamento</button>
+                <button type="button" id="btnAbrirEdicaoComandante"
+                  aria-controls="areaEdicaoComandante" aria-expanded="false" disabled data-candidate-operation="true" aria-disabled="true">Editar lançamento</button>
               </div>
               <div id="areaEdicaoComandante" class="area-edicao-comandante oculto">
                 <div class="cabecalho-lista-edicao-comandante">
                   <strong>Entradas individuais do seu ciclo</strong>
-                  <button type="button" id="btnFecharEdicaoComandante" onclick="fecharEdicaoComandante()"
-                    aria-label="Fechar área de edição de lançamentos">Fechar</button>
+                  <button type="button" id="btnFecharEdicaoComandante"
+                    aria-label="Fechar área de edição de lançamentos" disabled data-candidate-operation="true" aria-disabled="true">Fechar</button>
                 </div>
                 <p id="cicloEdicaoComandante" class="contexto-edicao-comandante"></p>
                 <div class="campo campo-sem-margem">
                   <label for="buscaEdicaoComandante">Buscar por nome ou RG/CPF</label>
                   <input type="search" id="buscaEdicaoComandante" placeholder="Nome ou RG/CPF"
-                    autocomplete="off" oninput="renderizarEdicaoComandante()">
+                    autocomplete="off" disabled data-candidate-operation="true" aria-disabled="true">
                 </div>
                 <p id="resumoEdicaoComandante" class="contexto-edicao-comandante" role="status" aria-live="polite"></p>
                 <div id="listaEdicaoComandante" class="lista-painel lista-edicao-comandante"></div>
@@ -480,110 +590,9 @@
           </div>
         </section>
 
-        <section class="card card-guarda card-comandante perfil-servico" id="perfilOficial">
-          <div class="cabecalho-card-guarda">
-            <h2>Oficial de Dia</h2>
-            <div class="acoes-guarda">
-              <button type="button" id="btnEditarOficialDia" class="botao-trocar oculto" aria-expanded="false" aria-controls="areaDesignarOficial" onclick="mostrarDesignacaoOficialDia()">Alterar</button>
-              <button type="button" id="btnAbrirAcessoOficial" class="botao-trocar oculto" aria-expanded="false" aria-controls="areaAcessoPainelOficial" onclick="alternarAcessoPainelOficial()">Acessar painel</button>
-            </div>
-          </div>
+        
 
-          <div id="statusOficial" class="status-guarda">Carregando Oficial de Dia...</div>
-
-          <div id="areaDesignarOficial" class="area-designar-oficial oculto">
-            <div class="campo campo-sem-margem">
-              <label>Oficial de Dia deste serviço</label>
-              <select id="selectOficialDia"><option value="">Selecione o oficial</option></select>
-            </div>
-            <div class="acoes-designacao-oficial">
-              <button type="button" class="botao-cancelar-designacao" onclick="fecharDesignacaoOficialDia()">Cancelar</button>
-              <button type="button" id="btnSalvarOficialDia" class="botao-secundario" onclick="salvarDesignacaoOficialDia()">Salvar Oficial de Dia</button>
-            </div>
-            <small>Informação válida para o ciclo atual, das 08h às 08h. O oficial indicado não precisa entrar no aplicativo.</small>
-          </div>
-
-          <div id="areaAcessoPainelOficial" class="acesso-oficial-painel oculto">
-            <div class="cabecalho-acesso-oficial">
-              <div>
-                <strong>Acesso de oficiais ao painel</strong>
-                <span>Qualquer oficial lotado no 1º GBM pode validar o próprio e-mail e consultar as informações do serviço.</span>
-              </div>
-              <button type="button" id="btnSairAcessoOficial" class="botao-sair oculto" onclick="sairAcessoOficial()">Sair</button>
-            </div>
-            <div id="statusAcessoOficial" class="resultado oculto"></div>
-            <div id="areaLoginOficial">
-              <div class="campo campo-sem-margem">
-                <label>E-mail institucional/cadastrado</label>
-                <div class="linha-busca">
-                  <input type="email" id="emailOficial" placeholder="Digite seu e-mail cadastrado">
-                  <button type="button" id="btnEnviarCodigoOficial" onclick="enviarCodigoOficial()">Enviar código</button>
-                </div>
-              </div>
-              <p id="lpStatus_oficial" role="status" aria-live="polite" class="oculto"></p>
-            <button type="button" id="lpCancelar_oficial" class="botao-secundario oculto" onclick="LP_cancelar_('oficial')">Cancelar solicitação / trocar e-mail</button>
-            <div id="areaCodigoOficial" class="area-codigo-consulta oculto">
-                <div class="campo campo-sem-margem">
-                  <label>Código recebido por e-mail</label>
-                  <div class="linha-busca">
-                    <input type="text" id="codigoOficial" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code">
-                    <button type="button" id="btnValidarCodigoOficial" onclick="validarCodigoOficial()">Entrar</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="card card-guarda card-comandante perfil-servico" id="perfilEncarregadoMotoristas">
-          <div class="cabecalho-card-guarda">
-            <h2>Encarregado de Motoristas</h2>
-            <div class="acoes-guarda">
-              <button type="button" id="btnAbrirAcessoEncarregadoMotoristas" class="botao-trocar"
-                onclick="mostrarAreaAcessoEncarregadoMotoristas()">Assumir função</button>
-              <button type="button" id="btnSairAcessoEncarregadoMotoristas" class="botao-sair oculto"
-                onclick="acionarEncerramentoServicoMotoristas()">Encerrar Serviço</button>
-            </div>
-          </div>
-
-          <div id="statusEncarregadoMotoristas" class="status-guarda">
-            Carregando Encarregado de Motoristas...
-          </div>
-
-          <div id="areaEncerramentoPendenteMotoristas" class="area-encerramento-pendente-motoristas oculto">
-            <div>
-              <strong id="tituloEncerramentoPendenteMotoristas">Serviço anterior pendente</strong>
-              <span id="resumoEncerramentoPendenteMotoristas"></span>
-            </div>
-            <button type="button" onclick="abrirModalEncerrarServicoMotoristas()">Encerrar serviço</button>
-          </div>
-
-          <div id="areaAssumirEncarregadoMotoristas">
-            <div class="campo">
-              <label>Seu e-mail institucional/cadastrado</label>
-              <div class="linha-busca">
-                <input type="email" id="emailEncarregadoMotoristas" placeholder="Digite o e-mail cadastrado"
-                  autocomplete="email">
-                <button type="button" id="btnEnviarCodigoEncarregadoMotoristas"
-                  onclick="enviarCodigoEncarregadoMotoristas()">Enviar código</button>
-              </div>
-            </div>
-
-            <p id="lpStatus_encarregado" role="status" aria-live="polite" class="oculto"></p>
-            <button type="button" id="lpCancelar_encarregado" class="botao-secundario oculto" onclick="LP_cancelar_('encarregado')">Cancelar solicitação / trocar e-mail</button>
-            <div id="areaCodigoEncarregadoMotoristas" class="oculto">
-              <div class="campo campo-sem-margem">
-                <label>Código recebido por e-mail</label>
-                <div class="linha-busca">
-                  <input type="text" id="codigoEncarregadoMotoristas" inputmode="numeric" maxlength="6"
-                    placeholder="000000" autocomplete="one-time-code">
-                  <button type="button" id="btnValidarCodigoEncarregadoMotoristas"
-                    onclick="validarCodigoEncarregadoMotoristas()">Confirmar e assumir</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        
 
         <section class="card card-painel-motoristas oculto" id="cardPainelMotoristas"
           aria-labelledby="tituloCompetenciaMotoristas">
@@ -592,14 +601,13 @@
               <h2 id="tituloCompetenciaMotoristas">Encarregado de Motoristas</h2>
               <span id="cicloPainelMotoristas">Ciclo das 08h às 08h</span>
             </div>
-            <button type="button" id="btnAtualizarPainelMotoristas" class="botao-atualizar-motoristas"
-              onclick="carregarPainelMotoristas()">Atualizar</button>
+            <button type="button" id="btnAtualizarPainelMotoristas" class="botao-atualizar-motoristas" disabled data-candidate-operation="true" aria-disabled="true">Atualizar</button>
           </div>
 
           <div class="identidade-encarregado-motoristas">
             <div>
               <span>Encarregado em serviço</span>
-              <strong id="nomeEncarregadoMotoristas">Carregando...</strong>
+              <strong id="nomeEncarregadoMotoristas">Sem consulta operacional neste candidato.</strong>
               <small id="perfilAcessoMotoristas"></small>
             </div>
           </div>
@@ -610,38 +618,38 @@
 
           <div class="resumo-painel-motoristas" aria-label="Resumo da frota">
             <div class="indicador-motoristas indicador-operante">
-              <strong id="totalMotoristasOperantes">0</strong>
+              <strong id="totalMotoristasOperantes">—</strong>
               <span>Operantes</span>
             </div>
             <div class="indicador-motoristas indicador-inoperante">
-              <strong id="totalMotoristasInoperantes">0</strong>
+              <strong id="totalMotoristasInoperantes">—</strong>
               <span>Inoperantes</span>
             </div>
             <div class="indicador-motoristas indicador-externo">
-              <strong id="totalMotoristasForaUnidade">0</strong>
+              <strong id="totalMotoristasForaUnidade">—</strong>
               <span>Fora da unidade</span>
             </div>
             <div class="indicador-motoristas indicador-sisgeo">
-              <strong id="totalMotoristasSisgeoPendentes">0</strong>
+              <strong id="totalMotoristasSisgeoPendentes">—</strong>
               <span>SISGEO pendente</span>
             </div>
           </div>
 
           <div class="abas-painel-motoristas" role="tablist" aria-label="Áreas do livro do Encarregado de Motoristas">
             <button type="button" class="aba-motoristas ativa" role="tab" aria-selected="true"
-              data-aba-motoristas="frota" onclick="selecionarAbaPainelMotoristas('frota')">Frota</button>
+              data-aba-motoristas="frota" disabled data-candidate-operation="true" aria-disabled="true">Frota</button>
             <button type="button" class="aba-motoristas" role="tab" aria-selected="false"
-              data-aba-motoristas="abastecimento" onclick="selecionarAbaPainelMotoristas('abastecimento')">Abastecimentos</button>
+              data-aba-motoristas="abastecimento" disabled data-candidate-operation="true" aria-disabled="true">Abastecimentos</button>
             <button type="button" class="aba-motoristas" role="tab" aria-selected="false"
-              data-aba-motoristas="alteracao" onclick="selecionarAbaPainelMotoristas('alteracao')">Alterações</button>
+              data-aba-motoristas="alteracao" disabled data-candidate-operation="true" aria-disabled="true">Alterações</button>
             <button type="button" class="aba-motoristas" role="tab" aria-selected="false"
-              data-aba-motoristas="administrativa" onclick="selecionarAbaPainelMotoristas('administrativa')">Administrativas</button>
+              data-aba-motoristas="administrativa" disabled data-candidate-operation="true" aria-disabled="true">Administrativas</button>
             <button type="button" class="aba-motoristas" role="tab" aria-selected="false"
-              data-aba-motoristas="manutencao" onclick="selecionarAbaPainelMotoristas('manutencao')">Manutenção</button>
+              data-aba-motoristas="manutencao" disabled data-candidate-operation="true" aria-disabled="true">Manutenção</button>
             <button type="button" class="aba-motoristas" role="tab" aria-selected="false"
-              data-aba-motoristas="sisgeo" onclick="selecionarAbaPainelMotoristas('sisgeo')">SISGEO</button>
+              data-aba-motoristas="sisgeo" disabled data-candidate-operation="true" aria-disabled="true">SISGEO</button>
             <button type="button" class="aba-motoristas" role="tab" aria-selected="false"
-              data-aba-motoristas="observacao" onclick="selecionarAbaPainelMotoristas('observacao')">Observações</button>
+              data-aba-motoristas="observacao" disabled data-candidate-operation="true" aria-disabled="true">Observações</button>
           </div>
 
           <div class="cabecalho-conteudo-motoristas">
@@ -649,12 +657,11 @@
               <strong id="tituloAbaPainelMotoristas">Situação da frota</strong>
               <span id="descricaoAbaPainelMotoristas">Condição operacional e localização atual das viaturas.</span>
             </div>
-            <button type="button" id="btnNovoEventoMotoristas" class="botao-novo-evento-motoristas oculto"
-              onclick="abrirModalEventoMotoristas()">Novo lançamento</button>
+            <button type="button" id="btnNovoEventoMotoristas" class="botao-novo-evento-motoristas oculto" disabled data-candidate-operation="true" aria-disabled="true">Novo lançamento</button>
           </div>
 
           <div id="listaPainelMotoristas" class="lista-painel lista-painel-motoristas" role="tabpanel">
-            <div class="estado-vazio-painel">Carregando...</div>
+            <div class="estado-vazio-painel">Sem consulta operacional neste candidato.</div>
           </div>
           <div id="atualizadoEmPainelMotoristas" class="rodape-painel-comandante"></div>
         </section>
@@ -666,15 +673,14 @@
         <section class="card card-guarnicoes-servico oculto" id="cardGuarnicoesServico">
           <div class="cabecalho-guarnicoes-servico">
             <button type="button" id="btnAlternarGuarnicoesServico" class="botao-alternar-guarnicoes-servico"
-              aria-expanded="true" aria-controls="conteudoGuarnicoesServico"
-              onclick="alternarGuarnicoesServico()">
+              aria-expanded="true" aria-controls="conteudoGuarnicoesServico" disabled data-candidate-operation="true" aria-disabled="true">
               <span>
                 <span class="titulo-guarnicoes-servico">Guarnições do serviço</span>
                 <span id="cicloGuarnicoesServico">Ciclo das 08h às 08h</span>
               </span>
               <span class="icone-alternar-guarnicoes-servico" aria-hidden="true">⌄</span>
             </button>
-            <button type="button" id="btnAtualizarGuarnicoesServico" onclick="carregarGuarnicoesServico()">Atualizar</button>
+            <button type="button" id="btnAtualizarGuarnicoesServico" disabled data-candidate-operation="true" aria-disabled="true">Atualizar</button>
           </div>
           <div id="conteudoGuarnicoesServico">
           <p class="descricao-guarnicoes-servico">
@@ -683,8 +689,7 @@
           <div id="resumoGuarnicoesServico" class="lista-guarnicoes-servico"></div>
           <div class="bloco-editor-guarnicao-servico recolhido" id="blocoEditorGuarnicoesServico">
             <button type="button" id="btnAlternarEditorGuarnicoesServico" class="botao-alternar-editor-guarnicao"
-              aria-expanded="false" aria-controls="conteudoEditorGuarnicoesServico"
-              onclick="alternarEditorGuarnicoesServico()">
+              aria-expanded="false" aria-controls="conteudoEditorGuarnicoesServico" disabled data-candidate-operation="true" aria-disabled="true">
               <span class="texto-alternar-editor-guarnicao">
                 <strong id="textoAlternarEditorGuarnicoesServico">Lançar ou alterar guarnição</strong>
                 <small id="descricaoAlternarEditorGuarnicoesServico">Abra somente quando precisar incluir ou editar uma VTR</small>
@@ -696,37 +701,37 @@
               <div class="editor-guarnicao-servico">
                 <div class="campo">
                   <label for="viaturaGuarnicaoServico">VTR</label>
-                  <select id="viaturaGuarnicaoServico" onchange="selecionarViaturaGuarnicaoServico()"></select>
+                  <select id="viaturaGuarnicaoServico" disabled data-candidate-operation="true" aria-disabled="true"></select>
                 </div>
                 <div class="campo">
                   <label for="btnCondutorGuarnicaoServico">Condutor</label>
                   <div class="seletor-militar-guarnicao">
                     <button type="button" id="btnCondutorGuarnicaoServico" class="botao-seletor-militar"
-                      aria-haspopup="dialog" onclick="abrirSeletorMilitarGuarnicaoServico('condutor')">
+                      aria-haspopup="dialog" disabled data-candidate-operation="true" aria-disabled="true">
                       <span id="textoCondutorGuarnicaoServico">Selecione o condutor</span>
                       <span class="seta-seletor-militar" aria-hidden="true">⌄</span>
                     </button>
-                    <select id="condutorGuarnicaoServico" class="select-dados-guarnicao" tabindex="-1" aria-hidden="true"></select>
+                    <select id="condutorGuarnicaoServico" class="select-dados-guarnicao" tabindex="-1" aria-hidden="true" disabled data-candidate-operation="true" aria-disabled="true"></select>
                   </div>
                 </div>
                 <label for="btnIntegranteGuarnicaoServico">Guarnição (opcional)</label>
                 <div class="linha-adicionar-guarnicao">
                   <div class="seletor-militar-guarnicao">
                     <button type="button" id="btnIntegranteGuarnicaoServico" class="botao-seletor-militar"
-                      aria-haspopup="dialog" onclick="abrirSeletorMilitarGuarnicaoServico('integrante')">
+                      aria-haspopup="dialog" disabled data-candidate-operation="true" aria-disabled="true">
                       <span id="textoIntegranteGuarnicaoServico">Selecione um integrante</span>
                       <span class="seta-seletor-militar" aria-hidden="true">⌄</span>
                     </button>
-                    <select id="integranteGuarnicaoServico" class="select-dados-guarnicao" tabindex="-1" aria-hidden="true"></select>
+                    <select id="integranteGuarnicaoServico" class="select-dados-guarnicao" tabindex="-1" aria-hidden="true" disabled data-candidate-operation="true" aria-disabled="true"></select>
                   </div>
-                  <button type="button" onclick="adicionarIntegranteGuarnicaoServico()">Adicionar</button>
+                  <button type="button" disabled data-candidate-operation="true" aria-disabled="true">Adicionar</button>
                 </div>
                 <div id="chipsGuarnicaoServico" class="chips-guarnicao"></div>
                 <div class="campo campo-motivo-guarnicao">
                   <label for="motivoGuarnicaoServico">Motivo da alteração</label>
-                  <input type="text" id="motivoGuarnicaoServico" placeholder="Opcional. Ex.: determinação do Oficial de Dia">
+                  <input type="text" id="motivoGuarnicaoServico" placeholder="Opcional. Ex.: determinação do Oficial de Dia" disabled data-candidate-operation="true" aria-disabled="true">
                 </div>
-                <button type="button" id="btnSalvarGuarnicaoServico" class="botao-secundario" onclick="salvarGuarnicaoServico()">
+                <button type="button" id="btnSalvarGuarnicaoServico" class="botao-secundario" disabled data-candidate-operation="true" aria-disabled="true">
                   Salvar para o serviço
                 </button>
               </div>
@@ -743,8 +748,7 @@
               <div class="linha-cabecalho-lancamento-retroativo">
                 <span class="selo-modo-retroativo">MODO RETROATIVO</span>
                 <button type="button" class="botao-fechar-retroativo" data-fechar-lancamento-retroativo
-                  onclick="encerrarLancamentoRetroativo()"
-                  aria-label="Fechar o lançamento em horário anterior">
+                  aria-label="Fechar o lançamento em horário anterior" disabled data-candidate-operation="true" aria-disabled="true">
                   Fechar <span aria-hidden="true">×</span>
                 </button>
               </div>
@@ -755,17 +759,17 @@
             <div class="grade-data-hora-retroativa">
               <div class="campo">
                 <label for="dataMovimentacaoRetroativa">Data em que ocorreu *</label>
-                <input type="date" id="dataMovimentacaoRetroativa">
+                <input type="date" id="dataMovimentacaoRetroativa" disabled data-candidate-operation="true" aria-disabled="true">
               </div>
               <div class="campo">
                 <label for="horaMovimentacaoRetroativa">Hora em que ocorreu *</label>
-                <input type="time" id="horaMovimentacaoRetroativa" step="60">
+                <input type="time" id="horaMovimentacaoRetroativa" step="60" disabled data-candidate-operation="true" aria-disabled="true">
               </div>
             </div>
 
             <div class="campo">
               <label for="motivoMovimentacaoRetroativa">Motivo do lançamento posterior *</label>
-              <select id="motivoMovimentacaoRetroativa" onchange="atualizarDetalheMotivoRetroativo()">
+              <select id="motivoMovimentacaoRetroativa" disabled data-candidate-operation="true" aria-disabled="true">
                 <option value="">Selecione o motivo</option>
                 <option value="Falta de energia">Falta de energia</option>
                 <option value="Celular sem carga">Celular sem carga</option>
@@ -780,11 +784,10 @@
             <div class="campo oculto" id="campoDetalheMotivoRetroativo">
               <label for="detalheMotivoRetroativo">Detalhe do motivo *</label>
               <input type="text" id="detalheMotivoRetroativo" maxlength="240"
-                placeholder="Explique resumidamente o que ocorreu">
+                placeholder="Explique resumidamente o que ocorreu" disabled data-candidate-operation="true" aria-disabled="true">
             </div>
 
-            <button type="button" class="botao-cancelar-retroativo" data-fechar-lancamento-retroativo
-              onclick="encerrarLancamentoRetroativo()">
+            <button type="button" class="botao-cancelar-retroativo" data-fechar-lancamento-retroativo disabled data-candidate-operation="true" aria-disabled="true">
               Cancelar preenchimento e voltar ao painel
             </button>
           </div>
@@ -792,30 +795,30 @@
           <div class="campo" id="campoFormaRegistro">
             <label>Forma do registro</label>
             <div class="botoes-segmentados" id="botoesModoRegistro">
-              <button type="button" class="ativo" id="btnModoIndividual" onclick="selecionarModoRegistro('Individual')">Individual</button>
-              <button type="button" id="btnModoViatura" onclick="selecionarModoRegistro('SOS')">Auto/VTR</button>
+              <button type="button" class="ativo" id="btnModoIndividual" disabled data-candidate-operation="true" aria-disabled="true">Individual</button>
+              <button type="button" id="btnModoViatura" disabled data-candidate-operation="true" aria-disabled="true">Auto/VTR</button>
             </div>
           </div>
 
           <div class="campo">
             <label id="labelTipoMovimentacao">Tipo de movimentação</label>
             <div class="botoes-segmentados">
-              <button type="button" class="ativo" id="btnEntrada" onclick="selecionarMovimentacao('Entrada')"><span id="textoBtnEntrada">Entrada</span></button>
-              <button type="button" id="btnSaida" onclick="selecionarMovimentacao('Saída')"><span id="textoBtnSaida">Saída</span></button>
+              <button type="button" class="ativo" id="btnEntrada" disabled data-candidate-operation="true" aria-disabled="true"><span id="textoBtnEntrada">Entrada</span></button>
+              <button type="button" id="btnSaida" disabled data-candidate-operation="true" aria-disabled="true"><span id="textoBtnSaida">Saída</span></button>
             </div>
           </div>
 
           <div id="origemFormularioPadrao">
           <div id="areaRegistroPadrao">
 
-          <input type="hidden" id="tipoRegistro" value="Pessoa cadastrada">
+          <input type="hidden" id="tipoRegistro" value="Pessoa cadastrada" disabled data-candidate-operation="true" aria-disabled="true">
 
           <div class="campo" id="areaCategoriaPessoa">
             <label>Categoria da pessoa</label>
             <div class="botoes-segmentados categorias-pessoa">
-              <button type="button" class="ativo" id="btnCategoriaMilitar" onclick="selecionarCategoriaPessoa('Militar')">Militar</button>
-              <button type="button" id="btnCategoriaColaborador" onclick="selecionarCategoriaPessoa('Colaborador')">Colaborador</button>
-              <button type="button" id="btnCategoriaVisitante" onclick="selecionarCategoriaPessoa('Visitante')">Visitante</button>
+              <button type="button" class="ativo" id="btnCategoriaMilitar" disabled data-candidate-operation="true" aria-disabled="true">Militar</button>
+              <button type="button" id="btnCategoriaColaborador" disabled data-candidate-operation="true" aria-disabled="true">Colaborador</button>
+              <button type="button" id="btnCategoriaVisitante" disabled data-candidate-operation="true" aria-disabled="true">Visitante</button>
             </div>
           </div>
 
@@ -823,15 +826,15 @@
             <div class="campo" id="campoBuscaPessoaPrincipal">
               <label id="labelPessoaPrincipal">Nome ou RG/CPF da pessoa</label>
               <div class="linha-busca">
-                <input type="text" id="rgCpfBusca" placeholder="Digite nome, RG ou CPF" autocomplete="off">
-                <button type="button" onclick="buscarPessoa()">Buscar</button>
+                <input type="text" id="rgCpfBusca" placeholder="Digite nome, RG ou CPF" autocomplete="off" disabled data-candidate-operation="true" aria-disabled="true">
+                <button type="button" disabled data-candidate-operation="true" aria-disabled="true">Buscar</button>
               </div>
             </div>
 
             <div id="resultadoPessoa" class="resultado oculto"></div>
 
             <div id="areaOpcaoCondutorExterno" class="opcao-militar-externo oculto">
-              <button type="button" onclick="alternarCondutorExterno()">
+              <button type="button" disabled data-candidate-operation="true" aria-disabled="true">
                 Condutor não cadastrado
               </button>
             </div>
@@ -840,13 +843,13 @@
               <strong>Identificação manual do condutor</strong>
               <div class="campo">
                 <label>Posto/graduação e nome</label>
-                <input type="text" id="nomeCondutorExterno" placeholder="Ex.: 2º SGT SILVA">
+                <input type="text" id="nomeCondutorExterno" placeholder="Ex.: 2º SGT SILVA" disabled data-candidate-operation="true" aria-disabled="true">
               </div>
               <div class="campo campo-sem-margem">
                 <label>RG/CPF ou identidade funcional</label>
-                <input type="text" id="rgCondutorExterno" placeholder="Documento do militar">
+                <input type="text" id="rgCondutorExterno" placeholder="Documento do militar" disabled data-candidate-operation="true" aria-disabled="true">
               </div>
-              <button type="button" class="botao-voltar-busca" onclick="alternarCondutorExterno()">
+              <button type="button" class="botao-voltar-busca" disabled data-candidate-operation="true" aria-disabled="true">
                 Voltar para busca no cadastro
               </button>
             </div>
@@ -868,15 +871,15 @@
             <div class="campo campo-sem-margem">
               <label>RG/CPF da pessoa</label>
               <div class="linha-busca">
-                <input type="text" id="rgCpfBuscaOcupante" placeholder="Digite ao menos 3 dígitos">
-                <button type="button" onclick="buscarOcupanteViatura()">Buscar</button>
+                <input type="text" id="rgCpfBuscaOcupante" placeholder="Digite ao menos 3 dígitos" disabled data-candidate-operation="true" aria-disabled="true">
+                <button type="button" disabled data-candidate-operation="true" aria-disabled="true">Buscar</button>
               </div>
             </div>
 
             <div id="resultadoOcupanteViatura" class="resultado oculto"></div>
 
             <div class="opcao-militar-externo">
-              <button type="button" onclick="alternarFormularioOcupanteExterno()">
+              <button type="button" disabled data-candidate-operation="true" aria-disabled="true">
                 + Adicionar pessoa não cadastrada
               </button>
             </div>
@@ -885,13 +888,13 @@
               <strong>Identificação manual do ocupante</strong>
               <div class="campo">
                 <label>Posto/graduação e nome</label>
-                <input type="text" id="nomeOcupanteExterno" placeholder="Ex.: CB COSTA">
+                <input type="text" id="nomeOcupanteExterno" placeholder="Ex.: CB COSTA" disabled data-candidate-operation="true" aria-disabled="true">
               </div>
               <div class="campo">
                 <label>RG/CPF ou identidade funcional</label>
-                <input type="text" id="rgOcupanteExterno" placeholder="Documento do militar">
+                <input type="text" id="rgOcupanteExterno" placeholder="Documento do militar" disabled data-candidate-operation="true" aria-disabled="true">
               </div>
-              <button type="button" class="botao-adicionar-externo" onclick="adicionarOcupanteExterno()">
+              <button type="button" class="botao-adicionar-externo" disabled data-candidate-operation="true" aria-disabled="true">
                 Adicionar pessoa ao Auto/VTR
               </button>
             </div>
@@ -907,38 +910,38 @@
             <div id="avisoPessoaNaoEncontrada" class="resultado erro">Pessoa não encontrada. Confira os dados para cadastrá-la automaticamente.</div>
             <div class="campo">
               <label>RG/CPF</label>
-              <input type="text" id="rgCpfPessoaNaoEncontrada" placeholder="RG ou CPF" inputmode="numeric" autocomplete="off">
+              <input type="text" id="rgCpfPessoaNaoEncontrada" placeholder="RG ou CPF" inputmode="numeric" autocomplete="off" disabled data-candidate-operation="true" aria-disabled="true">
             </div>
             <div class="campo">
               <label>Nome completo</label>
-              <input type="text" id="nomePessoaNaoEncontrada" placeholder="Nome completo">
+              <input type="text" id="nomePessoaNaoEncontrada" placeholder="Nome completo" disabled data-candidate-operation="true" aria-disabled="true">
             </div>
             <div class="dica-varios-ocupantes">O cadastro permanecerá ativo por 1 ano após a movimentação mais recente.</div>
           </div>
 
           <div class="campo" id="campoDestinoPadrao">
             <label>Destino</label>
-            <select id="destino"></select>
+            <select id="destino" disabled data-candidate-operation="true" aria-disabled="true"></select>
           </div>
 
           <div class="campo" id="campoProcedenciaPadrao">
             <label>Procedência</label>
-            <select id="procedencia" onchange="verificarComplementoProcedencia()"></select>
+            <select id="procedencia" disabled data-candidate-operation="true" aria-disabled="true"></select>
           </div>
 
           <div id="areaComplementoProcedencia" class="campo oculto">
             <label id="labelComplementoProcedencia">Complemento da procedência</label>
-            <input type="text" id="complementoProcedencia" placeholder="Informe o complemento">
+            <input type="text" id="complementoProcedencia" placeholder="Informe o complemento" disabled data-candidate-operation="true" aria-disabled="true">
           </div>
 
           <div class="campo" id="campoPrefixoPlaca">
             <label id="labelPrefixoPlaca">Prefixo/Placa</label>
-            <input type="text" id="prefixoPlaca" placeholder="Opcional" oninput="normalizarPrefixoPlaca(this)" autocomplete="off">
+            <input type="text" id="prefixoPlaca" placeholder="Opcional" autocomplete="off" disabled data-candidate-operation="true" aria-disabled="true">
           </div>
 
           <div class="campo">
             <label>Observações</label>
-            <textarea id="observacoes" placeholder="Opcional"></textarea>
+            <textarea id="observacoes" placeholder="Opcional" disabled data-candidate-operation="true" aria-disabled="true"></textarea>
           </div>
           </div>
           </div>
@@ -946,19 +949,19 @@
           <div id="areaRegistroSOS" class="bloco-sos oculto">
             <div class="cabecalho-frota-local">
               <div><strong>Frota da unidade</strong><span>Viaturas operacionais e administrativas</span></div>
-              <button type="button" id="btnVeiculoExterno" onclick="abrirVeiculoExterno()">Veículo externo</button>
+              <button type="button" id="btnVeiculoExterno" disabled data-candidate-operation="true" aria-disabled="true">Veículo externo</button>
             </div>
             <div class="campo" id="campoDestinoViaturaLocal">
               <label for="destinoViaturaLocal">Destino da saída *</label>
-              <select id="destinoViaturaLocal" onchange="selecionarDestinoViaturaLocal(this.value)" required disabled>
-                <option value="">Carregando destinos...</option>
+              <select id="destinoViaturaLocal" required disabled data-candidate-operation="true" aria-disabled="true">
+                <option value="">Sem consulta operacional neste candidato.</option>
               </select>
-              <p id="statusDestinosViaturaLocal" class="dica-varios-ocupantes" role="status" aria-live="polite">Carregando os destinos disponíveis...</p>
-              <button type="button" id="btnRecarregarDestinosViatura" class="botao-secundario oculto" onclick="carregarListas()">Recarregar opções</button>
+              <p id="statusDestinosViaturaLocal" class="dica-varios-ocupantes" role="status" aria-live="polite">Sem consulta operacional neste candidato.</p>
+              <button type="button" id="btnRecarregarDestinosViatura" class="botao-secundario oculto" disabled data-candidate-operation="true" aria-disabled="true">Recarregar opções</button>
             </div>
             <div class="campo oculto" id="campoDestinoEntradaViatura">
               <label for="destinoEntradaViaturaLocal">Destino da entrada</label>
-              <input type="text" id="destinoEntradaViaturaLocal" value="Quartel" readonly aria-describedby="descricaoDestinoEntradaViatura">
+              <input type="text" id="destinoEntradaViaturaLocal" value="Quartel" readonly aria-describedby="descricaoDestinoEntradaViatura" disabled data-candidate-operation="true" aria-disabled="true">
               <p id="descricaoDestinoEntradaViatura" class="dica-varios-ocupantes">Definido automaticamente para a entrada na unidade.</p>
             </div>
             <div class="titulo-bloco-viatura">
@@ -971,11 +974,11 @@
             <div id="configuracoesViaturasSOS" class="configuracoes-sos"></div>
             <div class="campo campo-sem-margem">
               <label for="observacoesSOS">Observações</label>
-              <textarea id="observacoesSOS" placeholder="Ocorrência, endereço ou informação opcional"></textarea>
+              <textarea id="observacoesSOS" placeholder="Ocorrência, endereço ou informação opcional" disabled data-candidate-operation="true" aria-disabled="true"></textarea>
             </div>
           </div>
 
-          <button type="button" id="btnRegistrarMovimentacao" class="botao-principal" onclick="registrarMovimentacao()">
+          <button type="button" id="btnRegistrarMovimentacao" class="botao-principal" disabled data-candidate-operation="true" aria-disabled="true">
             Registrar
           </button>
 
@@ -986,15 +989,14 @@
             aria-labelledby="tituloPessoasDentroGuarda">
             <div class="cabecalho-pessoas-dentro-guarda">
               <button type="button" id="btnAlternarPessoasDentroGuarda" class="botao-alternar-pessoas-dentro"
-                aria-expanded="true" aria-controls="conteudoPessoasDentroGuarda"
-                onclick="alternarPessoasDentroGuarda()">
+                aria-expanded="true" aria-controls="conteudoPessoasDentroGuarda" disabled data-candidate-operation="true" aria-disabled="true">
                 <span>
                   <span class="titulo-pessoas-dentro" id="tituloPessoasDentroGuarda">Pessoas atualmente dentro</span>
-                  <span id="resumoPessoasDentroGuarda" class="resumo-pessoas-dentro">Carregando...</span>
+                  <span id="resumoPessoasDentroGuarda" class="resumo-pessoas-dentro">Sem consulta operacional neste candidato.</span>
                 </span>
                 <span id="iconeAlternarPessoasDentroGuarda" class="icone-alternar-pessoas-dentro" aria-hidden="true">⌄</span>
               </button>
-              <button type="button" id="btnAtualizarPessoasDentroGuarda" onclick="carregarPessoasDentroGuarda()">
+              <button type="button" id="btnAtualizarPessoasDentroGuarda" disabled data-candidate-operation="true" aria-disabled="true">
                 Atualizar
               </button>
             </div>
@@ -1003,7 +1005,7 @@
               <p class="descricao-pessoas-dentro-guarda">Confira quem ainda não possui saída registrada.</p>
 
               <div id="listaPessoasDentroGuarda" class="lista-painel">
-                <div class="estado-vazio-painel">Carregando...</div>
+                <div class="estado-vazio-painel">Sem consulta operacional neste candidato.</div>
               </div>
 
               <div id="atualizadoEmPessoasDentroGuarda" class="rodape-painel-comandante"></div>
@@ -1016,19 +1018,19 @@
     <dialog id="modalVeiculoExterno" class="modal-veiculo-externo" aria-labelledby="tituloVeiculoExterno">
       <div class="cabecalho-veiculo-externo">
         <div><h2 id="tituloVeiculoExterno">Veículo externo</h2><p>Informe o veículo, o condutor e os demais ocupantes, se houver.</p></div>
-        <button type="button" id="btnFecharVeiculoExterno" onclick="fecharVeiculoExterno()" aria-label="Fechar veículo externo">Fechar</button>
+        <button type="button" id="btnFecharVeiculoExterno" aria-label="Fechar veículo externo" disabled data-candidate-operation="true" aria-disabled="true">Fechar</button>
       </div>
       <div id="contextoRetroativoVeiculoExterno"></div>
       <div class="campo">
         <label>Movimentação</label>
         <div class="botoes-segmentados">
-          <button type="button" id="btnEntradaVeiculoExterno" onclick="selecionarMovimentacao('Entrada')">Entrada</button>
-          <button type="button" id="btnSaidaVeiculoExterno" onclick="selecionarMovimentacao('Saída')">Saída</button>
+          <button type="button" id="btnEntradaVeiculoExterno" disabled data-candidate-operation="true" aria-disabled="true">Entrada</button>
+          <button type="button" id="btnSaidaVeiculoExterno" disabled data-candidate-operation="true" aria-disabled="true">Saída</button>
         </div>
       </div>
       <div id="conteudoVeiculoExterno"></div>
       <div id="mensagemVeiculoExterno" class="mensagem-sistema oculto" role="status" aria-live="polite" aria-atomic="true"></div>
-      <button type="button" id="btnRegistrarVeiculoExterno" class="botao-principal" onclick="registrarMovimentacao()">Registrar veículo externo</button>
+      <button type="button" id="btnRegistrarVeiculoExterno" class="botao-principal" disabled data-candidate-operation="true" aria-disabled="true">Registrar veículo externo</button>
     </dialog>
 
     <div id="modalConfirmacao" class="modal-fundo oculto" role="dialog" aria-modal="true"
@@ -1039,15 +1041,15 @@
 
         <div id="campoDestinoModalConfirmacao" class="campo-destino-modal-confirmacao oculto">
           <label for="destinoModalConfirmacao">Destino</label>
-          <select id="destinoModalConfirmacao" disabled></select>
+          <select id="destinoModalConfirmacao" disabled data-candidate-operation="true" aria-disabled="true"></select>
         </div>
 
         <div class="modal-botoes">
-          <button type="button" class="modal-cancelar" id="btnModalCancelar" onclick="fecharModalConfirmacao()">
+          <button type="button" class="modal-cancelar" id="btnModalCancelar" disabled data-candidate-operation="true" aria-disabled="true">
             Cancelar
           </button>
 
-          <button type="button" class="modal-confirmar" id="btnModalConfirmar">
+          <button type="button" class="modal-confirmar" id="btnModalConfirmar" disabled data-candidate-operation="true" aria-disabled="true">
             Confirmar
           </button>
         </div>
@@ -1056,8 +1058,7 @@
 
     <div id="modalEditarMovimentacao" class="modal-fundo modal-edicao-movimentacao-fundo oculto"
       role="dialog" aria-modal="true" aria-labelledby="tituloModalEditarMovimentacao"
-      aria-describedby="descricaoModalEditarMovimentacao"
-      onclick="if (event.target === this) fecharModalEdicaoMovimentacao()">
+      aria-describedby="descricaoModalEditarMovimentacao">
       <div class="modal-card modal-card-edicao-movimentacao" tabindex="-1">
         <div class="cabecalho-modal-edicao-movimentacao">
           <div>
@@ -1065,7 +1066,7 @@
             <h3 id="tituloModalEditarMovimentacao">Editar movimentação</h3>
           </div>
           <button type="button" id="btnFecharEdicaoMovimentacao" class="fechar-modal-edicao-movimentacao"
-            aria-label="Fechar edição" onclick="fecharModalEdicaoMovimentacao()">×</button>
+            aria-label="Fechar edição" disabled data-candidate-operation="true" aria-disabled="true">×</button>
         </div>
 
         <p id="descricaoModalEditarMovimentacao" class="descricao-modal-edicao-movimentacao">
@@ -1077,18 +1078,16 @@
           <span id="metadadosEdicaoMovimentacao"></span>
         </div>
 
-        <form id="formEditarMovimentacao" onsubmit="salvarEdicaoMovimentacao(event)">
+        <form id="formEditarMovimentacao" inert novalidate>
           <div class="grade-edicao-movimentacao">
             <div class="campo campo-edicao-movimentacao">
               <label for="destinoEdicaoMovimentacao">Destino</label>
-              <select id="destinoEdicaoMovimentacao" required
-                onchange="this.setCustomValidity('')"></select>
+              <select id="destinoEdicaoMovimentacao" required disabled data-candidate-operation="true" aria-disabled="true"></select>
             </div>
 
             <div class="campo campo-edicao-movimentacao">
               <label for="procedenciaEdicaoMovimentacao">Procedência</label>
-              <select id="procedenciaEdicaoMovimentacao" required
-                onchange="atualizarComplementoEdicaoMovimentacao()"></select>
+              <select id="procedenciaEdicaoMovimentacao" required disabled data-candidate-operation="true" aria-disabled="true"></select>
             </div>
           </div>
 
@@ -1096,35 +1095,31 @@
             <label for="complementoEdicaoMovimentacao" id="labelComplementoEdicaoMovimentacao">
               Complemento da procedência
             </label>
-            <input type="text" id="complementoEdicaoMovimentacao" maxlength="300"
-              oninput="this.setCustomValidity('')">
+            <input type="text" id="complementoEdicaoMovimentacao" maxlength="300" disabled data-candidate-operation="true" aria-disabled="true">
           </div>
 
           <div class="campo campo-edicao-movimentacao">
             <label for="prefixoEdicaoMovimentacao">Auto/VTR</label>
             <input type="text" id="prefixoEdicaoMovimentacao" maxlength="40"
-              placeholder="Prefixo ou placa, se houver"
-              oninput="normalizarPrefixoPlaca(this)" autocomplete="off">
+              placeholder="Prefixo ou placa, se houver" autocomplete="off" disabled data-candidate-operation="true" aria-disabled="true">
           </div>
 
           <div class="campo campo-edicao-movimentacao">
             <label for="observacoesEdicaoMovimentacao">Observações</label>
             <textarea id="observacoesEdicaoMovimentacao" rows="3" maxlength="3000"
-              placeholder="Informação complementar, se houver"></textarea>
+              placeholder="Informação complementar, se houver" disabled data-candidate-operation="true" aria-disabled="true"></textarea>
           </div>
 
           <div class="campo campo-edicao-movimentacao campo-motivo-edicao-movimentacao">
             <label for="motivoEdicaoMovimentacao">Motivo da alteração *</label>
             <textarea id="motivoEdicaoMovimentacao" rows="2" maxlength="500" required
-              placeholder="Explique resumidamente o que está sendo corrigido"
-              oninput="this.setCustomValidity('')"></textarea>
+              placeholder="Explique resumidamente o que está sendo corrigido" disabled data-candidate-operation="true" aria-disabled="true"></textarea>
             <small>O motivo ficará registrado na auditoria.</small>
           </div>
 
           <div class="acoes-modal-edicao-movimentacao">
-            <button type="button" id="btnCancelarEdicaoMovimentacao" class="modal-cancelar"
-              onclick="fecharModalEdicaoMovimentacao()">Cancelar</button>
-            <button type="submit" id="btnSalvarEdicaoMovimentacao" class="modal-confirmar">
+            <button type="button" id="btnCancelarEdicaoMovimentacao" class="modal-cancelar" disabled data-candidate-operation="true" aria-disabled="true">Cancelar</button>
+            <button type="submit" id="btnSalvarEdicaoMovimentacao" class="modal-confirmar" disabled data-candidate-operation="true" aria-disabled="true">
               Salvar alterações
             </button>
           </div>
@@ -1135,8 +1130,7 @@
     <div id="modalCorrigirIdentificacaoPessoa"
       class="modal-fundo modal-correcao-identificacao-fundo oculto"
       role="dialog" aria-modal="true" aria-labelledby="tituloModalCorrecaoIdentificacao"
-      aria-describedby="descricaoModalCorrecaoIdentificacao"
-      onclick="if (event.target === this) fecharModalCorrecaoIdentificacaoPessoa()">
+      aria-describedby="descricaoModalCorrecaoIdentificacao">
       <div class="modal-card modal-card-correcao-identificacao" tabindex="-1">
         <div class="cabecalho-modal-edicao-movimentacao">
           <div>
@@ -1144,8 +1138,7 @@
             <h3 id="tituloModalCorrecaoIdentificacao">Corrigir identificação</h3>
           </div>
           <button type="button" id="btnFecharCorrecaoIdentificacao"
-            class="fechar-modal-edicao-movimentacao" aria-label="Fechar correção"
-            onclick="fecharModalCorrecaoIdentificacaoPessoa()">×</button>
+            class="fechar-modal-edicao-movimentacao" aria-label="Fechar correção" disabled data-candidate-operation="true" aria-disabled="true">×</button>
         </div>
 
         <p id="descricaoModalCorrecaoIdentificacao" class="descricao-modal-edicao-movimentacao">
@@ -1159,12 +1152,10 @@
           <span id="metadadosResumoCorrecaoIdentificacao"></span>
         </div>
 
-        <form id="formCorrigirIdentificacaoPessoa"
-          onsubmit="salvarCorrecaoIdentificacaoPessoa(event)">
+        <form id="formCorrigirIdentificacaoPessoa" inert novalidate>
           <div class="campo campo-edicao-movimentacao">
             <label for="categoriaCorrecaoIdentificacao">Categoria correta *</label>
-            <select id="categoriaCorrecaoIdentificacao" required
-              onchange="this.setCustomValidity('')">
+            <select id="categoriaCorrecaoIdentificacao" required disabled data-candidate-operation="true" aria-disabled="true">
               <option value="Militar">Militar</option>
               <option value="Colaborador">Colaborador</option>
               <option value="Visitante">Visitante</option>
@@ -1174,21 +1165,19 @@
           <div class="campo campo-edicao-movimentacao">
             <label for="nomeCorrecaoIdentificacao">Nome completo *</label>
             <input type="text" id="nomeCorrecaoIdentificacao" minlength="3" maxlength="150"
-              required autocomplete="off" oninput="this.setCustomValidity('')">
+              required autocomplete="off" disabled data-candidate-operation="true" aria-disabled="true">
           </div>
 
           <div class="campo campo-edicao-movimentacao">
             <label for="documentoCorrecaoIdentificacao">RG/CPF *</label>
             <input type="text" id="documentoCorrecaoIdentificacao" minlength="3" maxlength="20"
-              required inputmode="numeric" autocomplete="off"
-              oninput="this.setCustomValidity('')">
+              required inputmode="numeric" autocomplete="off" disabled data-candidate-operation="true" aria-disabled="true">
           </div>
 
           <div class="campo campo-edicao-movimentacao campo-motivo-edicao-movimentacao">
             <label for="motivoCorrecaoIdentificacao">Motivo da correção *</label>
             <textarea id="motivoCorrecaoIdentificacao" rows="2" maxlength="500" required
-              placeholder="Ex.: colaborador cadastrado incorretamente como militar"
-              oninput="this.setCustomValidity('')"></textarea>
+              placeholder="Ex.: colaborador cadastrado incorretamente como militar" disabled data-candidate-operation="true" aria-disabled="true"></textarea>
             <small>A identificação anterior, a nova e o responsável ficarão registrados na auditoria.</small>
           </div>
 
@@ -1201,9 +1190,8 @@
             aria-live="polite" aria-atomic="true"></div>
 
           <div class="acoes-modal-edicao-movimentacao">
-            <button type="button" id="btnCancelarCorrecaoIdentificacao" class="modal-cancelar"
-              onclick="fecharModalCorrecaoIdentificacaoPessoa()">Cancelar</button>
-            <button type="submit" id="btnSalvarCorrecaoIdentificacao" class="modal-confirmar">
+            <button type="button" id="btnCancelarCorrecaoIdentificacao" class="modal-cancelar" disabled data-candidate-operation="true" aria-disabled="true">Cancelar</button>
+            <button type="submit" id="btnSalvarCorrecaoIdentificacao" class="modal-confirmar" disabled data-candidate-operation="true" aria-disabled="true">
               Confirmar correção
             </button>
           </div>
@@ -1212,23 +1200,20 @@
     </div>
 
     <div id="modalSeletorMilitarGuarnicao" class="modal-fundo modal-seletor-fundo oculto"
-      role="dialog" aria-modal="true" aria-labelledby="tituloSeletorMilitarGuarnicao"
-      onclick="if (event.target === this) fecharSeletorMilitarGuarnicaoServico()">
+      role="dialog" aria-modal="true" aria-labelledby="tituloSeletorMilitarGuarnicao">
       <div class="modal-card modal-selecao-militar">
         <div class="cabecalho-seletor-militar">
           <div>
             <h3 id="tituloSeletorMilitarGuarnicao">Selecionar militar</h3>
             <span>Toque em um nome para selecionar</span>
           </div>
-          <button type="button" class="fechar-seletor-militar" aria-label="Fechar seleção"
-            onclick="fecharSeletorMilitarGuarnicaoServico()">×</button>
+          <button type="button" class="fechar-seletor-militar" aria-label="Fechar seleção" disabled data-candidate-operation="true" aria-disabled="true">×</button>
         </div>
 
         <div class="busca-seletor-militar">
           <label for="buscaRgSeletorMilitarGuarnicao">Pesquisar por nome ou RG</label>
           <input type="search" id="buscaRgSeletorMilitarGuarnicao" inputmode="search"
-            autocomplete="off" placeholder="Digite parte do nome ou RG"
-            oninput="renderizarListaSeletorMilitarGuarnicaoServico()">
+            autocomplete="off" placeholder="Digite parte do nome ou RG" disabled data-candidate-operation="true" aria-disabled="true">
           <span id="resumoSeletorMilitarGuarnicao" aria-live="polite"></span>
         </div>
 
@@ -1237,33 +1222,29 @@
     </div>
 
     <div id="modalEventoMotoristas" class="modal-fundo modal-motoristas-fundo oculto" role="dialog"
-      aria-modal="true" aria-labelledby="tituloModalEventoMotoristas"
-      onclick="if (event.target === this) fecharModalEventoMotoristas()">
+      aria-modal="true" aria-labelledby="tituloModalEventoMotoristas">
       <div class="modal-card modal-card-motoristas" tabindex="-1">
         <div class="cabecalho-modal-motoristas">
           <div>
             <span>Livro do Encarregado</span>
             <h3 id="tituloModalEventoMotoristas">Novo lançamento</h3>
           </div>
-          <button type="button" class="fechar-modal-motoristas" aria-label="Fechar lançamento"
-            onclick="fecharModalEventoMotoristas()">×</button>
+          <button type="button" class="fechar-modal-motoristas" aria-label="Fechar lançamento" disabled data-candidate-operation="true" aria-disabled="true">×</button>
         </div>
 
-        <form id="formEventoMotoristas" onsubmit="salvarEventoMotoristas(event)">
+        <form id="formEventoMotoristas" inert novalidate>
           <p id="descricaoModalEventoMotoristas" class="descricao-modal-motoristas"></p>
 
           <fieldset class="campo campo-modal-motoristas pergunta-sisgeo-motoristas oculto"
-            id="campoSisgeoEventoMotoristas">
+            id="campoSisgeoEventoMotoristas" disabled data-candidate-operation="true" aria-disabled="true">
             <legend>O SISGEO foi realizado dentro do prazo?</legend>
             <div class="opcoes-binarias-motoristas">
               <label>
-                <input type="radio" name="resultadoSisgeoEventoMotoristas" value="Sim"
-                  onchange="atualizarCamposSisgeoEventoMotoristas()">
+                <input type="radio" name="resultadoSisgeoEventoMotoristas" value="Sim" disabled data-candidate-operation="true" aria-disabled="true">
                 <span>Sim</span>
               </label>
               <label>
-                <input type="radio" name="resultadoSisgeoEventoMotoristas" value="Não"
-                  onchange="atualizarCamposSisgeoEventoMotoristas()">
+                <input type="radio" name="resultadoSisgeoEventoMotoristas" value="Não" disabled data-candidate-operation="true" aria-disabled="true">
                 <span>Não</span>
               </label>
             </div>
@@ -1271,34 +1252,34 @@
 
           <div class="campo campo-modal-motoristas" id="campoViaturaEventoMotoristas">
             <label for="viaturaEventoMotoristas">Viatura *</label>
-            <select id="viaturaEventoMotoristas" onchange="atualizarCondutorEventoMotoristasPelaViatura()"></select>
+            <select id="viaturaEventoMotoristas" disabled data-candidate-operation="true" aria-disabled="true"></select>
           </div>
 
           <div class="campo campo-modal-motoristas oculto" id="campoResultadoEventoMotoristas">
             <label for="resultadoEventoMotoristas" id="labelResultadoEventoMotoristas">Situação *</label>
-            <select id="resultadoEventoMotoristas"></select>
+            <select id="resultadoEventoMotoristas" disabled data-candidate-operation="true" aria-disabled="true"></select>
           </div>
 
           <div class="campo campo-modal-motoristas oculto" id="campoDataHoraEventoMotoristas">
             <label for="dataHoraEventoMotoristas">Data e hora *</label>
-            <input type="datetime-local" id="dataHoraEventoMotoristas" step="60">
+            <input type="datetime-local" id="dataHoraEventoMotoristas" step="60" disabled data-candidate-operation="true" aria-disabled="true">
           </div>
 
           <div class="campo campo-modal-motoristas oculto" id="campoCondutorEventoMotoristas">
             <label for="btnCondutorEventoMotoristas">Condutor *</label>
             <button type="button" id="btnCondutorEventoMotoristas" class="botao-seletor-militar botao-condutor-evento-motoristas"
-              aria-haspopup="dialog" onclick="abrirSeletorMilitarGuarnicaoServico('condutor_motoristas')">
+              aria-haspopup="dialog" disabled data-candidate-operation="true" aria-disabled="true">
               <span id="textoCondutorEventoMotoristas">Selecione o condutor</span>
               <span class="seta-seletor-militar" aria-hidden="true">⌄</span>
             </button>
-            <input type="hidden" id="condutorEventoMotoristas">
+            <input type="hidden" id="condutorEventoMotoristas" disabled data-candidate-operation="true" aria-disabled="true">
             <small id="origemCondutorEventoMotoristas">Toque para pesquisar o efetivo por nome ou RG.</small>
           </div>
 
           <div class="campo campo-modal-motoristas oculto" id="campoLitrosEventoMotoristas">
             <label for="litrosEventoMotoristas">Quantidade abastecida (L) *</label>
             <input type="text" id="litrosEventoMotoristas" inputmode="decimal" maxlength="20" required
-              autocomplete="off" aria-describedby="ajudaLitrosEventoMotoristas" placeholder="Ex.: 35,750">
+              autocomplete="off" aria-describedby="ajudaLitrosEventoMotoristas" placeholder="Ex.: 35,750" disabled data-candidate-operation="true" aria-disabled="true">
             <small id="ajudaLitrosEventoMotoristas">Em litros, com até 3 casas decimais. Não use separador de milhar.</small>
           </div>
 
@@ -1306,35 +1287,35 @@
             <div class="campo campo-modal-motoristas oculto" id="campoValorEventoMotoristas">
               <label for="valorEventoMotoristas">Valor abastecido (R$) *</label>
               <input type="text" id="valorEventoMotoristas" inputmode="numeric" autocomplete="off"
-                aria-describedby="ajudaValorEventoMotoristas" placeholder="0,00">
+                aria-describedby="ajudaValorEventoMotoristas" placeholder="0,00" disabled data-candidate-operation="true" aria-disabled="true">
               <small id="ajudaValorEventoMotoristas">Digite só números: 12345 vira 123,45.</small>
             </div>
             <div class="campo campo-modal-motoristas oculto" id="campoKmEventoMotoristas">
               <label for="kmEventoMotoristas" id="labelKmEventoMotoristas">Quilometragem *</label>
-              <input type="number" id="kmEventoMotoristas" min="0" step="1" inputmode="numeric" placeholder="Ex.: 34520">
+              <input type="number" id="kmEventoMotoristas" min="0" step="1" inputmode="numeric" placeholder="Ex.: 34520" disabled data-candidate-operation="true" aria-disabled="true">
             </div>
           </div>
 
           <div class="campo campo-modal-motoristas oculto" id="campoJustificativaKmEventoMotoristas">
             <label for="justificativaKmEventoMotoristas">Justificativa para KM menor</label>
             <input type="text" id="justificativaKmEventoMotoristas" maxlength="240"
-              placeholder="Preencha somente se houver correção ou troca do hodômetro">
+              placeholder="Preencha somente se houver correção ou troca do hodômetro" disabled data-candidate-operation="true" aria-disabled="true">
           </div>
 
           <div class="campo campo-modal-motoristas oculto" id="campoDestinoEventoMotoristas">
             <label for="destinoEventoMotoristas" id="labelDestinoEventoMotoristas">Destino / estabelecimento *</label>
-            <input type="text" id="destinoEventoMotoristas" maxlength="180" placeholder="Informe o local">
+            <input type="text" id="destinoEventoMotoristas" maxlength="180" placeholder="Informe o local" disabled data-candidate-operation="true" aria-disabled="true">
           </div>
 
           <div class="campo campo-modal-motoristas campo-sem-margem" id="campoObservacoesEventoMotoristas">
             <label for="observacoesEventoMotoristas" id="labelObservacoesEventoMotoristas">Observações</label>
-            <textarea id="observacoesEventoMotoristas" rows="4" maxlength="1000" placeholder="Informação complementar"></textarea>
+            <textarea id="observacoesEventoMotoristas" rows="4" maxlength="1000" placeholder="Informação complementar" disabled data-candidate-operation="true" aria-disabled="true"></textarea>
           </div>
 
           <div id="mensagemEventoMotoristas" class="resultado oculto" role="status" aria-live="polite"></div>
           <div class="acoes-modal-motoristas">
-            <button type="button" class="modal-cancelar" onclick="fecharModalEventoMotoristas()">Cancelar</button>
-            <button type="submit" id="btnSalvarEventoMotoristas" class="modal-confirmar botao-salvar-motoristas">Salvar lançamento</button>
+            <button type="button" class="modal-cancelar" disabled data-candidate-operation="true" aria-disabled="true">Cancelar</button>
+            <button type="submit" id="btnSalvarEventoMotoristas" class="modal-confirmar botao-salvar-motoristas" disabled data-candidate-operation="true" aria-disabled="true">Salvar lançamento</button>
           </div>
         </form>
       </div>
@@ -1342,8 +1323,7 @@
 
     <div id="modalEncerrarServicoMotoristas" class="modal-fundo modal-motoristas-fundo oculto" role="dialog"
       aria-modal="true" aria-labelledby="tituloModalEncerrarServicoMotoristas"
-      aria-describedby="descricaoModalEncerrarServicoMotoristas"
-      onclick="if (event.target === this) fecharModalEncerrarServicoMotoristas()">
+      aria-describedby="descricaoModalEncerrarServicoMotoristas">
       <div class="modal-card modal-card-motoristas modal-card-encerramento-motoristas" tabindex="-1">
         <div class="cabecalho-modal-motoristas cabecalho-encerramento-motoristas">
           <div>
@@ -1351,10 +1331,10 @@
             <h3 id="tituloModalEncerrarServicoMotoristas">Encerrar serviço</h3>
           </div>
           <button type="button" id="btnFecharEncerramentoMotoristas" class="fechar-modal-motoristas"
-            aria-label="Fechar janela de encerramento" onclick="fecharModalEncerrarServicoMotoristas()">×</button>
+            aria-label="Fechar janela de encerramento" disabled data-candidate-operation="true" aria-disabled="true">×</button>
         </div>
 
-        <form id="formEncerramentoMotoristas" onsubmit="encerrarServicoEncarregadoMotoristas(event)">
+        <form id="formEncerramentoMotoristas" inert novalidate>
           <p id="descricaoModalEncerrarServicoMotoristas" class="descricao-modal-motoristas">
             O encerramento fica disponível a partir das 07h. A responsabilidade do ciclo permanece válida até as 08h.
           </p>
@@ -1363,79 +1343,21 @@
           <div class="campo campo-modal-motoristas campo-sem-margem">
             <label for="observacoesEncerramentoMotoristas">Observações finais (opcional)</label>
             <textarea id="observacoesEncerramentoMotoristas" rows="5" maxlength="1000"
-              placeholder="Acrescente alguma informação relevante sobre o serviço, se necessário"></textarea>
+              placeholder="Acrescente alguma informação relevante sobre o serviço, se necessário" disabled data-candidate-operation="true" aria-disabled="true"></textarea>
             <small>Se não houver observações, deixe o campo em branco.</small>
           </div>
 
           <div id="mensagemEncerramentoMotoristas" class="resultado oculto" role="status" aria-live="polite"></div>
           <div class="acoes-modal-motoristas">
-            <button type="button" id="btnCancelarEncerramentoMotoristas" class="modal-cancelar"
-              onclick="fecharModalEncerrarServicoMotoristas()">Cancelar</button>
+            <button type="button" id="btnCancelarEncerramentoMotoristas" class="modal-cancelar" disabled data-candidate-operation="true" aria-disabled="true">Cancelar</button>
             <button type="submit" id="btnConfirmarEncerramentoMotoristas"
-              class="modal-confirmar botao-encerrar-servico-motoristas">Encerrar serviço</button>
+              class="modal-confirmar botao-encerrar-servico-motoristas" disabled data-candidate-operation="true" aria-disabled="true">Encerrar serviço</button>
           </div>
         </form>
       </div>
     </div>
 
-  <script src="app.js?v=27.1.38"></script>
-  <script>
-    (function () {
-      if (typeof window.abrirModalConfirmacao === 'function' &&
-          typeof window.fecharModalConfirmacao === 'function') return;
-
-      let acaoConfirmadaFallback = null;
-      let focoAntesModalFallback = null;
-
-      window.fecharModalConfirmacao = function () {
-        const modal = document.getElementById('modalConfirmacao');
-        const app = document.querySelector('.app');
-        acaoConfirmadaFallback = null;
-        if (modal) modal.classList.add('oculto');
-        if (app) app.removeAttribute('inert');
-        if (focoAntesModalFallback && typeof focoAntesModalFallback.focus === 'function') {
-          focoAntesModalFallback.focus();
-        }
-        focoAntesModalFallback = null;
-      };
-
-      window.confirmarAcaoModal = function () {
-        const callback = acaoConfirmadaFallback;
-        window.fecharModalConfirmacao();
-        if (typeof callback === 'function') callback();
-      };
-
-      window.abrirModalConfirmacao = function (titulo, texto, callback, estilo) {
-        const modal = document.getElementById('modalConfirmacao');
-        const tituloEl = document.getElementById('modalTitulo');
-        const textoEl = document.getElementById('modalTexto');
-        const confirmar = document.getElementById('btnModalConfirmar');
-        const cancelar = document.getElementById('btnModalCancelar');
-        if (!modal || !tituloEl || !textoEl || !confirmar) {
-          throw new Error('Modal de confirmação indisponível.');
-        }
-
-        const estiloModal = estilo === true ? 'perigo' : String(estilo || '');
-        tituloEl.textContent = titulo;
-        textoEl.innerHTML = texto;
-        confirmar.classList.toggle('perigo', estiloModal === 'perigo');
-        confirmar.classList.toggle('retroativo', estiloModal === 'retroativo');
-        confirmar.textContent = estiloModal === 'retroativo' ? 'Confirmar lançamento' : 'Confirmar';
-        if (cancelar) {
-          cancelar.textContent = estiloModal === 'retroativo' ? 'Voltar e revisar' : 'Cancelar';
-        }
-
-        acaoConfirmadaFallback = typeof callback === 'function' ? callback : null;
-        confirmar.onclick = window.confirmarAcaoModal;
-        focoAntesModalFallback = document.activeElement;
-        const app = document.querySelector('.app');
-        if (app) app.setAttribute('inert', '');
-        modal.classList.remove('oculto');
-        setTimeout(function () {
-          if (cancelar) cancelar.focus();
-        }, 30);
-      };
-    })();
-  </script>
-  </body>
+  
+  
+  <footer class="candidate-footer">Gestão de Serviço · 1º GBM · sistema oficial</footer></body>
 </html>
