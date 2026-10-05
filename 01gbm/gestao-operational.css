@@ -4091,6 +4091,23 @@ html { width: 100%; }
 .candidate-shell[data-operational-ui="true"] #operational-details-pessoas-dentro > summary { margin-bottom: 0; }
 .candidate-shell[data-operational-ui="true"] #operational-details-pessoas-dentro[open] > summary { margin-bottom: 14px; }
 .candidate-shell[data-operational-ui="true"] #btnAtualizarPessoasDentroGuarda { margin-bottom: 12px; }
+.candidate-shell[data-operational-ui="true"] .operational-person-choice {
+  display: block; width: 100%; min-height: 64px; padding: 12px; margin: 0;
+  border: 1px solid #9db6c8; border-radius: 10px; background: #f8fafc; color: #163b55;
+  text-align: left; white-space: normal; overflow-wrap: anywhere; cursor: pointer;
+}
+.candidate-shell[data-operational-ui="true"] .operational-person-choice > strong,
+.candidate-shell[data-operational-ui="true"] .operational-person-choice > span,
+.candidate-shell[data-operational-ui="true"] .operational-person-choice > small { display: block; line-height: 1.5; }
+.candidate-shell[data-operational-ui="true"] .operational-person-choice > strong { font-size: 15px; }
+.candidate-shell[data-operational-ui="true"] .operational-person-choice > small { margin-top: 5px; font-weight: 700; }
+.candidate-shell[data-operational-ui="true"] .operational-person-choice:hover:not(:disabled) { background: #e8f1f8; border-color: #163b55; }
+.candidate-shell[data-operational-ui="true"] .operational-person-choice:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+.candidate-shell[data-operational-ui="true"] .operational-person-choice:disabled { opacity: .65; cursor: not-allowed; }
+.candidate-shell[data-operational-ui="true"] #listaPessoasDentroGuarda .botao-saida-rapida {
+  min-height: 44px; background: #dc2626; color: #fff; border: 1px solid #b91c1c;
+}
+.candidate-shell[data-operational-ui="true"] #listaPessoasDentroGuarda .botao-saida-rapida:hover:not(:disabled) { background: #b91c1c; }
 .candidate-shell[data-operational-ui="true"] .operational-fleet-selection {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0;
 }
