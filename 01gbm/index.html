@@ -418,29 +418,27 @@
               </div>
             </div>
 
-            <div class="secao-painel-comandante" id="secaoPainelViaturas">
-              <button type="button" class="botao-alternar-secao-painel" aria-expanded="true"
-                aria-controls="conteudoPainelViaturas" disabled data-candidate-operation="true" aria-disabled="true">
+            <details class="secao-painel-comandante operational-collapsible" id="secaoPainelViaturas" open>
+              <summary id="operational-details-viaturas" class="botao-alternar-secao-painel" aria-controls="conteudoPainelViaturas">
                 <span>Viaturas do quartel</span>
                 <span class="icone-alternar-secao-painel" aria-hidden="true">⌄</span>
-              </button>
+              </summary>
               <div id="conteudoPainelViaturas" class="conteudo-secao-painel">
                 <div id="listaViaturasQuartel" class="lista-painel"></div>
               </div>
-            </div>
+            </details>
 
-            <div class="secao-painel-comandante" id="secaoPainelDentro">
-              <button type="button" class="botao-alternar-secao-painel" aria-expanded="true"
-                aria-controls="conteudoPainelDentro" disabled data-candidate-operation="true" aria-disabled="true">
+            <details class="secao-painel-comandante operational-collapsible" id="secaoPainelDentro" open>
+              <summary id="operational-details-dentro" class="botao-alternar-secao-painel" aria-controls="conteudoPainelDentro">
                 <span>Dentro do quartel</span>
                 <span class="icone-alternar-secao-painel" aria-hidden="true">⌄</span>
-              </button>
+              </summary>
               <div id="conteudoPainelDentro" class="conteudo-secao-painel">
                 <div id="listaPessoasDentro" class="lista-painel">
                   <div class="estado-vazio-painel">Sem consulta operacional neste candidato.</div>
                 </div>
               </div>
-            </div>
+            </details>
 
             <div class="secao-painel-comandante" id="secaoPainelMovimentacoes">
               <button type="button" class="botao-alternar-secao-painel" aria-expanded="false"
@@ -987,21 +985,17 @@
 
           <section class="card-pessoas-dentro-guarda oculto" id="cardPessoasDentroGuarda"
             aria-labelledby="tituloPessoasDentroGuarda">
-            <div class="cabecalho-pessoas-dentro-guarda">
-              <button type="button" id="btnAlternarPessoasDentroGuarda" class="botao-alternar-pessoas-dentro"
-                aria-expanded="true" aria-controls="conteudoPessoasDentroGuarda" disabled data-candidate-operation="true" aria-disabled="true">
+            <details id="operational-details-pessoas-dentro" class="operational-collapsible" open><summary id="btnAlternarPessoasDentroGuarda" class="botao-alternar-pessoas-dentro" aria-controls="conteudoPessoasDentroGuarda">
                 <span>
                   <span class="titulo-pessoas-dentro" id="tituloPessoasDentroGuarda">Pessoas atualmente dentro</span>
                   <span id="resumoPessoasDentroGuarda" class="resumo-pessoas-dentro">Sem consulta operacional neste candidato.</span>
                 </span>
                 <span id="iconeAlternarPessoasDentroGuarda" class="icone-alternar-pessoas-dentro" aria-hidden="true">⌄</span>
-              </button>
-              <button type="button" id="btnAtualizarPessoasDentroGuarda" disabled data-candidate-operation="true" aria-disabled="true">
+              </summary>
+
+            <div id="conteudoPessoasDentroGuarda" class="conteudo-pessoas-dentro-guarda"><button type="button" id="btnAtualizarPessoasDentroGuarda" disabled data-candidate-operation="true" aria-disabled="true">
                 Atualizar
               </button>
-            </div>
-
-            <div id="conteudoPessoasDentroGuarda" class="conteudo-pessoas-dentro-guarda">
               <p class="descricao-pessoas-dentro-guarda">Confira quem ainda não possui saída registrada.</p>
 
               <div id="listaPessoasDentroGuarda" class="lista-painel">
@@ -1010,7 +1004,7 @@
 
               <div id="atualizadoEmPessoasDentroGuarda" class="rodape-painel-comandante"></div>
             </div>
-          </section>
+          </details></section>
         </section>
       </main>
     </div>
