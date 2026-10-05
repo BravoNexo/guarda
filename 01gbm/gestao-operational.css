@@ -4074,6 +4074,15 @@ html { width: 100%; }
 .candidate-shell[data-operational-ui="true"] .card [data-operational-output] { white-space: pre-wrap; overflow-wrap: anywhere; }
 .candidate-shell[data-operational-ui="true"] [hidden] { display: none !important; }
 .candidate-shell[data-operational-ui="true"] textarea { max-width: 100%; }
+.candidate-shell[data-operational-ui="true"] .perfil-servico .status-guarda,
+.candidate-shell[data-operational-ui="true"] #cardToqueFogo .status-guarda {
+  color: #334155; font-size: 14px; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere;
+}
+.candidate-shell[data-operational-ui="true"] .perfil-servico .status-guarda::first-line { font-weight: 700; font-size: 15px; }
+.candidate-shell[data-operational-ui="true"] #operational-planned-officer > strong { display: block; font-size: 15px; line-height: 1.5; color: #334155; }
+.candidate-shell[data-operational-ui="true"] #operational-planned-officer > p { margin: 5px 0 12px; font-size: 14px; color: #475569; }
+.candidate-shell[data-operational-ui="true"] #statusCoberturaToque { white-space: pre-line; font-size: 14px; line-height: 1.5; }
+.candidate-shell[data-operational-ui="true"] .perfil-servico > .cabecalho-card-guarda > .acoes-guarda { display: none; }
 .operational-print-report { display: none; }
 @media print {
   @page { size: A4; margin: 15mm 13mm; }
