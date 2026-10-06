@@ -47,8 +47,8 @@
   <form id="candidate-code-form" hidden><fieldset id="candidate-code-fields" disabled data-candidate-personal="true"><label for="candidate-code">Código recebido no e-mail</label><input id="candidate-code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,8}" minlength="6" maxlength="8" required data-candidate-personal="true"><button id="candidate-code-submit" type="submit" disabled data-candidate-personal="true">Confirmar e-mail</button></fieldset></form>
   <form id="candidate-new-password-form" hidden><fieldset id="candidate-new-password-fields" disabled data-candidate-personal="true"><label for="candidate-new-password">Nova senha</label><div class="candidate-password-row"><input id="candidate-new-password" type="password" autocomplete="new-password" minlength="8" maxlength="1024" required data-candidate-personal="true"><button id="candidate-toggle-new-password" type="button" disabled aria-controls="candidate-new-password candidate-confirm-password" aria-pressed="false" data-candidate-personal="true">Mostrar</button></div><label for="candidate-confirm-password">Repetir nova senha</label><input id="candidate-confirm-password" type="password" autocomplete="new-password" minlength="8" maxlength="1024" required data-candidate-personal="true"><p>Pelo menos 8 caracteres. Use uma senha exclusiva.</p><button id="candidate-complete-submit" type="submit" disabled data-candidate-personal="true">Salvar senha e entrar</button></fieldset></form>
   <button id="candidate-cancel-flow" type="button" disabled hidden data-candidate-personal="true">Voltar</button>
-  <div id="candidate-identity" hidden><p>Identidade pessoal confirmada não libera funções de serviço.</p><div class="candidate-account-actions"><button id="candidate-recheck" type="button" disabled data-candidate-personal="true">Reconsultar meu acesso</button><button id="candidate-sign-out" type="button" disabled data-candidate-personal="true">Sair desta aba</button></div></div>
-  <section id="candidate-own-context" class="candidate-own-context" aria-label="Situação do próprio acesso" hidden><h4>Meu acesso</h4><p id="candidate-own-status" role="status" aria-live="polite"></p><p id="candidate-own-binding"></p><p id="candidate-own-capabilities"></p><p id="candidate-own-cycle"></p><div class="candidate-duty-actions"><button id="operational-reload" type="button" disabled>Atualizar informações</button><button id="operational-reconcile" type="button" disabled hidden>Conferir registro pendente</button></div><p id="operational-status" role="status" aria-live="polite"></p><p id="candidate-own-scope">Entrar não assume uma função. Sair da conta não encerra o serviço.</p></section>
+  <div id="candidate-identity" hidden><p>Identidade pessoal confirmada não libera funções de serviço.</p><div class="candidate-account-actions"><button id="candidate-sign-out" type="button" disabled data-candidate-personal="true">Sair da conta</button></div></div><div id="candidate-recovery-controls" class="candidate-recovery-controls" hidden><button id="candidate-recheck" type="button" disabled data-candidate-personal="true">Tentar reconectar</button></div>
+  <section id="candidate-own-context" class="candidate-own-context" aria-label="Situação do próprio acesso" hidden><h4>Meu acesso</h4><p id="candidate-own-status" role="status" aria-live="polite"></p><p id="candidate-own-binding"></p><p id="candidate-own-capabilities"></p><p id="candidate-own-cycle"></p><details id="operational-update-options" class="operational-update-options"><summary>Opções de atualização</summary><div class="candidate-duty-actions"><button id="operational-reload" type="button" disabled>Atualizar informações</button></div></details><div class="candidate-duty-actions operational-reconciliation-actions"><button id="operational-reconcile" type="button" disabled hidden>Conferir registro pendente</button></div><p id="operational-status" role="status" aria-live="polite"></p><p id="candidate-own-scope">Entrar não assume uma função. Sair da conta não encerra o serviço.</p></section>
 </section><p class="candidate-role-note">O login identifica você. A função de serviço deve ser assumida explicitamente nos cartões abaixo.</p><section class="card card-guarda perfil-servico" id="perfilGuarda">
           <div class="cabecalho-card-guarda">
             <h2>Guarda de Serviço</h2>
@@ -349,6 +349,274 @@
             </div>
           </div>
         <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-encarregado_motoristas-assumir" type="button" disabled>Assumir / Trocar</button><button id="operational-role-encarregado_motoristas-encerrar" type="button" disabled>Encerrar serviço</button></div></section></div></section>
+<section class="card oculto" id="cardMovimentacao">
+          <h2 id="tituloCardMovimentacao">Controle de Acesso</h2>
+
+          <div id="blocoLancamentoRetroativo" class="bloco-lancamento-retroativo oculto">
+            <div class="cabecalho-lancamento-retroativo">
+              <div class="linha-cabecalho-lancamento-retroativo">
+                <span class="selo-modo-retroativo">MODO RETROATIVO</span>
+                <button type="button" class="botao-fechar-retroativo" data-fechar-lancamento-retroativo
+                  aria-label="Fechar o lançamento em horário anterior" disabled data-candidate-operation="true" aria-disabled="true">
+                  Fechar <span aria-hidden="true">×</span>
+                </button>
+              </div>
+              <strong>Exclusivo do Comandante da Guarda</strong>
+              <p>Informe quando a movimentação de pessoas ou viaturas realmente ocorreu, dentro do seu ciclo. A hora deste lançamento será registrada automaticamente para auditoria.</p>
+            </div>
+
+            <div class="grade-data-hora-retroativa">
+              <div class="campo">
+                <label for="dataMovimentacaoRetroativa">Data em que ocorreu *</label>
+                <input type="date" id="dataMovimentacaoRetroativa" disabled data-candidate-operation="true" aria-disabled="true">
+              </div>
+              <div class="campo">
+                <label for="horaMovimentacaoRetroativa">Hora em que ocorreu *</label>
+                <input type="time" id="horaMovimentacaoRetroativa" step="60" disabled data-candidate-operation="true" aria-disabled="true">
+              </div>
+            </div>
+
+            <div class="campo">
+              <label for="motivoMovimentacaoRetroativa">Motivo do lançamento posterior *</label>
+              <select id="motivoMovimentacaoRetroativa" disabled data-candidate-operation="true" aria-disabled="true">
+                <option value="">Selecione o motivo</option>
+                <option value="Falta de energia">Falta de energia</option>
+                <option value="Celular sem carga">Celular sem carga</option>
+                <option value="Falha de conexão">Falha de conexão</option>
+                <option value="Falha ou correção do aplicativo">Falha ou correção do aplicativo</option>
+                <option value="Ajuste do período de implantação/teste">Ajuste do período de implantação/teste</option>
+                <option value="Registro não realizado no momento">Registro não realizado no momento</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+
+            <div class="campo oculto" id="campoDetalheMotivoRetroativo">
+              <label for="detalheMotivoRetroativo">Detalhe do motivo *</label>
+              <input type="text" id="detalheMotivoRetroativo" maxlength="240"
+                placeholder="Explique resumidamente o que ocorreu" disabled data-candidate-operation="true" aria-disabled="true">
+            </div>
+
+            <button type="button" class="botao-cancelar-retroativo" data-fechar-lancamento-retroativo disabled data-candidate-operation="true" aria-disabled="true">
+              Cancelar preenchimento e voltar ao painel
+            </button>
+          </div>
+
+          <div class="campo" id="campoFormaRegistro">
+            <label>Forma do registro</label>
+            <div class="botoes-segmentados" id="botoesModoRegistro">
+              <button type="button" class="ativo" id="btnModoIndividual" disabled data-candidate-operation="true" aria-disabled="true">Individual</button>
+              <button type="button" id="btnModoViatura" disabled data-candidate-operation="true" aria-disabled="true">Auto/VTR</button>
+            </div>
+          </div>
+
+          <div class="campo">
+            <label id="labelTipoMovimentacao">Tipo de movimentação</label>
+            <div class="botoes-segmentados">
+              <button type="button" class="ativo" id="btnEntrada" disabled data-candidate-operation="true" aria-disabled="true"><span id="textoBtnEntrada">Entrada</span></button>
+              <button type="button" id="btnSaida" disabled data-candidate-operation="true" aria-disabled="true"><span id="textoBtnSaida">Saída</span></button>
+            </div>
+          </div>
+
+          <div id="origemFormularioPadrao">
+          <div id="areaRegistroPadrao">
+
+          <input type="hidden" id="tipoRegistro" value="Pessoa cadastrada" disabled data-candidate-operation="true" aria-disabled="true">
+
+          <div class="campo" id="areaCategoriaPessoa">
+            <label>Categoria da pessoa</label>
+            <div class="botoes-segmentados categorias-pessoa">
+              <button type="button" class="ativo" id="btnCategoriaMilitar" disabled data-candidate-operation="true" aria-disabled="true">Militar</button>
+              <button type="button" id="btnCategoriaColaborador" disabled data-candidate-operation="true" aria-disabled="true">Colaborador</button>
+              <button type="button" id="btnCategoriaVisitante" disabled data-candidate-operation="true" aria-disabled="true">Visitante</button>
+            </div>
+          </div>
+
+          <div id="areaPessoaCadastrada">
+            <div class="campo" id="campoBuscaPessoaPrincipal">
+              <label id="labelPessoaPrincipal">Nome ou RG/CPF da pessoa</label>
+              <div class="linha-busca">
+                <input type="text" id="rgCpfBusca" placeholder="Digite nome, RG ou CPF" autocomplete="off" disabled data-candidate-operation="true" aria-disabled="true">
+                <button type="button" disabled data-candidate-operation="true" aria-disabled="true">Buscar</button>
+              </div>
+            </div>
+
+            <div id="resultadoPessoa" class="resultado oculto"></div>
+
+            <div id="areaOpcaoCondutorExterno" class="opcao-militar-externo oculto">
+              <button type="button" disabled data-candidate-operation="true" aria-disabled="true">
+                Condutor não cadastrado
+              </button>
+            </div>
+
+            <div id="areaCondutorExterno" class="dados-militar-externo oculto">
+              <strong>Identificação manual do condutor</strong>
+              <div class="campo">
+                <label>Posto/graduação e nome</label>
+                <input type="text" id="nomeCondutorExterno" placeholder="Ex.: 2º SGT SILVA" disabled data-candidate-operation="true" aria-disabled="true">
+              </div>
+              <div class="campo campo-sem-margem">
+                <label>RG/CPF ou identidade funcional</label>
+                <input type="text" id="rgCondutorExterno" placeholder="Documento do militar" disabled data-candidate-operation="true" aria-disabled="true">
+              </div>
+              <button type="button" class="botao-voltar-busca" disabled data-candidate-operation="true" aria-disabled="true">
+                Voltar para busca no cadastro
+              </button>
+            </div>
+          </div>
+
+          <div id="areaOcupantesViatura" class="bloco-viatura oculto">
+            <details id="detalhesOcupantesExternos">
+            <summary>Ocupantes adicionais (opcional)</summary>
+            <div class="titulo-bloco-viatura">
+              <div>
+                <strong>Outros ocupantes do Auto/VTR</strong>
+                <span>O condutor já conta como ocupante. Inclua abaixo somente as demais pessoas, se houver.</span>
+              </div>
+              <span id="contadorOcupantesViatura" class="contador-ocupantes">0 adicionais</span>
+            </div>
+
+            <div class="subtitulo-inclusao-viatura">Adicionar pessoa cadastrada</div>
+
+            <div class="campo campo-sem-margem">
+              <label>RG/CPF da pessoa</label>
+              <div class="linha-busca">
+                <input type="text" id="rgCpfBuscaOcupante" placeholder="Digite ao menos 3 dígitos" disabled data-candidate-operation="true" aria-disabled="true">
+                <button type="button" disabled data-candidate-operation="true" aria-disabled="true">Buscar</button>
+              </div>
+            </div>
+
+            <div id="resultadoOcupanteViatura" class="resultado oculto"></div>
+
+            <div class="opcao-militar-externo">
+              <button type="button" disabled data-candidate-operation="true" aria-disabled="true">
+                + Adicionar pessoa não cadastrada
+              </button>
+            </div>
+
+            <div id="areaOcupanteExterno" class="dados-militar-externo oculto">
+              <strong>Identificação manual do ocupante</strong>
+              <div class="campo">
+                <label>Posto/graduação e nome</label>
+                <input type="text" id="nomeOcupanteExterno" placeholder="Ex.: CB COSTA" disabled data-candidate-operation="true" aria-disabled="true">
+              </div>
+              <div class="campo">
+                <label>RG/CPF ou identidade funcional</label>
+                <input type="text" id="rgOcupanteExterno" placeholder="Documento do militar" disabled data-candidate-operation="true" aria-disabled="true">
+              </div>
+              <button type="button" class="botao-adicionar-externo" disabled data-candidate-operation="true" aria-disabled="true">
+                Adicionar pessoa ao Auto/VTR
+              </button>
+            </div>
+
+            <div id="listaOcupantesViatura" class="lista-ocupantes oculto"></div>
+            <div class="dica-varios-ocupantes">
+              Se o condutor estiver sozinho, não é necessário adicionar ninguém. Caso contrário, inclua os demais ocupantes acima.
+            </div>
+            </details>
+          </div>
+
+          <div id="areaPessoaNaoEncontrada" class="oculto">
+            <div id="avisoPessoaNaoEncontrada" class="resultado erro">Pessoa não encontrada. Confira os dados para cadastrá-la automaticamente.</div>
+            <div class="campo">
+              <label>RG/CPF</label>
+              <input type="text" id="rgCpfPessoaNaoEncontrada" placeholder="RG ou CPF" inputmode="numeric" autocomplete="off" disabled data-candidate-operation="true" aria-disabled="true">
+            </div>
+            <div class="campo">
+              <label>Nome completo</label>
+              <input type="text" id="nomePessoaNaoEncontrada" placeholder="Nome completo" disabled data-candidate-operation="true" aria-disabled="true">
+            </div>
+            <div class="dica-varios-ocupantes">O cadastro permanecerá ativo por 1 ano após a movimentação mais recente.</div>
+          </div>
+
+          <div class="campo" id="campoDestinoPadrao">
+            <label>Destino</label>
+            <select id="destino" disabled data-candidate-operation="true" aria-disabled="true"></select>
+          </div>
+
+          <div class="campo" id="campoProcedenciaPadrao">
+            <label>Procedência</label>
+            <select id="procedencia" disabled data-candidate-operation="true" aria-disabled="true"></select>
+          </div>
+
+          <div id="areaComplementoProcedencia" class="campo oculto">
+            <label id="labelComplementoProcedencia">Complemento da procedência</label>
+            <input type="text" id="complementoProcedencia" placeholder="Informe o complemento" disabled data-candidate-operation="true" aria-disabled="true">
+          </div>
+
+          <div class="campo" id="campoPrefixoPlaca">
+            <label id="labelPrefixoPlaca">Prefixo/Placa</label>
+            <input type="text" id="prefixoPlaca" placeholder="Opcional" autocomplete="off" disabled data-candidate-operation="true" aria-disabled="true">
+          </div>
+
+          <div class="campo">
+            <label>Observações</label>
+            <textarea id="observacoes" placeholder="Opcional" disabled data-candidate-operation="true" aria-disabled="true"></textarea>
+          </div>
+          </div>
+          </div>
+
+          <div id="areaRegistroSOS" class="bloco-sos oculto">
+            <div class="cabecalho-frota-local">
+              <div><strong>Frota da unidade</strong><span>Viaturas operacionais e administrativas</span></div>
+              <button type="button" id="btnVeiculoExterno" disabled data-candidate-operation="true" aria-disabled="true">Veículo externo</button>
+            </div>
+            <div class="campo" id="campoDestinoViaturaLocal">
+              <label for="destinoViaturaLocal">Destino da saída *</label>
+              <select id="destinoViaturaLocal" required disabled data-candidate-operation="true" aria-disabled="true">
+                <option value="">Sem consulta operacional neste candidato.</option>
+              </select>
+              <p id="statusDestinosViaturaLocal" class="dica-varios-ocupantes" role="status" aria-live="polite">Sem consulta operacional neste candidato.</p>
+              <button type="button" id="btnRecarregarDestinosViatura" class="botao-secundario oculto" disabled data-candidate-operation="true" aria-disabled="true">Recarregar opções</button>
+            </div>
+            <div class="campo oculto" id="campoDestinoEntradaViatura">
+              <label for="destinoEntradaViaturaLocal">Destino da entrada</label>
+              <input type="text" id="destinoEntradaViaturaLocal" value="Quartel" readonly aria-describedby="descricaoDestinoEntradaViatura" disabled data-candidate-operation="true" aria-disabled="true">
+              <p id="descricaoDestinoEntradaViatura" class="dica-varios-ocupantes">Definido automaticamente para a entrada na unidade.</p>
+            </div>
+            <div class="titulo-bloco-viatura">
+              <div>
+                <strong id="tituloSelecaoSOS">Selecionar viaturas para saída</strong>
+                <span id="descricaoSelecaoViaturas">Selecione uma ou mais viaturas. Confira a composição sugerida e toque para editar.</span>
+              </div>
+            </div>
+            <div id="listaViaturasSOS" class="lista-selecao-sos"></div>
+            <div id="configuracoesViaturasSOS" class="configuracoes-sos"></div>
+            <div class="campo campo-sem-margem">
+              <label for="observacoesSOS">Observações</label>
+              <textarea id="observacoesSOS" placeholder="Ocorrência, endereço ou informação opcional" disabled data-candidate-operation="true" aria-disabled="true"></textarea>
+            </div>
+          </div>
+
+          <button type="button" id="btnRegistrarMovimentacao" class="botao-principal" disabled data-candidate-operation="true" aria-disabled="true">
+            Registrar
+          </button>
+
+          <div id="mensagemSistema" class="mensagem-sistema oculto" role="status"
+            aria-live="polite" aria-atomic="true"></div>
+
+          <section class="card-pessoas-dentro-guarda oculto" id="cardPessoasDentroGuarda"
+            aria-labelledby="tituloPessoasDentroGuarda">
+            <details id="operational-details-pessoas-dentro" class="operational-collapsible" open><summary id="btnAlternarPessoasDentroGuarda" class="botao-alternar-pessoas-dentro" aria-controls="conteudoPessoasDentroGuarda">
+                <span>
+                  <span class="titulo-pessoas-dentro" id="tituloPessoasDentroGuarda">Pessoas atualmente dentro</span>
+                  <span id="resumoPessoasDentroGuarda" class="resumo-pessoas-dentro">Sem consulta operacional neste candidato.</span>
+                </span>
+                <span id="iconeAlternarPessoasDentroGuarda" class="icone-alternar-pessoas-dentro" aria-hidden="true">⌄</span>
+              </summary>
+
+            <div id="conteudoPessoasDentroGuarda" class="conteudo-pessoas-dentro-guarda"><button type="button" id="btnAtualizarPessoasDentroGuarda" disabled data-candidate-operation="true" aria-disabled="true">
+                Atualizar
+              </button>
+              <p class="descricao-pessoas-dentro-guarda">Confira quem ainda não possui saída registrada.</p>
+
+              <div id="listaPessoasDentroGuarda" class="lista-painel">
+                <div class="estado-vazio-painel">Sem consulta operacional neste candidato.</div>
+              </div>
+
+              <div id="atualizadoEmPessoasDentroGuarda" class="rodape-painel-comandante"></div>
+            </div>
+          </details></section>
+        </section>
         
 
         
@@ -738,274 +1006,7 @@
           </div>
         </section>
 
-        <section class="card oculto" id="cardMovimentacao">
-          <h2 id="tituloCardMovimentacao">Controle de Acesso</h2>
-
-          <div id="blocoLancamentoRetroativo" class="bloco-lancamento-retroativo oculto">
-            <div class="cabecalho-lancamento-retroativo">
-              <div class="linha-cabecalho-lancamento-retroativo">
-                <span class="selo-modo-retroativo">MODO RETROATIVO</span>
-                <button type="button" class="botao-fechar-retroativo" data-fechar-lancamento-retroativo
-                  aria-label="Fechar o lançamento em horário anterior" disabled data-candidate-operation="true" aria-disabled="true">
-                  Fechar <span aria-hidden="true">×</span>
-                </button>
-              </div>
-              <strong>Exclusivo do Comandante da Guarda</strong>
-              <p>Informe quando a movimentação de pessoas ou viaturas realmente ocorreu, dentro do seu ciclo. A hora deste lançamento será registrada automaticamente para auditoria.</p>
-            </div>
-
-            <div class="grade-data-hora-retroativa">
-              <div class="campo">
-                <label for="dataMovimentacaoRetroativa">Data em que ocorreu *</label>
-                <input type="date" id="dataMovimentacaoRetroativa" disabled data-candidate-operation="true" aria-disabled="true">
-              </div>
-              <div class="campo">
-                <label for="horaMovimentacaoRetroativa">Hora em que ocorreu *</label>
-                <input type="time" id="horaMovimentacaoRetroativa" step="60" disabled data-candidate-operation="true" aria-disabled="true">
-              </div>
-            </div>
-
-            <div class="campo">
-              <label for="motivoMovimentacaoRetroativa">Motivo do lançamento posterior *</label>
-              <select id="motivoMovimentacaoRetroativa" disabled data-candidate-operation="true" aria-disabled="true">
-                <option value="">Selecione o motivo</option>
-                <option value="Falta de energia">Falta de energia</option>
-                <option value="Celular sem carga">Celular sem carga</option>
-                <option value="Falha de conexão">Falha de conexão</option>
-                <option value="Falha ou correção do aplicativo">Falha ou correção do aplicativo</option>
-                <option value="Ajuste do período de implantação/teste">Ajuste do período de implantação/teste</option>
-                <option value="Registro não realizado no momento">Registro não realizado no momento</option>
-                <option value="Outro">Outro</option>
-              </select>
-            </div>
-
-            <div class="campo oculto" id="campoDetalheMotivoRetroativo">
-              <label for="detalheMotivoRetroativo">Detalhe do motivo *</label>
-              <input type="text" id="detalheMotivoRetroativo" maxlength="240"
-                placeholder="Explique resumidamente o que ocorreu" disabled data-candidate-operation="true" aria-disabled="true">
-            </div>
-
-            <button type="button" class="botao-cancelar-retroativo" data-fechar-lancamento-retroativo disabled data-candidate-operation="true" aria-disabled="true">
-              Cancelar preenchimento e voltar ao painel
-            </button>
-          </div>
-
-          <div class="campo" id="campoFormaRegistro">
-            <label>Forma do registro</label>
-            <div class="botoes-segmentados" id="botoesModoRegistro">
-              <button type="button" class="ativo" id="btnModoIndividual" disabled data-candidate-operation="true" aria-disabled="true">Individual</button>
-              <button type="button" id="btnModoViatura" disabled data-candidate-operation="true" aria-disabled="true">Auto/VTR</button>
-            </div>
-          </div>
-
-          <div class="campo">
-            <label id="labelTipoMovimentacao">Tipo de movimentação</label>
-            <div class="botoes-segmentados">
-              <button type="button" class="ativo" id="btnEntrada" disabled data-candidate-operation="true" aria-disabled="true"><span id="textoBtnEntrada">Entrada</span></button>
-              <button type="button" id="btnSaida" disabled data-candidate-operation="true" aria-disabled="true"><span id="textoBtnSaida">Saída</span></button>
-            </div>
-          </div>
-
-          <div id="origemFormularioPadrao">
-          <div id="areaRegistroPadrao">
-
-          <input type="hidden" id="tipoRegistro" value="Pessoa cadastrada" disabled data-candidate-operation="true" aria-disabled="true">
-
-          <div class="campo" id="areaCategoriaPessoa">
-            <label>Categoria da pessoa</label>
-            <div class="botoes-segmentados categorias-pessoa">
-              <button type="button" class="ativo" id="btnCategoriaMilitar" disabled data-candidate-operation="true" aria-disabled="true">Militar</button>
-              <button type="button" id="btnCategoriaColaborador" disabled data-candidate-operation="true" aria-disabled="true">Colaborador</button>
-              <button type="button" id="btnCategoriaVisitante" disabled data-candidate-operation="true" aria-disabled="true">Visitante</button>
-            </div>
-          </div>
-
-          <div id="areaPessoaCadastrada">
-            <div class="campo" id="campoBuscaPessoaPrincipal">
-              <label id="labelPessoaPrincipal">Nome ou RG/CPF da pessoa</label>
-              <div class="linha-busca">
-                <input type="text" id="rgCpfBusca" placeholder="Digite nome, RG ou CPF" autocomplete="off" disabled data-candidate-operation="true" aria-disabled="true">
-                <button type="button" disabled data-candidate-operation="true" aria-disabled="true">Buscar</button>
-              </div>
-            </div>
-
-            <div id="resultadoPessoa" class="resultado oculto"></div>
-
-            <div id="areaOpcaoCondutorExterno" class="opcao-militar-externo oculto">
-              <button type="button" disabled data-candidate-operation="true" aria-disabled="true">
-                Condutor não cadastrado
-              </button>
-            </div>
-
-            <div id="areaCondutorExterno" class="dados-militar-externo oculto">
-              <strong>Identificação manual do condutor</strong>
-              <div class="campo">
-                <label>Posto/graduação e nome</label>
-                <input type="text" id="nomeCondutorExterno" placeholder="Ex.: 2º SGT SILVA" disabled data-candidate-operation="true" aria-disabled="true">
-              </div>
-              <div class="campo campo-sem-margem">
-                <label>RG/CPF ou identidade funcional</label>
-                <input type="text" id="rgCondutorExterno" placeholder="Documento do militar" disabled data-candidate-operation="true" aria-disabled="true">
-              </div>
-              <button type="button" class="botao-voltar-busca" disabled data-candidate-operation="true" aria-disabled="true">
-                Voltar para busca no cadastro
-              </button>
-            </div>
-          </div>
-
-          <div id="areaOcupantesViatura" class="bloco-viatura oculto">
-            <details id="detalhesOcupantesExternos">
-            <summary>Ocupantes adicionais (opcional)</summary>
-            <div class="titulo-bloco-viatura">
-              <div>
-                <strong>Outros ocupantes do Auto/VTR</strong>
-                <span>O condutor já conta como ocupante. Inclua abaixo somente as demais pessoas, se houver.</span>
-              </div>
-              <span id="contadorOcupantesViatura" class="contador-ocupantes">0 adicionais</span>
-            </div>
-
-            <div class="subtitulo-inclusao-viatura">Adicionar pessoa cadastrada</div>
-
-            <div class="campo campo-sem-margem">
-              <label>RG/CPF da pessoa</label>
-              <div class="linha-busca">
-                <input type="text" id="rgCpfBuscaOcupante" placeholder="Digite ao menos 3 dígitos" disabled data-candidate-operation="true" aria-disabled="true">
-                <button type="button" disabled data-candidate-operation="true" aria-disabled="true">Buscar</button>
-              </div>
-            </div>
-
-            <div id="resultadoOcupanteViatura" class="resultado oculto"></div>
-
-            <div class="opcao-militar-externo">
-              <button type="button" disabled data-candidate-operation="true" aria-disabled="true">
-                + Adicionar pessoa não cadastrada
-              </button>
-            </div>
-
-            <div id="areaOcupanteExterno" class="dados-militar-externo oculto">
-              <strong>Identificação manual do ocupante</strong>
-              <div class="campo">
-                <label>Posto/graduação e nome</label>
-                <input type="text" id="nomeOcupanteExterno" placeholder="Ex.: CB COSTA" disabled data-candidate-operation="true" aria-disabled="true">
-              </div>
-              <div class="campo">
-                <label>RG/CPF ou identidade funcional</label>
-                <input type="text" id="rgOcupanteExterno" placeholder="Documento do militar" disabled data-candidate-operation="true" aria-disabled="true">
-              </div>
-              <button type="button" class="botao-adicionar-externo" disabled data-candidate-operation="true" aria-disabled="true">
-                Adicionar pessoa ao Auto/VTR
-              </button>
-            </div>
-
-            <div id="listaOcupantesViatura" class="lista-ocupantes oculto"></div>
-            <div class="dica-varios-ocupantes">
-              Se o condutor estiver sozinho, não é necessário adicionar ninguém. Caso contrário, inclua os demais ocupantes acima.
-            </div>
-            </details>
-          </div>
-
-          <div id="areaPessoaNaoEncontrada" class="oculto">
-            <div id="avisoPessoaNaoEncontrada" class="resultado erro">Pessoa não encontrada. Confira os dados para cadastrá-la automaticamente.</div>
-            <div class="campo">
-              <label>RG/CPF</label>
-              <input type="text" id="rgCpfPessoaNaoEncontrada" placeholder="RG ou CPF" inputmode="numeric" autocomplete="off" disabled data-candidate-operation="true" aria-disabled="true">
-            </div>
-            <div class="campo">
-              <label>Nome completo</label>
-              <input type="text" id="nomePessoaNaoEncontrada" placeholder="Nome completo" disabled data-candidate-operation="true" aria-disabled="true">
-            </div>
-            <div class="dica-varios-ocupantes">O cadastro permanecerá ativo por 1 ano após a movimentação mais recente.</div>
-          </div>
-
-          <div class="campo" id="campoDestinoPadrao">
-            <label>Destino</label>
-            <select id="destino" disabled data-candidate-operation="true" aria-disabled="true"></select>
-          </div>
-
-          <div class="campo" id="campoProcedenciaPadrao">
-            <label>Procedência</label>
-            <select id="procedencia" disabled data-candidate-operation="true" aria-disabled="true"></select>
-          </div>
-
-          <div id="areaComplementoProcedencia" class="campo oculto">
-            <label id="labelComplementoProcedencia">Complemento da procedência</label>
-            <input type="text" id="complementoProcedencia" placeholder="Informe o complemento" disabled data-candidate-operation="true" aria-disabled="true">
-          </div>
-
-          <div class="campo" id="campoPrefixoPlaca">
-            <label id="labelPrefixoPlaca">Prefixo/Placa</label>
-            <input type="text" id="prefixoPlaca" placeholder="Opcional" autocomplete="off" disabled data-candidate-operation="true" aria-disabled="true">
-          </div>
-
-          <div class="campo">
-            <label>Observações</label>
-            <textarea id="observacoes" placeholder="Opcional" disabled data-candidate-operation="true" aria-disabled="true"></textarea>
-          </div>
-          </div>
-          </div>
-
-          <div id="areaRegistroSOS" class="bloco-sos oculto">
-            <div class="cabecalho-frota-local">
-              <div><strong>Frota da unidade</strong><span>Viaturas operacionais e administrativas</span></div>
-              <button type="button" id="btnVeiculoExterno" disabled data-candidate-operation="true" aria-disabled="true">Veículo externo</button>
-            </div>
-            <div class="campo" id="campoDestinoViaturaLocal">
-              <label for="destinoViaturaLocal">Destino da saída *</label>
-              <select id="destinoViaturaLocal" required disabled data-candidate-operation="true" aria-disabled="true">
-                <option value="">Sem consulta operacional neste candidato.</option>
-              </select>
-              <p id="statusDestinosViaturaLocal" class="dica-varios-ocupantes" role="status" aria-live="polite">Sem consulta operacional neste candidato.</p>
-              <button type="button" id="btnRecarregarDestinosViatura" class="botao-secundario oculto" disabled data-candidate-operation="true" aria-disabled="true">Recarregar opções</button>
-            </div>
-            <div class="campo oculto" id="campoDestinoEntradaViatura">
-              <label for="destinoEntradaViaturaLocal">Destino da entrada</label>
-              <input type="text" id="destinoEntradaViaturaLocal" value="Quartel" readonly aria-describedby="descricaoDestinoEntradaViatura" disabled data-candidate-operation="true" aria-disabled="true">
-              <p id="descricaoDestinoEntradaViatura" class="dica-varios-ocupantes">Definido automaticamente para a entrada na unidade.</p>
-            </div>
-            <div class="titulo-bloco-viatura">
-              <div>
-                <strong id="tituloSelecaoSOS">Selecionar viaturas para saída</strong>
-                <span id="descricaoSelecaoViaturas">Selecione uma ou mais viaturas. Confira a composição sugerida e toque para editar.</span>
-              </div>
-            </div>
-            <div id="listaViaturasSOS" class="lista-selecao-sos"></div>
-            <div id="configuracoesViaturasSOS" class="configuracoes-sos"></div>
-            <div class="campo campo-sem-margem">
-              <label for="observacoesSOS">Observações</label>
-              <textarea id="observacoesSOS" placeholder="Ocorrência, endereço ou informação opcional" disabled data-candidate-operation="true" aria-disabled="true"></textarea>
-            </div>
-          </div>
-
-          <button type="button" id="btnRegistrarMovimentacao" class="botao-principal" disabled data-candidate-operation="true" aria-disabled="true">
-            Registrar
-          </button>
-
-          <div id="mensagemSistema" class="mensagem-sistema oculto" role="status"
-            aria-live="polite" aria-atomic="true"></div>
-
-          <section class="card-pessoas-dentro-guarda oculto" id="cardPessoasDentroGuarda"
-            aria-labelledby="tituloPessoasDentroGuarda">
-            <details id="operational-details-pessoas-dentro" class="operational-collapsible" open><summary id="btnAlternarPessoasDentroGuarda" class="botao-alternar-pessoas-dentro" aria-controls="conteudoPessoasDentroGuarda">
-                <span>
-                  <span class="titulo-pessoas-dentro" id="tituloPessoasDentroGuarda">Pessoas atualmente dentro</span>
-                  <span id="resumoPessoasDentroGuarda" class="resumo-pessoas-dentro">Sem consulta operacional neste candidato.</span>
-                </span>
-                <span id="iconeAlternarPessoasDentroGuarda" class="icone-alternar-pessoas-dentro" aria-hidden="true">⌄</span>
-              </summary>
-
-            <div id="conteudoPessoasDentroGuarda" class="conteudo-pessoas-dentro-guarda"><button type="button" id="btnAtualizarPessoasDentroGuarda" disabled data-candidate-operation="true" aria-disabled="true">
-                Atualizar
-              </button>
-              <p class="descricao-pessoas-dentro-guarda">Confira quem ainda não possui saída registrada.</p>
-
-              <div id="listaPessoasDentroGuarda" class="lista-painel">
-                <div class="estado-vazio-painel">Sem consulta operacional neste candidato.</div>
-              </div>
-
-              <div id="atualizadoEmPessoasDentroGuarda" class="rodape-painel-comandante"></div>
-            </div>
-          </details></section>
-        </section>
+        
       </main>
     </div>
 
