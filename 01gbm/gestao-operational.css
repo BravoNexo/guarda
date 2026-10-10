@@ -4067,6 +4067,21 @@ html { width: 100%; }
 .operational-role-actions { margin: 12px 0 0; }
 .candidate-shell[data-operational-ui="true"] .cabecalho-equipe-servico { gap: 10px; cursor: default; }
 .candidate-shell[data-operational-ui="true"] .cabecalho-equipe-servico > span { flex: 1; min-width: 0; }
+.candidate-shell[data-operational-ui="true"] #cardEquipeServico { position: relative; }
+.candidate-shell[data-operational-ui="true"] #cardEquipeServico > .operational-sign-out { position: absolute; top: 13px; right: 15px; z-index: 1; }
+.candidate-shell[data-operational-ui="true"] .operational-team-summary {
+  position: relative; box-sizing: border-box; min-height: 70px; padding-right: 44px;
+  list-style: none; cursor: pointer;
+}
+.candidate-shell[data-operational-ui="true"] .operational-team-summary::-webkit-details-marker { display: none; }
+.candidate-shell[data-operational-ui="true"] .operational-team-summary::after {
+  content: ''; position: absolute; top: 29px; right: 18px; width: 8px; height: 8px;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg);
+}
+.candidate-shell[data-operational-ui="true"] .operational-team-disclosure[open] > .operational-team-summary::after { transform: translateY(3px) rotate(225deg); }
+.candidate-shell[data-operational-ui="true"] #cardEquipeServico:has(> .operational-sign-out:not([hidden])) .operational-team-summary { padding-right: 148px; }
+.candidate-shell[data-operational-ui="true"] #cardEquipeServico:has(> .operational-sign-out:not([hidden])) .operational-team-summary::after { right: 126px; }
+.candidate-shell[data-operational-ui="true"] .operational-team-summary:focus-visible { outline: 3px solid #60a5fa; outline-offset: -3px; }
 .candidate-shell[data-operational-ui="true"] .operational-sign-out {
   flex: 0 0 auto; width: auto; min-height: 44px; margin: 0; padding: 8px 10px;
   border: 1px solid #ef4444; border-radius: 8px; background: #b91c1c; color: #fff;
