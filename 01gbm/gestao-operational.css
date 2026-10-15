@@ -4065,21 +4065,10 @@ html { width: 100%; }
 @media (max-width: 480px) { .candidate-banner { font-size: 12px; } .candidate-access { padding: 14px; } .candidate-password-row { gap: 6px; } #contextoRetroativoVeiculoExterno .grade-data-hora-retroativa { grid-template-columns: 1fr; } }
 
 .operational-role-actions { margin: 12px 0 0; }
-.candidate-shell[data-operational-ui="true"] .topo-textos .operational-version-details {
-  margin-top: 4px; max-width: 100%;
-}
 .candidate-shell[data-operational-ui="true"] .topo-textos .operational-app-version {
-  display: list-item; list-style-position: inside; width: fit-content;
-  margin: 0; padding: 4px 0; color: #cbd5e1; cursor: pointer;
+  display: block; margin-top: 4px; color: #cbd5e1;
   font-size: 12px; font-weight: 400; line-height: 1.4;
   letter-spacing: .02em; overflow-wrap: anywhere;
-}
-.candidate-shell[data-operational-ui="true"] .topo-textos .operational-app-version:focus-visible {
-  outline: 2px solid #93c5fd; outline-offset: 3px; border-radius: 3px;
-}
-.candidate-shell[data-operational-ui="true"] .topo-textos .operational-version-build {
-  display: block; padding-top: 2px; color: #cbd5e1;
-  font-size: 12px; line-height: 1.5; overflow-wrap: anywhere;
 }
 .candidate-shell[data-operational-ui="true"] .cabecalho-equipe-servico { gap: 10px; cursor: default; }
 .candidate-shell[data-operational-ui="true"] .cabecalho-equipe-servico > span { flex: 1; min-width: 0; }
