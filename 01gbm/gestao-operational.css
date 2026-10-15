@@ -4169,6 +4169,18 @@ html { width: 100%; }
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0;
 }
 .candidate-shell[data-operational-ui="true"] .operational-fleet-selection > p { grid-column: 1 / -1; }
+.candidate-shell[data-operational-ui="true"] .operational-fleet-group {
+  grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px; min-width: 0; margin: 8px 0 0; padding: 12px;
+  border: 1px solid #fed7aa; border-radius: 12px; background: #fffaf5;
+}
+.candidate-shell[data-operational-ui="true"] #operational-fleet-external-group { border-color: #cbd5e1; background: #f1f5f9; }
+.candidate-shell[data-operational-ui="true"] .operational-fleet-group > legend {
+  padding: 0 6px; color: #334155; font-size: 14px; font-weight: 700;
+}
+@media (max-width: 600px) {
+  .candidate-shell[data-operational-ui="true"] .operational-fleet-group { grid-template-columns: minmax(0, 1fr); }
+}
 .candidate-shell[data-operational-ui="true"] .operational-fleet-choice {
   display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 56px; margin: 0;
   padding: 11px; border: 1px solid #fed7aa; border-radius: 11px; background: #fff; cursor: pointer;
