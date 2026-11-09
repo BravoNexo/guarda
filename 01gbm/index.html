@@ -13,9 +13,9 @@
     
     
     
-  <link rel="stylesheet" href="./gestao-operational.css?v=f1eaac0fa937">
+  <link rel="stylesheet" href="./gestao-operational.css?v=a0889b634743">
   
-  <meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" sizes="192x192" href="./icons/gestao-servico-192-v3.png"><script src="./gestao-operational.js?v=a2064ae95e57" defer></script><link rel="manifest" href="./manifest.webmanifest"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https://ciqctdckqmopdeoigzfz.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'"></head>
+  <meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" sizes="192x192" href="./icons/gestao-servico-192-v3.png"><script src="./gestao-operational.js?v=d58943aece16" defer></script><link rel="manifest" href="./manifest.webmanifest"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https://ciqctdckqmopdeoigzfz.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'"></head>
 
   <body data-operational-team-enabled="true" data-operational-ui="true" class="candidate-shell" >
     <div class="app"><p id="candidate-banner" class="candidate-banner">GESTÃO DE SERVIÇO · 1º GBM · SISTEMA OFICIAL</p>
@@ -27,7 +27,7 @@
           <div class="topo-textos">
             <h1>Gestão de Serviço - 1º GBM</h1>
             <p>Registro e acompanhamento do serviço diário</p>
-          <small id="operational-app-version" class="operational-app-version">v2.11.1</small></div>
+          <small id="operational-app-version" class="operational-app-version">v2.12.0</small></div>
         </div>
       </header>
 
@@ -1012,6 +1012,28 @@
       </main>
     </div>
 
+    <dialog id="operational-guard-mode-dialog" class="operational-guard-mode-dialog" aria-labelledby="operational-guard-mode-title" aria-describedby="operational-guard-mode-description" hidden>
+      <form id="operational-guard-mode-form">
+        <h2 id="operational-guard-mode-title">Assumir Guarda</h2>
+        <p id="operational-guard-mode-description">Selecione como você vai assumir a Guarda.</p>
+        <fieldset>
+          <legend>Função</legend>
+          <label class="operational-guard-mode-option">
+            <input id="operational-guard-mode-sentinela" type="radio" name="operational-guard-mode" value="sentinela" checked>
+            <span>Sentinela</span>
+          </label>
+          <label class="operational-guard-mode-option operational-guard-mode-toque">
+            <input id="operational-guard-mode-toque" type="radio" name="operational-guard-mode" value="toque">
+            <span>Toque de Fogo</span>
+          </label>
+        </fieldset>
+        <p id="operational-guard-mode-status" role="status" aria-live="polite"></p>
+        <div class="operational-guard-mode-actions">
+          <button id="operational-guard-mode-cancel" type="button" class="botao-secundario">Cancelar</button>
+          <button id="operational-guard-mode-confirm" type="submit" class="botao-principal" disabled>Confirmar</button>
+        </div>
+      </form>
+    </dialog>
     <dialog id="modalVeiculoExterno" class="modal-veiculo-externo" aria-labelledby="tituloVeiculoExterno">
       <div class="cabecalho-veiculo-externo">
         <div><h2 id="tituloVeiculoExterno">Veículo externo</h2><p>Informe o veículo, o condutor e os demais ocupantes, se houver.</p></div>
