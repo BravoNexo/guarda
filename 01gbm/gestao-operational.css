@@ -4266,3 +4266,103 @@ html { width: 100%; }
   #operational-print-report thead { display: table-header-group; }
   #operational-print-report footer { border-top: 0.5pt solid #777; margin-top: 14pt; padding-top: 6pt; font-size: 8pt; color: #444; }
 }
+
+/* Compact role rows in the operational Team disclosure only. */
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > .perfil-servico {
+  min-width: 0;
+  padding: 8px 12px !important;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico .cabecalho-card-guarda {
+  min-height: 0;
+  margin: 0;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico .status-guarda {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico .status-guarda::first-line {
+  font-size: inherit;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > .perfil-servico > .operational-role-actions {
+  min-width: 0;
+  margin: 4px 0 0;
+  gap: 6px;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico .operational-role-actions > button {
+  flex: 0 1 auto;
+  width: auto;
+  max-width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 13px;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico .operational-role-actions > :is([id$="-encerrar"], #operational-adjunto-end) {
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(#perfilGuarda, #perfilComandante, #perfilEncarregadoMotoristas):has(> .operational-role-actions > button:not([hidden])) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content);
+  align-items: center;
+  column-gap: 8px;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(#perfilGuarda, #perfilComandante, #perfilEncarregadoMotoristas) > * {
+  grid-column: 1 / -1;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(#perfilGuarda, #perfilComandante, #perfilEncarregadoMotoristas) > .cabecalho-card-guarda {
+  grid-area: 1 / 1;
+  align-self: end;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(#perfilGuarda, #perfilComandante, #perfilEncarregadoMotoristas) > .status-guarda {
+  grid-area: 2 / 1;
+  align-self: start;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(#perfilGuarda, #perfilComandante, #perfilEncarregadoMotoristas) > .operational-role-actions {
+  grid-area: 1 / 2 / 3;
+  margin: 0;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > #cardToqueFogo > .operational-role-actions {
+  display: inline-flex;
+  vertical-align: top;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(.perfil-servico, #cardToqueFogo) > .operational-role-actions:not(:has(> button:not([hidden]))) {
+  display: none;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > .operational-adjunto-role-card {
+  --funcao-cor: #4f46a5;
+  --funcao-titulo: #4338ca;
+  --funcao-fundo: #f5f3ff;
+  --funcao-borda: #ddd6fe;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > .operational-adjunto-role-card > strong {
+  color: var(--funcao-titulo);
+  font-size: 15px;
+}
+
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico :is(#operational-adjunto-card-status, #operational-adjunto-planned) {
+  margin: 2px 0 0;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}

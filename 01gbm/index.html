@@ -13,9 +13,9 @@
     
     
     
-  <link rel="stylesheet" href="./gestao-operational.css?v=c6fa9d4b09bb">
+  <link rel="stylesheet" href="./gestao-operational.css?v=0dd7c07b6787">
   
-  <meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" sizes="192x192" href="./icons/gestao-servico-192-v3.png"><script src="./gestao-operational.js?v=c5d1a1a847d3" defer></script><link rel="manifest" href="./manifest.webmanifest"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https://ciqctdckqmopdeoigzfz.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'"></head>
+  <meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" sizes="192x192" href="./icons/gestao-servico-192-v3.png"><script src="./gestao-operational.js?v=a2064ae95e57" defer></script><link rel="manifest" href="./manifest.webmanifest"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https://ciqctdckqmopdeoigzfz.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'"></head>
 
   <body data-operational-team-enabled="true" data-operational-ui="true" class="candidate-shell" >
     <div class="app"><p id="candidate-banner" class="candidate-banner">GESTÃO DE SERVIÇO · 1º GBM · SISTEMA OFICIAL</p>
@@ -27,7 +27,7 @@
           <div class="topo-textos">
             <h1>Gestão de Serviço - 1º GBM</h1>
             <p>Registro e acompanhamento do serviço diário</p>
-          <small id="operational-app-version" class="operational-app-version">v2.10.1</small></div>
+          <small id="operational-app-version" class="operational-app-version">v2.11.0</small></div>
         </div>
       </header>
 
@@ -49,7 +49,7 @@
   <button id="candidate-cancel-flow" type="button" disabled hidden data-candidate-personal="true">Voltar</button>
   <div id="candidate-identity" hidden><p>Identidade pessoal confirmada não libera funções de serviço.</p></div><div id="candidate-recovery-controls" class="candidate-recovery-controls" hidden><button id="candidate-recheck" type="button" disabled data-candidate-personal="true">Tentar reconectar</button></div>
   <section id="candidate-own-context" class="candidate-own-context" aria-label="Situação do próprio acesso" hidden><h4>Meu acesso</h4><p id="candidate-own-status" role="status" aria-live="polite"></p><p id="candidate-own-binding"></p><p id="candidate-own-capabilities"></p><p id="candidate-own-cycle"></p><details id="operational-update-options" class="operational-update-options"><summary>Opções de atualização</summary><div class="candidate-duty-actions"><button id="operational-reload" type="button" disabled>Atualizar informações</button></div></details><div class="candidate-duty-actions operational-reconciliation-actions"><button id="operational-reconcile" type="button" disabled hidden>Conferir registro pendente</button></div><p id="operational-status" role="status" aria-live="polite"></p><p id="candidate-own-scope">Entrar não assume uma função. Sair da conta não encerra o serviço.</p></section>
-</section></div></details><p class="candidate-role-note">O login identifica você. A função de serviço deve ser assumida explicitamente nos cartões abaixo.</p><section class="card card-guarda perfil-servico" id="perfilGuarda">
+</section></div></details><section class="card card-guarda perfil-servico" id="perfilGuarda">
           <div class="cabecalho-card-guarda">
             <h2>Guarda de Serviço</h2>
 
@@ -127,7 +127,7 @@
             </button>
           </div>
           
-        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-guarda-assumir" type="button" disabled>Assumir / Trocar</button><button id="operational-role-guarda-encerrar" type="button" disabled>Encerrar guarda</button></div></section>
+        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-guarda-assumir" type="button" disabled hidden>Assumir / Trocar</button><button id="operational-role-guarda-encerrar" type="button" disabled hidden>Encerrar guarda</button></div></section>
 <section class="card card-toque-fogo perfil-servico" id="cardToqueFogo">
           <div class="cabecalho-card-guarda">
             <div>
@@ -190,7 +190,7 @@
               Definir Toque de Fogo
             </button>
           </div>
-        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-toque_diurno-assumir" type="button" disabled>Assumir / Trocar Toque Diurno</button><button id="operational-role-toque_diurno-encerrar" type="button" disabled>Encerrar Toque Diurno</button></div><div class="candidate-duty-actions operational-role-actions"><button id="operational-role-toque_noturno-assumir" type="button" disabled>Assumir / Trocar Toque Noturno</button><button id="operational-role-toque_noturno-encerrar" type="button" disabled>Encerrar Toque Noturno</button></div></section>
+        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-toque_diurno-assumir" type="button" disabled hidden>Assumir / Trocar Toque Diurno</button><button id="operational-role-toque_diurno-encerrar" type="button" disabled hidden>Encerrar Toque Diurno</button></div><div class="candidate-duty-actions operational-role-actions"><button id="operational-role-toque_noturno-assumir" type="button" disabled hidden>Assumir / Trocar Toque Noturno</button><button id="operational-role-toque_noturno-encerrar" type="button" disabled hidden>Encerrar Toque Noturno</button></div></section>
 <section class="card card-guarda card-comandante perfil-servico" id="perfilComandante">
           <div class="cabecalho-card-guarda">
             <h2>Comandante da Guarda</h2>
@@ -249,7 +249,7 @@
               Assumir como comandante
             </button>
           </div>
-        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-comandante_guarda-assumir" type="button" disabled>Assumir / Trocar</button><button id="operational-role-comandante_guarda-encerrar" type="button" disabled>Encerrar serviço</button></div></section>
+        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-comandante_guarda-assumir" type="button" disabled hidden>Assumir / Trocar</button><button id="operational-role-comandante_guarda-encerrar" type="button" disabled hidden>Encerrar serviço</button></div></section>
 <section class="card card-guarda card-comandante perfil-servico" id="perfilOficial">
           <div class="cabecalho-card-guarda">
             <h2>Oficial de Dia</h2>
@@ -348,7 +348,7 @@
               </div>
             </div>
           </div>
-        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-encarregado_motoristas-assumir" type="button" disabled>Assumir / Trocar</button><button id="operational-role-encarregado_motoristas-encerrar" type="button" disabled>Encerrar serviço</button></div></section></div></details><button class="operational-sign-out" hidden id="candidate-sign-out" type="button" disabled data-candidate-personal="true">Sair da conta</button></section>
+        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-encarregado_motoristas-assumir" type="button" disabled hidden>Assumir / Trocar</button><button id="operational-role-encarregado_motoristas-encerrar" type="button" disabled hidden>Encerrar serviço</button></div></section></div></details><button class="operational-sign-out" hidden id="candidate-sign-out" type="button" disabled data-candidate-personal="true">Sair da conta</button></section>
 <section class="card oculto" id="cardMovimentacao">
           <h2 id="tituloCardMovimentacao">Controle de Acesso</h2>
 
