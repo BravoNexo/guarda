@@ -4140,8 +4140,8 @@ html { width: 100%; }
   color: #334155; font-size: 14px; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere;
 }
 .candidate-shell[data-operational-ui="true"] .perfil-servico .status-guarda::first-line { font-weight: 700; font-size: 15px; }
-.candidate-shell[data-operational-ui="true"] #operational-planned-officer > strong { display: block; font-size: 15px; line-height: 1.5; color: #334155; }
-.candidate-shell[data-operational-ui="true"] #operational-planned-officer > p { margin: 5px 0 12px; font-size: 14px; color: #475569; }
+.candidate-shell[data-operational-ui="true"] #operational-planned-officer[hidden] { display: none; }
+.candidate-shell[data-operational-ui="true"] #operational-planned-officer > label { display: block; margin-top: 8px; }
 .candidate-shell[data-operational-ui="true"] #statusCoberturaToque { white-space: pre-line; font-size: 14px; line-height: 1.5; }
 .candidate-shell[data-operational-ui="true"] .perfil-servico > .cabecalho-card-guarda > .acoes-guarda { display: none; }
 .candidate-shell[data-operational-ui="true"] .operational-collapsible > summary { list-style: none; min-height: 44px; cursor: pointer; }
@@ -4311,28 +4311,28 @@ html { width: 100%; }
   border-color: #fca5a5;
 }
 
-.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(#perfilGuarda, #perfilComandante, #perfilEncarregadoMotoristas):has(> .operational-role-actions > button:not([hidden])) {
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(#perfilGuarda, #perfilComandante, #perfilEncarregadoMotoristas, #perfilOficial):has(> .operational-role-actions > button:not([hidden])) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, max-content);
   align-items: center;
   column-gap: 8px;
 }
 
-.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(#perfilGuarda, #perfilComandante, #perfilEncarregadoMotoristas) > * {
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(#perfilGuarda, #perfilComandante, #perfilEncarregadoMotoristas, #perfilOficial) > * {
   grid-column: 1 / -1;
 }
 
-.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(#perfilGuarda, #perfilComandante, #perfilEncarregadoMotoristas) > .cabecalho-card-guarda {
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(#perfilGuarda, #perfilComandante, #perfilEncarregadoMotoristas, #perfilOficial) > .cabecalho-card-guarda {
   grid-area: 1 / 1;
   align-self: end;
 }
 
-.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(#perfilGuarda, #perfilComandante, #perfilEncarregadoMotoristas) > .status-guarda {
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(#perfilGuarda, #perfilComandante, #perfilEncarregadoMotoristas, #perfilOficial) > .status-guarda {
   grid-area: 2 / 1;
   align-self: start;
 }
 
-.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(#perfilGuarda, #perfilComandante, #perfilEncarregadoMotoristas) > .operational-role-actions {
+.candidate-shell[data-operational-ui="true"] #conteudoEquipeServico > :is(#perfilGuarda, #perfilComandante, #perfilEncarregadoMotoristas, #perfilOficial) > .operational-role-actions {
   grid-area: 1 / 2 / 3;
   margin: 0;
 }
