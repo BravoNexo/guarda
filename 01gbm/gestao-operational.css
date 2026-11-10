@@ -1304,7 +1304,7 @@
     margin-bottom: 8px;
   }
 
-  .botao-alternar-guarnicoes-servico {
+  .cabecalho-guarnicoes-servico > .botao-alternar-guarnicoes-servico {
     display: flex;
     flex: 1 1 auto;
     align-items: center;
