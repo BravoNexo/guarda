@@ -15,7 +15,7 @@
     
   <link rel="stylesheet" href="./gestao-operational.css?v=e2923a54c77c">
   
-  <meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" sizes="192x192" href="./icons/gestao-servico-192-v3.png"><script src="./gestao-operational.js?v=901034c2348b" defer></script><link rel="manifest" href="./manifest.webmanifest"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https://ciqctdckqmopdeoigzfz.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'"></head>
+  <meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" sizes="192x192" href="./icons/gestao-servico-192-v3.png"><script src="./gestao-operational.js?v=cf80db0bd5fe" defer></script><link rel="manifest" href="./manifest.webmanifest"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https://ciqctdckqmopdeoigzfz.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'"></head>
 
   <body data-operational-team-enabled="true" data-operational-ui="true" class="candidate-shell" >
     <div class="app"><p id="candidate-banner" class="candidate-banner">GESTÃO DE SERVIÇO · 1º GBM · SISTEMA OFICIAL</p>
@@ -27,7 +27,7 @@
           <div class="topo-textos">
             <h1>Gestão de Serviço - 1º GBM</h1>
             <p>Registro e acompanhamento do serviço diário</p>
-          <small id="operational-app-version" class="operational-app-version">v2.13.4</small></div>
+          <small id="operational-app-version" class="operational-app-version">v2.14.0</small></div>
         </div>
       </header>
 
@@ -711,10 +711,29 @@
 
             <details class="secao-painel-comandante operational-collapsible" id="secaoPainelMovimentacoes" hidden>
               <summary id="operational-details-movimentacoes" class="botao-alternar-secao-painel" aria-controls="conteudoPainelMovimentacoes">
-                <span>Movimentações das últimas 48h</span>
+                <span>Histórico de Movimentações</span>
                 <span class="icone-alternar-secao-painel" aria-hidden="true">⌄</span>
               </summary>
               <div id="conteudoPainelMovimentacoes" class="conteudo-secao-painel">
+                <div class="campo">
+                  <label for="modoPeriodoMovimentacoes">Período</label>
+                  <select id="modoPeriodoMovimentacoes" aria-controls="formPeriodoMovimentacoes listaMovimentacoesRecentes">
+                    <option value="recent" selected>Últimas 48h</option>
+                    <option value="custom">Período personalizado</option>
+                  </select>
+                </div>
+                <form id="formPeriodoMovimentacoes" hidden>
+                  <div class="campo">
+                    <label for="inicioPeriodoMovimentacoes">De</label>
+                    <input type="date" id="inicioPeriodoMovimentacoes" required>
+                  </div>
+                  <div class="campo">
+                    <label for="fimPeriodoMovimentacoes">Até</label>
+                    <input type="date" id="fimPeriodoMovimentacoes" required>
+                  </div>
+                  <button type="submit" id="aplicarPeriodoMovimentacoes" class="botao-pesquisar-historico">Aplicar período</button>
+                </form>
+                <p id="statusPeriodoMovimentacoes" class="resumo-historico" role="status" aria-live="polite" hidden></p>
                 <div class="campo">
                   <label for="filtroMovimentacoesRecentes">Categoria</label>
                   <select id="filtroMovimentacoesRecentes" aria-controls="listaMovimentacoesRecentes">
@@ -745,63 +764,6 @@
             <div id="atualizadoEmPainelComandante" class="rodape-painel-comandante"></div>
           </div>
         </section>
-
-        <section class="card card-historico oculto" id="cardConsultaHistorico">
-          <div class="cabecalho-historico">
-            <div>
-              <h2>Consultar histórico</h2>
-              <span>Pesquise movimentações antigas sem depender dos PDFs.</span>
-            </div>
-            <button type="button" id="btnAlternarConsultaHistorico" class="botao-alternar-historico"
-              aria-label="Expandir Consultar histórico" aria-expanded="false" aria-controls="conteudoConsultaHistorico" disabled data-candidate-operation="true" aria-disabled="true">
-              <span class="icone-alternar-secao-painel" aria-hidden="true"></span>
-            </button>
-          </div>
-
-          <div id="conteudoConsultaHistorico" class="conteudo-consulta-historico oculto">
-            <a aria-disabled="true" tabindex="-1">
-              Abrir arquivo anual
-            </a>
-
-            <div class="filtros-historico">
-              <div class="campo">
-                <label for="historicoDataInicio">De</label>
-                <input type="date" id="historicoDataInicio" disabled data-candidate-operation="true" aria-disabled="true">
-              </div>
-              <div class="campo">
-                <label for="historicoDataFim">Até</label>
-                <input type="date" id="historicoDataFim" disabled data-candidate-operation="true" aria-disabled="true">
-              </div>
-              <div class="campo campo-busca-historico">
-                <label for="historicoTermo">Pessoa, RG/CPF, Auto/VTR ou local</label>
-                <input type="search" id="historicoTermo" placeholder="Digite para filtrar" disabled data-candidate-operation="true" aria-disabled="true">
-              </div>
-              <div class="campo">
-                <label for="historicoTipo">Movimentação</label>
-                <select id="historicoTipo" disabled data-candidate-operation="true" aria-disabled="true">
-                  <option value="">Todas</option>
-                  <option value="Entrada">Entrada</option>
-                  <option value="Saída">Saída</option>
-                </select>
-              </div>
-              <div class="campo">
-                <label for="historicoCategoria">Categoria</label>
-                <select id="historicoCategoria" disabled data-candidate-operation="true" aria-disabled="true">
-                  <option value="">Todas</option>
-                  <option value="Militar">Militar</option>
-                  <option value="Colaborador">Colaborador</option>
-                  <option value="Visitante">Visitante</option>
-                </select>
-              </div>
-              <button type="button" id="btnConsultarHistorico" class="botao-pesquisar-historico" disabled data-candidate-operation="true" aria-disabled="true">Pesquisar</button>
-            </div>
-
-            <div id="resumoHistorico" class="resumo-historico">Informe o período e toque em Pesquisar.</div>
-            <div id="listaHistorico" class="lista-painel lista-historico"></div>
-          </div>
-        </section>
-
-        
 
         <section class="card bloco-competencia bloco-competencia-comandante oculto" id="blocoComandanteGuarda"
           aria-labelledby="tituloCompetenciaComandante">
