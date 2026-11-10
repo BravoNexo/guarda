@@ -27,7 +27,7 @@
           <div class="topo-textos">
             <h1>Gestão de Serviço - 1º GBM</h1>
             <p>Registro e acompanhamento do serviço diário</p>
-          <small id="operational-app-version" class="operational-app-version">v2.14.4</small></div>
+          <small id="operational-app-version" class="operational-app-version">v2.14.5</small></div>
         </div>
       </header>
 
@@ -921,10 +921,10 @@
           Este celular não está autorizado para lançar registros. Assuma a Guarda ou, durante uma cobertura, valide-se como Toque de Fogo.
         </div>
 
-        <section class="card card-guarnicoes-servico oculto" id="cardGuarnicoesServico">
+        <section class="card card-guarnicoes-servico oculto recolhido" id="cardGuarnicoesServico">
           <div class="cabecalho-guarnicoes-servico">
             <button type="button" id="btnAlternarGuarnicoesServico" class="botao-alternar-guarnicoes-servico"
-              aria-expanded="true" aria-controls="conteudoGuarnicoesServico">
+              aria-expanded="false" aria-controls="conteudoGuarnicoesServico">
               <span>
                 <span class="titulo-guarnicoes-servico">Guarnições de Serviço</span>
                 <span id="cicloGuarnicoesServico">Ciclo das 08h às 08h</span>
@@ -933,7 +933,7 @@
             </button>
             <button type="button" id="btnAtualizarGuarnicoesServico" disabled data-candidate-operation="true" aria-disabled="true">Atualizar</button>
           </div>
-          <div id="conteudoGuarnicoesServico">
+          <div id="conteudoGuarnicoesServico" hidden>
           <p class="descricao-guarnicoes-servico">
             Viaturas já lançadas para este serviço. No SOS, a composição será preenchida automaticamente e ainda poderá ser alterada.
           </p>
