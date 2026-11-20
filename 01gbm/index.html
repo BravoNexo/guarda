@@ -15,7 +15,7 @@
     
   <link rel="stylesheet" href="./gestao-operational.css?v=444017276194">
   
-  <meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" sizes="192x192" href="./icons/gestao-servico-192-v3.png"><script src="./gestao-operational.js?v=749a6a95a5a2" defer></script><link rel="manifest" href="./manifest.webmanifest"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https://ciqctdckqmopdeoigzfz.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'"></head>
+  <meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" sizes="192x192" href="./icons/gestao-servico-192-v3.png"><script src="./gestao-operational.js?v=0cd979a2bad8" defer></script><link rel="manifest" href="./manifest.webmanifest"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https://ciqctdckqmopdeoigzfz.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'"></head>
 
   <body data-operational-team-enabled="true" data-operational-ui="true" class="candidate-shell" >
     <div class="app"><p id="candidate-banner" class="candidate-banner">GESTÃO DE SERVIÇO · 1º GBM · SISTEMA OFICIAL</p>
@@ -27,7 +27,7 @@
           <div class="topo-textos">
             <h1>Gestão de Serviço - 1º GBM</h1>
             <p>Registro e acompanhamento do serviço diário</p>
-          <small id="operational-app-version" class="operational-app-version">v2.15.2</small></div>
+          <small id="operational-app-version" class="operational-app-version">v2.15.3</small></div>
         </div>
       </header>
 
@@ -55,7 +55,7 @@
 
             <div class="acoes-guarda">
               <button type="button" id="btnTrocarGuarda" class="botao-trocar oculto" disabled data-candidate-operation="true" aria-disabled="true">
-                Assumir / Trocar
+                Assumir
               </button>
 
               <button type="button" id="btnEncerrarGuarda" class="botao-sair oculto" disabled data-candidate-operation="true" aria-disabled="true">
@@ -127,7 +127,7 @@
             </button>
           </div>
           
-        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-guarda-assumir" type="button" disabled hidden>Assumir / Trocar</button><button id="operational-role-guarda-encerrar" type="button" disabled hidden>Encerrar guarda</button></div></section>
+        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-guarda-assumir" type="button" disabled hidden>Assumir</button><button id="operational-role-guarda-encerrar" type="button" disabled hidden>Encerrar guarda</button></div></section>
 <section class="card card-toque-fogo perfil-servico" id="cardToqueFogo">
           <div class="cabecalho-card-guarda">
             <div>
@@ -136,7 +136,7 @@
             </div>
             <div class="acoes-guarda">
               <button type="button" id="btnTrocarToqueFogo" class="botao-trocar oculto" disabled data-candidate-operation="true" aria-disabled="true">
-                Entrar / Trocar
+                Assumir
               </button>
             </div>
           </div>
@@ -190,14 +190,14 @@
               Definir Toque de Fogo
             </button>
           </div>
-        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-toque_diurno-assumir" type="button" disabled hidden>Assumir / Trocar Toque Diurno</button><button id="operational-role-toque_diurno-encerrar" type="button" disabled hidden>Encerrar Toque Diurno</button></div><div class="candidate-duty-actions operational-role-actions"><button id="operational-role-toque_noturno-assumir" type="button" disabled hidden>Assumir / Trocar Toque Noturno</button><button id="operational-role-toque_noturno-encerrar" type="button" disabled hidden>Encerrar Toque Noturno</button></div></section>
+        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-toque_diurno-assumir" type="button" disabled hidden>Assumir Toque Diurno</button><button id="operational-role-toque_diurno-encerrar" type="button" disabled hidden>Encerrar Toque Diurno</button></div><div class="candidate-duty-actions operational-role-actions"><button id="operational-role-toque_noturno-assumir" type="button" disabled hidden>Assumir Toque Noturno</button><button id="operational-role-toque_noturno-encerrar" type="button" disabled hidden>Encerrar Toque Noturno</button></div></section>
 <section class="card card-guarda card-comandante perfil-servico" id="perfilComandante">
           <div class="cabecalho-card-guarda">
             <h2>Comandante da Guarda</h2>
 
             <div class="acoes-guarda">
               <button type="button" id="btnTrocarComandante" class="botao-trocar oculto" disabled data-candidate-operation="true" aria-disabled="true">
-                Assumir / Trocar
+                Assumir
               </button>
 
               <button type="button" id="btnEncerrarComandante" class="botao-sair oculto" disabled data-candidate-operation="true" aria-disabled="true">
@@ -249,7 +249,7 @@
               Assumir como comandante
             </button>
           </div>
-        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-comandante_guarda-assumir" type="button" disabled hidden>Assumir / Trocar</button><button id="operational-role-comandante_guarda-encerrar" type="button" disabled hidden>Encerrar serviço</button></div></section>
+        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-comandante_guarda-assumir" type="button" disabled hidden>Assumir</button><button id="operational-role-comandante_guarda-encerrar" type="button" disabled hidden>Encerrar serviço</button></div></section>
 <section class="card card-guarda card-comandante perfil-servico" id="perfilOficial">
           <div class="cabecalho-card-guarda">
             <h2>Oficial de Dia</h2>
@@ -303,7 +303,7 @@
               </div>
             </div>
           </div>
-          <div class="candidate-duty-actions operational-role-actions"><button type="button" id="operational-officer-swap" aria-controls="operational-planned-officer" aria-expanded="false" disabled hidden>Trocar</button></div>
+          <div class="candidate-duty-actions operational-role-actions"><button type="button" id="operational-officer-swap" aria-controls="operational-planned-officer" aria-expanded="false" disabled hidden>Assumir</button></div>
         </section>
 <section class="card card-guarda card-comandante perfil-servico" id="perfilEncarregadoMotoristas">
           <div class="cabecalho-card-guarda">
@@ -349,7 +349,7 @@
               </div>
             </div>
           </div>
-        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-encarregado_motoristas-assumir" type="button" disabled hidden>Assumir / Trocar</button><button id="operational-role-encarregado_motoristas-encerrar" type="button" disabled hidden>Encerrar serviço</button></div></section></div></details><button class="operational-sign-out" hidden id="candidate-sign-out" type="button" disabled data-candidate-personal="true">Sair</button></section>
+        <div class="candidate-duty-actions operational-role-actions"><button id="operational-role-encarregado_motoristas-assumir" type="button" disabled hidden>Assumir</button><button id="operational-role-encarregado_motoristas-encerrar" type="button" disabled hidden>Encerrar serviço</button></div></section></div></details><button class="operational-sign-out" hidden id="candidate-sign-out" type="button" disabled data-candidate-personal="true">Sair</button></section>
 <section class="card oculto" id="cardMovimentacao">
           <h2 id="tituloCardMovimentacao">Controle de Acesso</h2>
 
