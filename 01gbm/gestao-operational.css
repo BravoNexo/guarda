@@ -4461,15 +4461,15 @@ html { width: 100%; }
 .candidate-shell[data-operational-ui="true"] .operational-guard-mode-actions button { flex: 0 1 auto; width: auto; min-height: 44px; margin: 0; }
 
 
-/* Vehicle category badges do not change the selected card or keyboard focus. */
+/* Category text keeps the vehicle card's selection and focus styles intact. */
 .candidate-shell[data-operational-ui="true"] .operational-fleet-choice .operational-vehicle-category {
-  display: inline-flex; align-items: center; width: fit-content; max-width: 100%;
-  margin-top: 4px; padding: 2px 8px; border: 1px solid; border-radius: 999px;
-  font-size: 11px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere;
+  display: block; max-width: 100%; margin-top: 3px; padding: 0;
+  border: 0; border-radius: 0; background: transparent;
+  font-size: 12px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere;
 }
 .candidate-shell[data-operational-ui="true"] .operational-fleet-choice .operational-vehicle-category--operacional {
-  color: #1e40af; background: #eff6ff; border-color: #bfdbfe;
+  color: #1e40af;
 }
 .candidate-shell[data-operational-ui="true"] .operational-fleet-choice .operational-vehicle-category--administrativa {
-  color: #6b21a8; background: #faf5ff; border-color: #e9d5ff;
+  color: #6b21a8;
 }
